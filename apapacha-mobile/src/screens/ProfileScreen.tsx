@@ -4,9 +4,10 @@ import { colors } from '../theme/colors';
 
 interface ProfileScreenProps {
   onSwitchToHost: () => void;
+  onAddPet: () => void;
 }
 
-export function ProfileScreen({ onSwitchToHost }: ProfileScreenProps) {
+export function ProfileScreen({ onSwitchToHost, onAddPet }: ProfileScreenProps) {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -26,7 +27,12 @@ export function ProfileScreen({ onSwitchToHost }: ProfileScreenProps) {
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Mi Familia Felina</Text>
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionTitle}>Mi Familia Felina</Text>
+          <TouchableOpacity style={styles.addPetBtn} onPress={onAddPet}>
+            <Text style={styles.addPetBtnText}>+ Añadir</Text>
+          </TouchableOpacity>
+        </View>
         
         {/* Cat Profile Card */}
         <View style={styles.catCard}>
@@ -46,9 +52,6 @@ export function ProfileScreen({ onSwitchToHost }: ProfileScreenProps) {
             <Text style={styles.alertTitle}>⚠️ Alertas Médicas (Estricto)</Text>
             <Text style={styles.alertText}>• Alergia severa a proteína de pollo.</Text>
             <Text style={styles.alertText}>• Medicación renal necesaria AM/PM.</Text>
-            <TouchableOpacity style={styles.editButton}>
-              <Text style={styles.editButtonText}>Actualizar Ficha Médica</Text>
-            </TouchableOpacity>
           </View>
         </View>
 
@@ -131,12 +134,28 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     marginTop: 4,
   },
+  sectionHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    marginTop: 8,
+  },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '700',
     color: colors.textMain,
-    marginBottom: 16,
-    marginTop: 8,
+  },
+  addPetBtn: {
+    backgroundColor: `${colors.primary}15`,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  addPetBtnText: {
+    color: colors.primaryDark,
+    fontWeight: '700',
+    fontSize: 13,
   },
   catCard: {
     backgroundColor: colors.surface,
@@ -189,25 +208,12 @@ const styles = StyleSheet.create({
     color: '#7F1D1D',
     marginBottom: 4,
   },
-  editButton: {
-    marginTop: 12,
-    backgroundColor: colors.surface,
-    paddingVertical: 8,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-  },
-  editButtonText: {
-    color: colors.textMain,
-    fontWeight: '600',
-    fontSize: 13,
-  },
   hostSwitchBtn: {
     backgroundColor: colors.primaryDark,
     padding: 16,
     borderRadius: 12,
     alignItems: 'center',
+    marginTop: 16,
     marginBottom: 32,
   },
   hostSwitchBtnText: {
@@ -221,6 +227,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     overflow: 'hidden',
+    marginTop: 16,
   },
   menuItem: {
     flexDirection: 'row',
