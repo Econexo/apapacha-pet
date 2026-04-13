@@ -25,7 +25,8 @@ export function SpaceCard({ id, title, location, pricePerNight, rating, imageUrl
         <Text style={styles.location} numberOfLines={1}>{location}</Text>
         <Text style={styles.title} numberOfLines={1}>{title}</Text>
         <Text style={styles.price}>
-          <Text style={styles.priceValue}>${pricePerNight}</Text> / noche
+          <Text style={styles.priceValue}>${pricePerNight.toLocaleString('es-CL')}</Text>
+          <Text> / noche</Text>
         </Text>
       </View>
     </TouchableOpacity>
@@ -33,59 +34,14 @@ export function SpaceCard({ id, title, location, pricePerNight, rating, imageUrl
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    marginBottom: 24,
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  imageContainer: {
-    width: '100%',
-    height: 250,
-    position: 'relative',
-    borderRadius: 16,
-    overflow: 'hidden',
-  },
-  image: {
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
-  },
-  ratingBadge: {
-    position: 'absolute',
-    top: 12,
-    right: 12,
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 12,
-  },
-  ratingText: {
-    fontWeight: '700',
-    fontSize: 13,
-    color: colors.textMain,
-  },
-  infoContainer: {
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-  },
-  location: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: colors.textMain,
-    marginBottom: 4,
-  },
-  title: {
-    fontSize: 15,
-    color: colors.textMuted,
-    marginBottom: 6,
-  },
-  price: {
-    fontSize: 14,
-    color: colors.textMuted,
-  },
-  priceValue: {
-    fontWeight: '700',
-    color: colors.textMain,
-  }
+  card: { backgroundColor: colors.surface, marginBottom: 24, borderRadius: 16, overflow: 'hidden' },
+  imageContainer: { width: '100%', height: 250, position: 'relative', borderRadius: 16, overflow: 'hidden' },
+  image: { width: '100%', height: '100%', resizeMode: 'cover' },
+  ratingBadge: { position: 'absolute', top: 12, right: 12, backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 12 },
+  ratingText: { fontWeight: '700', fontSize: 13, color: colors.textMain },
+  infoContainer: { paddingVertical: 12, paddingHorizontal: 4 },
+  location: { fontSize: 15, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
+  title: { fontSize: 15, color: colors.textMuted, marginBottom: 6 },
+  price: { fontSize: 14, color: colors.textMuted },
+  priceValue: { fontWeight: '700', color: colors.textMain },
 });

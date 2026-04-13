@@ -1,174 +1,104 @@
-import React from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import type { RootStackParamList } from '../types/navigation';
+import type { Booking } from '../types/database';
+import { getMyBookings } from '../services/bookings.service';
 
-const MOCK_BOOKINGS = [
-  {
-    id: '1',
-    spaceName: 'Depto Malla Completa Centro',
-    sitter: 'María',
-    status: 'ACTIVE',
-    date: '10 Abril - 15 Abril',
-    pet: 'Michi'
-  },
-  {
-    id: '2',
-    spaceName: 'Casa con Patio Cerrado',
-    sitter: 'Dr. Rodrigo',
-    status: 'COMPLETED',
-    date: '02 Enero - 05 Enero',
-    pet: 'Michi'
-  }
-];
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function BookingsScreen() {
+  const navigation = useNavigation<Nav>();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      getMyBookings()
+        .then(setBookings)
+        .catch(console.error)
+        .finally(() => setLoading(false));
+    }, [])
+  );
+
+  const active = bookings.filter(b => b.status === 'active' || b.status === 'pending');
+  const past = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
+  const fmt = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Mis Reservas</Text>
+        <Text style={styles.headerTitle}>Reservas</Text>
       </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <Text style={styles.sectionTitle}>Próximas y Activas</Text>
-        
-        {MOCK_BOOKINGS.filter(b => b.status === 'ACTIVE').map(booking => (
-          <TouchableOpacity key={booking.id} style={styles.card} activeOpacity={0.8}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.statusBadge, styles.statusActive]}>
-                <Text style={styles.statusTextActive}>• En Curso</Text>
-              </View>
-              <Text style={styles.dateText}>{booking.date}</Text>
+      <FlatList
+        data={[...active, ...past]}
+        keyExtractor={item => item.id}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContainer}
+        ListHeaderComponent={
+          active.length > 0 ? <Text style={styles.sectionTitle}>En curso y próximas</Text> : null
+        }
+        renderItem={({ item, index }) => {
+          const isFirstPast = index === active.length;
+          return (
+            <>
+              {isFirstPast && past.length > 0 && (
+                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Historial</Text>
+              )}
+              {(item.status === 'active' || item.status === 'pending') ? (
+                <TouchableOpacity
+                  style={styles.cardActive}
+                  activeOpacity={0.9}
+                  onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.statusBadge}>{item.status === 'active' ? 'En Curso' : 'Pendiente'}</Text>
+                    <Text style={styles.dates}>{fmt(item.start_date)} - {fmt(item.end_date)}</Text>
+                  </View>
+                  <Text style={styles.title}>{item.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita Domiciliaria'}</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.cardPast}>
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.statusBadgePast}>{item.status === 'completed' ? 'Completada' : 'Cancelada'}</Text>
+                    <Text style={styles.dates}>{fmt(item.start_date)} - {fmt(item.end_date)}</Text>
+                  </View>
+                  <Text style={styles.title}>{item.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita Domiciliaria'}</Text>
+                </View>
+              )}
+            </>
+          );
+        }}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>📅</Text>
+              <Text style={styles.emptyText}>No tienes reservas aún.</Text>
             </View>
-            <Text style={styles.spaceName}>{booking.spaceName}</Text>
-            <Text style={styles.sitterText}>Huésped: {booking.pet} • Cuidador: {booking.sitter}</Text>
-            <View style={styles.actionRow}>
-              <Text style={styles.actionText}>Ver Monitoreo en Vivo →</Text>
-            </View>
-          </TouchableOpacity>
-        ))}
-
-        <Text style={styles.sectionTitle}>Historial</Text>
-        
-        {MOCK_BOOKINGS.filter(b => b.status === 'COMPLETED').map(booking => (
-          <View key={booking.id} style={[styles.card, styles.cardCompleted]}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.statusBadge, styles.statusCompleted]}>
-                <Text style={styles.statusTextCompleted}>Finalizada</Text>
-              </View>
-              <Text style={styles.dateText}>{booking.date}</Text>
-            </View>
-            <Text style={styles.spaceName}>{booking.spaceName}</Text>
-            <Text style={styles.sitterText}>Huésped: {booking.pet} • Cuidador: {booking.sitter}</Text>
-          </View>
-        ))}
-
-      </ScrollView>
+          ) : null
+        }
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: colors.background,
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
-  },
-  headerTitle: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: colors.textMain,
-    letterSpacing: -0.5,
-  },
-  scrollContainer: {
-    padding: 20,
-    paddingBottom: 100,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '700',
-    color: colors.textMain,
-    marginBottom: 16,
-    marginTop: 8,
-  },
-  card: {
-    backgroundColor: colors.surface,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: colors.border,
-  },
-  cardCompleted: {
-    opacity: 0.7,
-    shadowOpacity: 0,
-    elevation: 0,
-    backgroundColor: '#F3F4F6',
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusActive: {
-    backgroundColor: `${colors.primary}15`,
-  },
-  statusCompleted: {
-    backgroundColor: colors.border,
-  },
-  statusTextActive: {
-    color: colors.primaryDark,
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  statusTextCompleted: {
-    color: colors.textMuted,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  dateText: {
-    fontSize: 13,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  spaceName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: colors.textMain,
-    marginBottom: 4,
-  },
-  sitterText: {
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: 12,
-  },
-  actionRow: {
-    marginTop: 4,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    alignItems: 'center',
-  },
-  actionText: {
-    color: colors.primary,
-    fontWeight: '700',
-    fontSize: 15,
-  }
+  safeArea: { flex: 1, backgroundColor: colors.background },
+  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10, backgroundColor: colors.surface },
+  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
+  scrollContainer: { padding: 20 },
+  sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textMain, marginBottom: 16 },
+  cardActive: { backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 2, borderColor: colors.primary, marginBottom: 16 },
+  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  statusBadge: { backgroundColor: colors.primary, color: colors.surface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, fontSize: 12, fontWeight: '800' },
+  statusBadgePast: { backgroundColor: colors.background, color: colors.textMuted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, fontSize: 12, fontWeight: '800' },
+  dates: { fontSize: 13, color: colors.textMuted },
+  title: { fontSize: 16, fontWeight: '700', color: colors.textMain },
+  cardPast: { backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16, opacity: 0.7 },
+  emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyText: { fontSize: 16, color: colors.textMuted, textAlign: 'center' },
 });

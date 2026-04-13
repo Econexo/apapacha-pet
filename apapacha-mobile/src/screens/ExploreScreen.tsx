@@ -1,119 +1,148 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, SafeAreaView, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { SpaceCard } from '../components/SpaceCard';
 import { VisiterCard } from '../components/VisiterCard';
+import { SpaceCardSkeleton, VisiterCardSkeleton } from '../components/Skeleton';
+import type { RootStackParamList } from '../types/navigation';
+import type { Space, Visiter } from '../types/database';
+import { getSpaces } from '../services/spaces.service';
+import { getVisiters } from '../services/visiters.service';
 
-const MOCK_SPACES = [
-  {
-    id: '1',
-    title: 'Depto Malla Completa Centro, 100% Catified',
-    location: 'Providencia, Santiago',
-    pricePerNight: 15000,
-    rating: 4.96,
-    imageUrl: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?q=80&w=2000&auto=format&fit=crop'
-  },
-  {
-    id: '2',
-    title: 'Casa con Patio Cerrado & Árboles Trepadores',
-    location: 'Las Condes, Santiago',
-    pricePerNight: 22000,
-    rating: 5.0,
-    imageUrl: 'https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?q=80&w=2000&auto=format&fit=crop'
-  }
-];
-
-const MOCK_VISITERS = [
-  {
-    id: 'v1',
-    name: 'Roberto Valdés',
-    professionTitle: 'Auxiliar Veterinario Especialista',
-    pricePerVisit: 8500,
-    rating: 4.98,
-    totalVisits: 342,
-    imageUrl: 'https://images.unsplash.com/photo-1537368910025-7028ba0a464a?q=80&w=1000&auto=format&fit=crop'
-  },
-  {
-    id: 'v2',
-    name: 'Camila Ríos',
-    professionTitle: 'Top Rated Cat Walker',
-    pricePerVisit: 6000,
-    rating: 4.85,
-    totalVisits: 120,
-    imageUrl: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&auto=format&fit=crop'
-  }
-];
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 const FILTERS = ['Patio Cerrado', 'Sitter Médico', 'Sin Otros Gatos', 'Rascadores Premium'];
 
-interface ExploreScreenProps {
-  onNavigateToDetail: (id: string, type: 'SPACE'|'VISITER') => void;
-  onNavigateToSearch: () => void;
-}
-
-export function ExploreScreen({ onNavigateToDetail, onNavigateToSearch }: ExploreScreenProps) {
+export function ExploreScreen() {
+  const navigation = useNavigation<Nav>();
   const [activeTab, setActiveTab] = useState<'SPACES' | 'VISITERS'>('SPACES');
+  const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
+  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [visiters, setVisiters] = useState<Visiter[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadData();
+  }, [activeTab, activeFilters]);
+
+  async function loadData() {
+    setLoading(true);
+    try {
+      if (activeTab === 'SPACES') {
+        const data = await getSpaces(
+          activeFilters.size > 0 ? { features: Array.from(activeFilters) } : undefined
+        );
+        setSpaces(data);
+      } else {
+        const data = await getVisiters();
+        setVisiters(data);
+      }
+    } catch (e) {
+      console.error('Error loading data:', e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const toggleFilter = (f: string) => {
+    setActiveFilters(prev => {
+      const next = new Set(prev);
+      next.has(f) ? next.delete(f) : next.add(f);
+      return next;
+    });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        {/* Toggle de Selección de Servicio */}
         <View style={styles.serviceToggleContainer}>
-          <TouchableOpacity 
-            style={[styles.toggleBtn, activeTab === 'SPACES' && styles.toggleBtnActive]}
-            onPress={() => setActiveTab('SPACES')}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity style={[styles.toggleBtn, activeTab === 'SPACES' && styles.toggleBtnActive]} onPress={() => setActiveTab('SPACES')} activeOpacity={0.8}>
             <Text style={[styles.toggleText, activeTab === 'SPACES' && styles.toggleTextActive]}>🏠 Alojamiento</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.toggleBtn, activeTab === 'VISITERS' && styles.toggleBtnActive]}
-            onPress={() => setActiveTab('VISITERS')}
-            activeOpacity={0.8}
-          >
+          <TouchableOpacity style={[styles.toggleBtn, activeTab === 'VISITERS' && styles.toggleBtnActive]} onPress={() => setActiveTab('VISITERS')} activeOpacity={0.8}>
             <Text style={[styles.toggleText, activeTab === 'VISITERS' && styles.toggleTextActive]}>🚗 Visitas en Casa</Text>
           </TouchableOpacity>
         </View>
-
-        {/* Barra de búsqueda dinámica (Ahora Activa) */}
-        <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={onNavigateToSearch}>
-          <View style={styles.searchIconPlaceholder}>
-            <Text>🔍</Text>
-          </View>
+        <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={() => navigation.navigate('SearchModal')}>
+          <View style={styles.searchIconPlaceholder}><Text>🔍</Text></View>
           <View style={styles.searchTexts}>
-            <Text style={styles.searchTitle}>
-              {activeTab === 'SPACES' ? '¿Dónde hospedará tu compañero?' : '¿Dónde necesitas tu visita?'}
-            </Text>
+            <Text style={styles.searchTitle}>{activeTab === 'SPACES' ? '¿Dónde hospedará tu compañero?' : '¿Dónde necesitas tu visita?'}</Text>
             <Text style={styles.searchSubtitle}>Cualquier lugar • Fechas • 1 Huésped</Text>
           </View>
         </TouchableOpacity>
       </View>
 
-      {/* Chips de filtro (Solo para espacios en este mock) */}
       {activeTab === 'SPACES' && (
         <View style={styles.filterContainer}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filterScroll}>
-            {FILTERS.map((f, i) => (
-              <TouchableOpacity key={i} style={styles.filterChip}>
-                <Text style={styles.filterText}>{f}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
+          <FlatList
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.filterScroll}
+            data={FILTERS}
+            keyExtractor={item => item}
+            renderItem={({ item }) => {
+              const isActive = activeFilters.has(item);
+              return (
+                <TouchableOpacity style={[styles.filterChip, isActive && styles.filterChipActive]} onPress={() => toggleFilter(item)}>
+                  <Text style={[styles.filterText, isActive && styles.filterTextActive]}>{item}</Text>
+                </TouchableOpacity>
+              );
+            }}
+          />
         </View>
       )}
 
-      {/* Lista Principal Restante */}
-      <ScrollView contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}>
-        {activeTab === 'SPACES' ? (
-          MOCK_SPACES.map(space => (
-            <SpaceCard key={space.id} {...space} onPress={(id) => onNavigateToDetail(id, 'SPACE')} />
-          ))
-        ) : (
-          MOCK_VISITERS.map(visiter => (
-            <VisiterCard key={visiter.id} {...visiter} onPress={(id) => onNavigateToDetail(id, 'VISITER')} />
-          ))
-        )}
-      </ScrollView>
+      {loading ? (
+        <FlatList
+          data={[1, 2, 3]}
+          keyExtractor={i => String(i)}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          renderItem={() => activeTab === 'SPACES' ? <SpaceCardSkeleton /> : <VisiterCardSkeleton />}
+        />
+      ) : activeTab === 'SPACES' ? (
+        <FlatList
+          data={spaces}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <SpaceCard
+              id={item.id}
+              title={item.title}
+              location={item.location}
+              pricePerNight={item.price_per_night}
+              rating={item.rating}
+              imageUrl={item.image_urls[0] ?? ''}
+              onPress={id => navigation.navigate('SpaceDetail', { id })}
+            />
+          )}
+          ListEmptyComponent={<Text style={styles.emptyText}>No hay espacios disponibles.</Text>}
+        />
+      ) : (
+        <FlatList
+          data={visiters}
+          keyExtractor={item => item.id}
+          contentContainerStyle={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          renderItem={({ item }) => (
+            <VisiterCard
+              id={item.id}
+              name={item.name}
+              professionTitle={item.profession_title}
+              pricePerVisit={item.price_per_visit}
+              rating={item.rating}
+              totalVisits={item.total_visits}
+              imageUrl={item.image_url ?? ''}
+              onPress={id => navigation.navigate('VisiterDetail', { id })}
+            />
+          )}
+          ListEmptyComponent={<Text style={styles.emptyText}>No hay visiters disponibles.</Text>}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -134,6 +163,9 @@ const styles = StyleSheet.create({
   filterContainer: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   filterScroll: { paddingHorizontal: 20, gap: 10 },
   filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
+  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
   filterText: { fontSize: 13, fontWeight: '600', color: colors.textMain },
-  listContainer: { padding: 20, paddingTop: 16, paddingBottom: 100 }
+  filterTextActive: { color: colors.surface },
+  listContainer: { padding: 20, paddingTop: 16, paddingBottom: 100 },
+  emptyText: { textAlign: 'center', color: colors.textMuted, marginTop: 40, fontSize: 15 },
 });
