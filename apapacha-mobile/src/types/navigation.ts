@@ -12,4 +12,5 @@ export type RootStackParamList = {
   HostOnboarding: undefined;
   TrustAndSafety: undefined;
   HostDashboard: undefined;
+  InsuranceClaim: undefined;
 };
