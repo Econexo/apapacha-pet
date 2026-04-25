@@ -1,5 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, ActivityIndicator } from 'react-native';
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  Image, Alert, ActivityIndicator, Platform,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -10,15 +13,31 @@ import { getSpaceById } from '../services/spaces.service';
 import { getVisiterById } from '../services/visiters.service';
 import { getMyPets } from '../services/pets.service';
 import { createBooking } from '../services/bookings.service';
+import { createPaymentIntent } from '../services/payments.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'Checkout'>;
 
-const APP_FEE = 4500;
 const INSURANCE_FEE = 2500;
+const APP_FEE = 4500;
 const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
 
-export function CheckoutScreen() {
+const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_PUBLISHABLE_KEY_HERE';
+
+// Lazy-load stripe-react-native only on native — it's not compatible with web bundler
+let StripeProvider: any = null;
+let useStripe: (() => any) | null = null;
+if (Platform.OS !== 'web') {
+  try {
+    const mod = require('@stripe/stripe-react-native');
+    StripeProvider = mod.StripeProvider;
+    useStripe = mod.useStripe;
+  } catch {
+    // stripe-react-native not installed — native payments unavailable
+  }
+}
+
+function CheckoutContent() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { id, type } = route.params;
@@ -28,6 +47,8 @@ export function CheckoutScreen() {
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
+
+  const stripe = useStripe ? useStripe() : null;
 
   const today = new Date();
   const startDate = today.toISOString().split('T')[0];
@@ -70,7 +91,39 @@ export function CheckoutScreen() {
         end_date: endDate,
         total_price: grandTotal,
       });
-      navigation.navigate('CheckIn', { bookingId: booking.id });
+
+      if (Platform.OS === 'web') {
+        // Web pilot: skip Stripe for now, go straight to success
+        navigation.navigate('PaymentSuccess', { bookingId: booking.id });
+        return;
+      }
+
+      // Native: Stripe Payment Sheet
+      if (!stripe) {
+        // Stripe not available — go to success directly (development mode)
+        navigation.navigate('PaymentSuccess', { bookingId: booking.id });
+        return;
+      }
+
+      const hostStripeAccountId = 'acct_placeholder'; // replaced when host has real Connect account
+      const { clientSecret } = await createPaymentIntent(booking.id, hostStripeAccountId);
+
+      const { error: initError } = await stripe.initPaymentSheet({
+        paymentIntentClientSecret: clientSecret,
+        merchantDisplayName: 'ApapachaPet / RonRron',
+        style: 'alwaysLight',
+      });
+      if (initError) throw new Error(initError.message);
+
+      const { error: presentError } = await stripe.presentPaymentSheet();
+      if (presentError) {
+        if (presentError.code !== 'Canceled') {
+          Alert.alert('Error de pago', presentError.message);
+        }
+        return;
+      }
+
+      navigation.navigate('PaymentSuccess', { bookingId: booking.id });
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo confirmar la reserva');
     } finally {
@@ -142,7 +195,7 @@ export function CheckoutScreen() {
             <Text style={styles.priceNumber}>{fmt(APP_FEE)}</Text>
           </View>
           <View style={styles.priceRow}>
-            <Text style={[styles.priceConcept, { color: colors.success, fontWeight: '600' }]}>Malla de Seguro Zero Trust</Text>
+            <Text style={[styles.priceConcept, { color: colors.accent, fontWeight: '600' }]}>Malla de Seguro Zero Trust</Text>
             <Text style={styles.priceNumber}>{fmt(INSURANCE_FEE)}</Text>
           </View>
           <View style={styles.totalRow}>
@@ -168,11 +221,22 @@ export function CheckoutScreen() {
         >
           {submitting
             ? <ActivityIndicator color={colors.surface} />
-            : <Text style={styles.submitBtnText}>Pagar e Ir al Check-in</Text>
+            : <Text style={styles.submitBtnText}>Pagar con Stripe</Text>
           }
         </TouchableOpacity>
       </View>
     </SafeAreaView>
+  );
+}
+
+export function CheckoutScreen() {
+  if (Platform.OS === 'web' || !StripeProvider) {
+    return <CheckoutContent />;
+  }
+  return (
+    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
+      <CheckoutContent />
+    </StripeProvider>
   );
 }
 
