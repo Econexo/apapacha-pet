@@ -31,10 +31,7 @@ serve(async (req) => {
     );
     if (authError || !user) throw new Error('Unauthorized');
 
-    const { booking_id, host_stripe_account_id } = await req.json() as {
-      booking_id: string;
-      host_stripe_account_id: string;
-    };
+    const { booking_id } = await req.json() as { booking_id: string };
 
     const { data: booking, error: bookingErr } = await supabase
       .from('bookings')
@@ -44,20 +41,10 @@ serve(async (req) => {
       .single();
     if (bookingErr || !booking) throw new Error('Booking not found');
 
-    const { data: configRows } = await supabase
-      .from('platform_config')
-      .select('key, value');
-    const config: Record<string, string> = {};
-    for (const row of configRows ?? []) config[row.key] = row.value;
-
-    const platformFeePct = parseFloat(config['platform_fee_pct'] ?? '10') / 100;
-    const applicationFeeAmount = Math.round(booking.total_price * platformFeePct);
-
+    // CLP is a zero-decimal currency — amount is integer pesos, no centavos
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: booking.total_price,
+      amount: Math.round(booking.total_price),
       currency: 'clp',
-      application_fee_amount: applicationFeeAmount,
-      transfer_data: { destination: host_stripe_account_id },
       metadata: { booking_id, user_id: user.id },
     });
 

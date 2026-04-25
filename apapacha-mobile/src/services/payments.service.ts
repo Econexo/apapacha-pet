@@ -11,7 +11,6 @@ async function getAuthHeader(): Promise<string> {
 
 export async function createPaymentIntent(
   bookingId: string,
-  hostStripeAccountId: string,
 ): Promise<{ clientSecret: string }> {
   const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/create-payment-intent`, {
     method: 'POST',
@@ -20,24 +19,9 @@ export async function createPaymentIntent(
       Authorization: await getAuthHeader(),
       apikey: SUPABASE_ANON_KEY,
     },
-    body: JSON.stringify({ booking_id: bookingId, host_stripe_account_id: hostStripeAccountId }),
+    body: JSON.stringify({ booking_id: bookingId }),
   });
   const data = await response.json();
   if (data.error) throw new Error(data.error);
   return { clientSecret: data.client_secret };
-}
-
-export async function getConnectAccountOnboardingUrl(returnUrl: string): Promise<string> {
-  const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/create-connect-account`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: await getAuthHeader(),
-      apikey: SUPABASE_ANON_KEY,
-    },
-    body: JSON.stringify({ return_url: returnUrl }),
-  });
-  const data = await response.json();
-  if (data.error) throw new Error(data.error);
-  return data.url;
 }

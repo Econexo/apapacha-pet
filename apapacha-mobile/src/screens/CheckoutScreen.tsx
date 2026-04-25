@@ -105,8 +105,7 @@ function CheckoutContent() {
         return;
       }
 
-      const hostStripeAccountId = 'acct_placeholder'; // replaced when host has real Connect account
-      const { clientSecret } = await createPaymentIntent(booking.id, hostStripeAccountId);
+      const { clientSecret } = await createPaymentIntent(booking.id);
 
       const { error: initError } = await stripe.initPaymentSheet({
         paymentIntentClientSecret: clientSecret,
