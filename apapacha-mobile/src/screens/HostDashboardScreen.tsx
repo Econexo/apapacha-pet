@@ -1,15 +1,48 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
+import type { Booking } from '../types/database';
+import { getMyHostBookings } from '../services/host.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+const STATUS_LABEL: Record<string, string> = {
+  pending:   'Pendiente',
+  active:    'Activa',
+  completed: 'Completada',
+  cancelled: 'Cancelada',
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  pending:   colors.warning,
+  active:    colors.accent,
+  completed: colors.primary,
+  cancelled: colors.danger,
+};
+
+const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
+
 export function HostDashboardScreen() {
   const navigation = useNavigation<Nav>();
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getMyHostBookings()
+      .then(setBookings)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const activeBookings  = bookings.filter(b => b.status === 'active');
+  const pendingBookings = bookings.filter(b => b.status === 'pending');
+  const totalEarnings   = bookings
+    .filter(b => b.payment_status === 'paid')
+    .reduce((sum, b) => sum + b.total_price, 0);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -20,40 +53,61 @@ export function HostDashboardScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}><Text style={styles.statNumber}>1</Text><Text style={styles.statLabel}>Huésped Activo</Text></View>
-          <View style={styles.statCard}><Text style={styles.statNumber}>3</Text><Text style={styles.statLabel}>Pendientes</Text></View>
+      {loading ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+          <ActivityIndicator size="large" color={colors.primary} />
         </View>
-
-        <Text style={styles.sectionTitle}>Huésped Actual</Text>
-        <View style={styles.activeGuestCard}>
-          <View style={styles.guestHeader}>
-            <Image source={{ uri: 'https://images.unsplash.com/photo-1513360371669-4adf3dd7dff8?q=80&w=300&auto=format&fit=crop' }} style={styles.guestImage} />
-            <View>
-              <Text style={styles.guestName}>Michi</Text>
-              <Text style={styles.guestOwner}>Dueño: Carlos G.</Text>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+          <View style={styles.statsRow}>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{activeBookings.length}</Text>
+              <Text style={styles.statLabel}>Activas</Text>
+            </View>
+            <View style={styles.statCard}>
+              <Text style={styles.statNumber}>{pendingBookings.length}</Text>
+              <Text style={styles.statLabel}>Pendientes</Text>
+            </View>
+            <View style={[styles.statCard, { borderColor: colors.accent }]}>
+              <Text style={[styles.statNumber, { color: colors.accent, fontSize: 18 }]}>{fmt(totalEarnings)}</Text>
+              <Text style={styles.statLabel}>Ganancias</Text>
             </View>
           </View>
-          <View style={styles.alertBlock}>
-            <Text style={styles.alertTitle}>⚠️ Alertas Activas</Text>
-            <Text style={styles.alertText}>Dar pastilla a las 20:00 hrs.</Text>
-          </View>
-          <TouchableOpacity style={styles.actionBtn}>
-            <Text style={styles.actionBtnText}>📢 Registrar Evento / Enviar Foto</Text>
-          </TouchableOpacity>
-        </View>
 
-        <Text style={styles.sectionTitle}>Solicitudes Recientes</Text>
-        <View style={styles.requestCard}>
-          <Text style={styles.requestName}>Luna (2 Años)</Text>
-          <Text style={styles.requestDates}>15 Abr - 18 Abr • 3 Noches</Text>
-          <View style={styles.requestActions}>
-            <TouchableOpacity style={[styles.reqBtn, styles.reqBtnAccept]}><Text style={styles.reqBtnText}>Aceptar</Text></TouchableOpacity>
-            <TouchableOpacity style={[styles.reqBtn, styles.reqBtnDecline]}><Text style={styles.reqBtnTextDecline}>Rechazar</Text></TouchableOpacity>
-          </View>
-        </View>
-      </ScrollView>
+          {bookings.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>📭</Text>
+              <Text style={styles.emptyTitle}>Sin reservas aún</Text>
+              <Text style={styles.emptyText}>Cuando tengas clientes, aparecerán aquí.</Text>
+            </View>
+          ) : (
+            <>
+              <Text style={styles.sectionTitle}>Todas las Reservas</Text>
+              {bookings.map(booking => (
+                <View key={booking.id} style={styles.bookingCard}>
+                  <View style={styles.bookingRow}>
+                    <View>
+                      <Text style={styles.bookingId}>Reserva #{booking.id.slice(0, 8)}</Text>
+                      <Text style={styles.bookingDates}>{booking.start_date} → {booking.end_date}</Text>
+                    </View>
+                    <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLOR[booking.status]}20` }]}>
+                      <Text style={[styles.statusText, { color: STATUS_COLOR[booking.status] }]}>
+                        {STATUS_LABEL[booking.status]}
+                      </Text>
+                    </View>
+                  </View>
+                  <View style={styles.bookingFooter}>
+                    <Text style={styles.bookingTotal}>{fmt(booking.total_price)}</Text>
+                    <Text style={styles.bookingPayment}>
+                      {booking.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pago pendiente'}
+                    </Text>
+                  </View>
+                </View>
+              ))}
+            </>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
@@ -64,29 +118,23 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: '800', color: colors.textMain },
   exitBtn: { padding: 8, backgroundColor: colors.dangerBg, borderRadius: 8 },
   exitBtnText: { color: colors.danger, fontWeight: '700' },
-  scrollContainer: { padding: 20 },
-  statsRow: { flexDirection: 'row', gap: 16, marginBottom: 24 },
-  statCard: { flex: 1, backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
-  statNumber: { fontSize: 32, fontWeight: '800', color: colors.primary, marginBottom: 4 },
-  statLabel: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
+  scrollContainer: { padding: 20, paddingBottom: 80 },
+  statsRow: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  statCard: { flex: 1, backgroundColor: colors.surface, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  statNumber: { fontSize: 28, fontWeight: '800', color: colors.primary, marginBottom: 4 },
+  statLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', textAlign: 'center' },
+  emptyState: { alignItems: 'center', paddingVertical: 60 },
+  emptyIcon: { fontSize: 48, marginBottom: 16 },
+  emptyTitle: { fontSize: 20, fontWeight: '700', color: colors.textMain, marginBottom: 8 },
+  emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textMain, marginBottom: 16 },
-  activeGuestCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 2, borderColor: colors.primary, marginBottom: 32 },
-  guestHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
-  guestImage: { width: 64, height: 64, borderRadius: 32, marginRight: 16 },
-  guestName: { fontSize: 20, fontWeight: '800', color: colors.textMain },
-  guestOwner: { fontSize: 14, color: colors.textMuted },
-  alertBlock: { backgroundColor: colors.dangerBg, padding: 12, borderRadius: 8, marginBottom: 16 },
-  alertTitle: { color: colors.dangerText, fontWeight: '700', marginBottom: 4 },
-  alertText: { color: colors.dangerTextDark, fontSize: 13 },
-  actionBtn: { backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  actionBtnText: { color: colors.surface, fontWeight: '700' },
-  requestCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border },
-  requestName: { fontSize: 18, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
-  requestDates: { fontSize: 14, color: colors.textMuted, marginBottom: 16 },
-  requestActions: { flexDirection: 'row', gap: 12 },
-  reqBtn: { flex: 1, paddingVertical: 12, borderRadius: 8, alignItems: 'center' },
-  reqBtnAccept: { backgroundColor: colors.success },
-  reqBtnDecline: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
-  reqBtnText: { color: colors.surface, fontWeight: '700' },
-  reqBtnTextDecline: { color: colors.textMuted, fontWeight: '700' },
+  bookingCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 12 },
+  bookingRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12 },
+  bookingId: { fontSize: 13, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
+  bookingDates: { fontSize: 12, color: colors.textMuted },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  bookingFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  bookingTotal: { fontSize: 16, fontWeight: '800', color: colors.textMain },
+  bookingPayment: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
 });
