@@ -1,24 +1,27 @@
 export const colors = {
-  // Brand
-  primary: '#0F4C3A',
-  primaryDark: '#083326',
-  accent: '#D4AF37',
+  // Brand — extraído del logo ApapachaPet
+  primary: '#6B35A0',        // Morado principal (logo "Apapacha")
+  primaryDark: '#4A2070',    // Morado oscuro (hover/press)
+  primaryLight: '#E8D5F5',   // Morado muy claro (fondos sutiles)
+  accent: '#7DC67E',         // Verde (huellas verdes del logo)
+  accentBlue: '#7EC8E3',     // Azul claro (huellas azules del logo)
+  lilac: '#B57BCC',          // Lila (tono intermedio del logo)
 
   // Base
-  background: '#F9FAFB',
+  background: '#FAF7FD',     // Blanco con tinte morado muy sutil
   surface: '#FFFFFF',
-  textMain: '#1A1D20',
-  textMuted: '#6B7280',
-  border: '#E5E7EB',
+  textMain: '#1A0A2E',       // Casi negro con tinte morado
+  textMuted: '#7B6B8D',      // Gris con tinte morado
+  border: '#E8D5F5',         // Borde lila muy claro
 
-  // Semantic — success
-  success: '#10B981',
-  successBg: '#F0FDF4',
-  successBorder: '#BBF7D0',
-  successText: '#166534',
-  successTextDark: '#14532D',
+  // Semantic — success (verde del logo)
+  success: '#7DC67E',
+  successBg: '#F0FBF0',
+  successBorder: '#B8E6B9',
+  successText: '#2D7A2E',
+  successTextDark: '#1A4A1B',
 
-  // Semantic — danger (alertas médicas, acciones destructivas)
+  // Semantic — danger
   danger: '#DC2626',
   dangerBg: '#FEF2F2',
   dangerBorder: '#FCA5A5',
@@ -31,8 +34,8 @@ export const colors = {
   warningBorder: '#FEF3C7',
   warningText: '#92400E',
 
-  // Semantic — info
-  info: '#0369A1',
-  infoBg: '#F0F9FF',
-  infoBorder: '#BAE6FD',
+  // Semantic — info (azul del logo)
+  info: '#4A9DB5',
+  infoBg: '#EFF8FC',
+  infoBorder: '#B3DCE8',
 };

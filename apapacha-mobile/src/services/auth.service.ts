@@ -10,12 +10,16 @@ export async function sendOTP(email: string): Promise<void> {
 }
 
 export async function verifyOTP(email: string, token: string): Promise<void> {
-  const { error } = await supabase.auth.verifyOtp({
-    email,
-    token,
-    type: 'email',
-  });
-  if (error) throw error;
+  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+  if (error) {
+    const { error: error2 } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' });
+    if (error2) throw new Error(error2.message || error.message);
+  }
+}
+
+export async function getSession() {
+  const { data } = await supabase.auth.getSession();
+  return data.session;
 }
 
 export async function signOut(): Promise<void> {

@@ -1,23 +1,33 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Image, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
-import { sendOTP, verifyOTP } from '../services/auth.service';
+import { sendOTP, verifyOTP, getSession } from '../services/auth.service';
+import { useAuth } from '../context/AuthContext';
+import type { RootStackParamList } from '../types/navigation';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function LoginScreen() {
+  const navigation = useNavigation<Nav>();
+  const { refreshProfile } = useAuth();
   const [step, setStep] = useState<'email' | 'otp'>('email');
   const [email, setEmail] = useState('');
   const [token, setToken] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
 
   const handleSendOTP = async () => {
     if (!email.trim()) return;
     setLoading(true);
+    setErrorMsg('');
     try {
       await sendOTP(email.trim().toLowerCase());
       setStep('otp');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo enviar el código');
+      setErrorMsg(e.message ?? 'No se pudo enviar el código');
     } finally {
       setLoading(false);
     }
@@ -26,11 +36,17 @@ export function LoginScreen() {
   const handleVerifyOTP = async () => {
     if (token.length !== 6) return;
     setLoading(true);
+    setErrorMsg('');
     try {
       await verifyOTP(email.trim().toLowerCase(), token);
-      // App.tsx detecta la sesión automáticamente via AuthContext
+      // Forzar actualización de sesión en caso que onAuthStateChange no dispare
+      const session = await getSession();
+      if (session) {
+        await refreshProfile();
+        navigation.navigate('MainTabs');
+      }
     } catch (e: any) {
-      Alert.alert('Código incorrecto', e.message ?? 'El código no es válido o expiró');
+      setErrorMsg(e.message ?? 'Código incorrecto o expirado');
     } finally {
       setLoading(false);
     }
@@ -40,10 +56,11 @@ export function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.brandContainer}>
-          <View style={styles.logoPlaceholder}>
-            <Text style={styles.logoIcon}>🐾</Text>
-          </View>
-          <Text style={styles.brandName}>ApapachaPet</Text>
+          <Image
+            source={require('../../assets/Logo.png')}
+            style={styles.logoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.brandSubtitle}>Hospitalidad Felina Premium</Text>
         </View>
 
@@ -71,6 +88,8 @@ export function LoginScreen() {
                   : <Text style={styles.authButtonText}>Continuar con email seguro</Text>
                 }
               </TouchableOpacity>
+              <Text style={styles.registerHint}>¿Primera vez? Tu cuenta se crea automáticamente al verificar el código.</Text>
+              {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
             </>
           ) : (
             <>
@@ -103,6 +122,10 @@ export function LoginScreen() {
           )}
         </View>
 
+        <TouchableOpacity onPress={() => navigation.navigate('MainTabs')} style={styles.demoBtn}>
+          <Text style={styles.demoBtnText}>👁 Ver Demo (sin login)</Text>
+        </TouchableOpacity>
+
         <View style={styles.trustDisclaimer}>
           <Text style={styles.trustTitle}>🔒 Política de Confianza Cero</Text>
           <Text style={styles.trustText}>
@@ -118,12 +141,10 @@ export function LoginScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.primary },
-  container: { flex: 1, justifyContent: 'space-between', padding: 30, paddingTop: 80, paddingBottom: 50 },
+  container: { flex: 1, justifyContent: 'space-between', padding: 30, paddingTop: 60, paddingBottom: 50 },
   brandContainer: { alignItems: 'center' },
-  logoPlaceholder: { width: 90, height: 90, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 24, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  logoIcon: { fontSize: 40 },
-  brandName: { fontSize: 36, fontWeight: '800', color: colors.surface, letterSpacing: -1, marginBottom: 8 },
-  brandSubtitle: { fontSize: 16, color: colors.surface, opacity: 0.8, fontWeight: '500', letterSpacing: 0.5 },
+  logoImage: { width: 200, height: 160, marginBottom: 8 },
+  brandSubtitle: { fontSize: 15, color: colors.surface, opacity: 0.85, fontWeight: '600', letterSpacing: 0.5 },
   authContainer: { width: '100%', gap: 16 },
   input: { backgroundColor: colors.surface, paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, fontSize: 16, color: colors.textMain, width: '100%' },
   otpInput: { textAlign: 'center', fontSize: 28, fontWeight: '800', letterSpacing: 8 },
@@ -135,4 +156,8 @@ const styles = StyleSheet.create({
   trustDisclaimer: { backgroundColor: 'rgba(0,0,0,0.15)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   trustTitle: { color: colors.surface, fontSize: 13, fontWeight: '800', marginBottom: 6 },
   trustText: { color: colors.surface, opacity: 0.7, fontSize: 12, lineHeight: 18 },
+  registerHint: { color: colors.surface, opacity: 0.6, fontSize: 12, textAlign: 'center' },
+  errorMsg: { color: '#ff6b6b', fontSize: 13, textAlign: 'center', fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 8 },
+  demoBtn: { alignItems: 'center', paddingVertical: 10 },
+  demoBtnText: { color: colors.surface, opacity: 0.5, fontSize: 12, fontWeight: '600' },
 });
