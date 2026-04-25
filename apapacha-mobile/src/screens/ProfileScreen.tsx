@@ -6,19 +6,31 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
-import type { Pet } from '../types/database';
+import type { Pet, HostApplication } from '../types/database';
 import { getMyPets } from '../services/pets.service';
+import { getMyApplication } from '../services/host.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const APPLICATION_STATUS_LABEL: Record<string, { icon: string; text: string; color: string }> = {
+  pending:  { icon: '⏳', text: 'Postulación en revisión',  color: colors.warning  },
+  approved: { icon: '✅', text: 'Cuidador aprobado',        color: colors.accent   },
+  rejected: { icon: '❌', text: 'Postulación rechazada',    color: colors.danger   },
+};
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
   const { profile, signOut } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
+  const [application, setApplication] = useState<HostApplication | null>(null);
 
   useEffect(() => {
     getMyPets().then(setPets).catch(console.error);
+    getMyApplication().then(setApplication).catch(console.error);
   }, []);
+
+  const isHost = profile?.role === 'host';
+  const statusInfo = application ? APPLICATION_STATUS_LABEL[application.status] : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -38,6 +50,7 @@ export function ProfileScreen() {
             <Text style={styles.ownerStatus}>
               {profile?.kyc_status === 'verified' ? '✓ Identidad Verificada' : '⏳ Verificación Pendiente'}
             </Text>
+            {isHost && <Text style={styles.hostBadge}>🌟 Cuidador Activo</Text>}
           </View>
         </View>
 
@@ -82,13 +95,35 @@ export function ProfileScreen() {
         )}
 
         <Text style={styles.sectionTitle}>Modo Negocio</Text>
-        <TouchableOpacity style={styles.onboardingBtn} onPress={() => navigation.navigate('HostOnboarding')}>
-          <Text style={styles.onboardingBtnText}>🌟 Postular para ser Cuidador / Visiter</Text>
-        </TouchableOpacity>
 
-        <TouchableOpacity style={styles.hostSwitchBtn} onPress={() => navigation.navigate('HostDashboard')}>
-          <Text style={styles.hostSwitchBtnText}>Simular Vista de Host Aprobado</Text>
-        </TouchableOpacity>
+        {isHost ? (
+          <TouchableOpacity
+            style={styles.hostDashboardBtn}
+            onPress={() => navigation.navigate('HostDashboard')}
+          >
+            <Text style={styles.hostDashboardBtnText}>🏠 Ir a mi Panel de Cuidador</Text>
+          </TouchableOpacity>
+        ) : statusInfo ? (
+          <View style={[styles.applicationStatus, { borderColor: statusInfo.color }]}>
+            <Text style={styles.applicationStatusIcon}>{statusInfo.icon}</Text>
+            <View style={styles.applicationStatusText}>
+              <Text style={[styles.applicationStatusTitle, { color: statusInfo.color }]}>
+                {statusInfo.text}
+              </Text>
+              <Text style={styles.applicationStatusSub}>
+                {application?.status === 'pending'
+                  ? 'Revisaremos tu postulación en 1-2 días hábiles.'
+                  : application?.status === 'rejected'
+                    ? 'Puedes volver a postular después de 30 días.'
+                    : 'Tu cuenta ya tiene acceso al panel de cuidador.'}
+              </Text>
+            </View>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.onboardingBtn} onPress={() => navigation.navigate('HostOnboarding')}>
+            <Text style={styles.onboardingBtnText}>🌟 Postular para ser Cuidador / Visiter</Text>
+          </TouchableOpacity>
+        )}
 
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Cuenta y Legal</Text>
         <View style={styles.settingsMenu}>
@@ -115,7 +150,8 @@ const styles = StyleSheet.create({
   avatarText: { color: colors.surface, fontSize: 24, fontWeight: '700' },
   ownerInfo: { flex: 1 },
   ownerName: { fontSize: 20, fontWeight: '700', color: colors.textMain },
-  ownerStatus: { fontSize: 14, color: colors.success, fontWeight: '600', marginTop: 4 },
+  ownerStatus: { fontSize: 14, color: colors.accent, fontWeight: '600', marginTop: 4 },
+  hostBadge: { fontSize: 13, color: colors.primary, fontWeight: '700', marginTop: 2 },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textMain },
   addPetBtn: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
@@ -131,10 +167,15 @@ const styles = StyleSheet.create({
   alertText: { fontSize: 13, color: colors.dangerTextDark, marginBottom: 4 },
   emptyPets: { backgroundColor: colors.surface, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', marginBottom: 24 },
   emptyPetsText: { color: colors.textMuted, fontSize: 14 },
-  onboardingBtn: { backgroundColor: colors.warning, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16 },
+  onboardingBtn: { backgroundColor: colors.warning, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8 },
   onboardingBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
-  hostSwitchBtn: { backgroundColor: colors.background, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 12, marginBottom: 8, borderWidth: 1, borderColor: colors.border },
-  hostSwitchBtnText: { color: colors.primaryDark, fontWeight: '600', fontSize: 14 },
+  hostDashboardBtn: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8 },
+  hostDashboardBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
+  applicationStatus: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 2, marginTop: 16, marginBottom: 8, gap: 12 },
+  applicationStatusIcon: { fontSize: 28 },
+  applicationStatusText: { flex: 1 },
+  applicationStatusTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
+  applicationStatusSub: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
   settingsMenu: { backgroundColor: colors.surface, borderRadius: 16, borderWidth: 1, borderColor: colors.border, overflow: 'hidden', marginTop: 16 },
   menuItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   menuItemLast: { borderBottomWidth: 0 },
