@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  Image, Alert, ActivityIndicator, Platform,
+  Image, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -13,7 +13,6 @@ import { getSpaceById } from '../services/spaces.service';
 import { getVisiterById } from '../services/visiters.service';
 import { getMyPets } from '../services/pets.service';
 import { createBooking } from '../services/bookings.service';
-import { createPaymentIntent } from '../services/payments.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'Checkout'>;
@@ -22,22 +21,7 @@ const INSURANCE_FEE = 2500;
 const APP_FEE = 4500;
 const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
 
-const STRIPE_PUBLISHABLE_KEY = 'pk_test_YOUR_PUBLISHABLE_KEY_HERE';
-
-// Lazy-load stripe-react-native only on native — it's not compatible with web bundler
-let StripeProvider: any = null;
-let useStripe: (() => any) | null = null;
-if (Platform.OS !== 'web') {
-  try {
-    const mod = require('@stripe/stripe-react-native');
-    StripeProvider = mod.StripeProvider;
-    useStripe = mod.useStripe;
-  } catch {
-    // stripe-react-native not installed — native payments unavailable
-  }
-}
-
-function CheckoutContent() {
+export function CheckoutScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { id, type } = route.params;
@@ -47,8 +31,6 @@ function CheckoutContent() {
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-
-  const stripe = useStripe ? useStripe() : null;
 
   const today = new Date();
   const startDate = today.toISOString().split('T')[0];
@@ -91,38 +73,7 @@ function CheckoutContent() {
         end_date: endDate,
         total_price: grandTotal,
       });
-
-      if (Platform.OS === 'web') {
-        // Web pilot: skip Stripe for now, go straight to success
-        navigation.navigate('PaymentSuccess', { bookingId: booking.id });
-        return;
-      }
-
-      // Native: Stripe Payment Sheet
-      if (!stripe) {
-        // Stripe not available — go to success directly (development mode)
-        navigation.navigate('PaymentSuccess', { bookingId: booking.id });
-        return;
-      }
-
-      const { clientSecret } = await createPaymentIntent(booking.id);
-
-      const { error: initError } = await stripe.initPaymentSheet({
-        paymentIntentClientSecret: clientSecret,
-        merchantDisplayName: 'ApapachaPet / RonRron',
-        style: 'alwaysLight',
-      });
-      if (initError) throw new Error(initError.message);
-
-      const { error: presentError } = await stripe.presentPaymentSheet();
-      if (presentError) {
-        if (presentError.code !== 'Canceled') {
-          Alert.alert('Error de pago', presentError.message);
-        }
-        return;
-      }
-
-      navigation.navigate('PaymentSuccess', { bookingId: booking.id });
+      navigation.navigate('CheckIn', { bookingId: booking.id });
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo confirmar la reserva');
     } finally {
@@ -144,7 +95,7 @@ function CheckoutContent() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Confirmar y Pagar</Text>
+        <Text style={styles.headerTitle}>Confirmar Reserva</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -205,6 +156,16 @@ function CheckoutContent() {
 
         <View style={styles.divider} />
 
+        <View style={styles.paymentNote}>
+          <Text style={styles.paymentNoteIcon}>💳</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.paymentNoteTitle}>Pago por transferencia</Text>
+            <Text style={styles.paymentNoteText}>
+              Al confirmar, recibirás las instrucciones de pago por email. El servicio se activa una vez confirmada la transferencia.
+            </Text>
+          </View>
+        </View>
+
         <View style={styles.sectionBlock}>
           <Text style={styles.sectionTitle}>Política de Cancelación Estricta</Text>
           <Text style={styles.policyText}>El Seguro Zero Trust no es reembolsable.</Text>
@@ -220,22 +181,11 @@ function CheckoutContent() {
         >
           {submitting
             ? <ActivityIndicator color={colors.surface} />
-            : <Text style={styles.submitBtnText}>Pagar con Stripe</Text>
+            : <Text style={styles.submitBtnText}>Confirmar Reserva</Text>
           }
         </TouchableOpacity>
       </View>
     </SafeAreaView>
-  );
-}
-
-export function CheckoutScreen() {
-  if (Platform.OS === 'web' || !StripeProvider) {
-    return <CheckoutContent />;
-  }
-  return (
-    <StripeProvider publishableKey={STRIPE_PUBLISHABLE_KEY}>
-      <CheckoutContent />
-    </StripeProvider>
   );
 }
 
@@ -264,6 +214,10 @@ const styles = StyleSheet.create({
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: colors.border },
   totalLabel: { fontSize: 16, fontWeight: '800', color: colors.textMain },
   totalValue: { fontSize: 16, fontWeight: '800', color: colors.textMain },
+  paymentNote: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.infoBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.infoBorder, marginBottom: 24, gap: 12 },
+  paymentNoteIcon: { fontSize: 22 },
+  paymentNoteTitle: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
+  paymentNoteText: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
   policyText: { fontSize: 14, lineHeight: 20, color: colors.textMuted },
   footer: { backgroundColor: colors.surface, padding: 20, borderTopWidth: 1, borderTopColor: colors.border },
   submitBtn: { backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
