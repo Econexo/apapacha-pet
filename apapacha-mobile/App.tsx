@@ -24,6 +24,7 @@ import { ClientVerificationScreen } from './src/screens/ClientVerificationScreen
 import { TrustAndSafetyScreen } from './src/screens/TrustAndSafetyScreen';
 import { InsuranceClaimScreen } from './src/screens/InsuranceClaimScreen';
 import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
+import { EditProfileScreen } from './src/screens/EditProfileScreen';
 import { colors } from './src/theme/colors';
 import type { RootStackParamList } from './src/types/navigation';
 
@@ -107,6 +108,7 @@ function RootNavigator() {
       <Stack.Screen name="TrustAndSafety" component={TrustAndSafetyScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="InsuranceClaim" component={InsuranceClaimScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostDashboard" component={HostDashboardScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );
 }

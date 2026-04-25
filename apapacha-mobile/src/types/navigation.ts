@@ -6,6 +6,7 @@ export type RootStackParamList = {
   SpaceDetail: { id: string };
   VisiterDetail: { id: string };
   Checkout: { id: string; type: 'space' | 'visiter' };
+  PaymentSuccess: { bookingId: string };
   CheckIn: { bookingId: string };
   ChatDetail: { id: string };
   AddPetModal: undefined;
@@ -13,4 +14,5 @@ export type RootStackParamList = {
   TrustAndSafety: undefined;
   HostDashboard: undefined;
   InsuranceClaim: undefined;
+  EditProfile: undefined;
 };

@@ -36,15 +36,22 @@ export function ProfileScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mi Perfil</Text>
+        <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile')}>
+          <Text style={styles.editBtnText}>Editar</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
         <View style={styles.ownerCard}>
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarText}>
-              {profile?.full_name ? profile.full_name.slice(0, 2).toUpperCase() : '??'}
-            </Text>
-          </View>
+          {profile?.avatar_url ? (
+            <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Text style={styles.avatarText}>
+                {profile?.full_name ? profile.full_name.slice(0, 2).toUpperCase() : '??'}
+              </Text>
+            </View>
+          )}
           <View style={styles.ownerInfo}>
             <Text style={styles.ownerName}>{profile?.full_name || 'Mi Perfil'}</Text>
             <Text style={styles.ownerStatus}>
@@ -142,10 +149,13 @@ export function ProfileScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10, backgroundColor: colors.surface },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10, backgroundColor: colors.surface },
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
+  editBtn: { backgroundColor: colors.primaryLight, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 10 },
+  editBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 14 },
   scrollContainer: { padding: 20, paddingBottom: 100 },
   ownerCard: { flexDirection: 'row', alignItems: 'center', marginBottom: 32 },
+  avatarImage: { width: 64, height: 64, borderRadius: 32, marginRight: 16 },
   avatarPlaceholder: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   avatarText: { color: colors.surface, fontSize: 24, fontWeight: '700' },
   ownerInfo: { flex: 1 },
