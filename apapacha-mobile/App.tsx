@@ -23,6 +23,7 @@ import { HostOnboardingScreen } from './src/screens/HostOnboardingScreen';
 import { ClientVerificationScreen } from './src/screens/ClientVerificationScreen';
 import { TrustAndSafetyScreen } from './src/screens/TrustAndSafetyScreen';
 import { InsuranceClaimScreen } from './src/screens/InsuranceClaimScreen';
+import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
 import { colors } from './src/theme/colors';
 import type { RootStackParamList } from './src/types/navigation';
 
@@ -98,6 +99,7 @@ function RootNavigator() {
       <Stack.Screen name="SpaceDetail" component={SpaceDetailScreen} />
       <Stack.Screen name="VisiterDetail" component={VisiterDetailScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="CheckIn" component={CheckInScreen} />
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
       <Stack.Screen name="AddPetModal" component={AddPetScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
