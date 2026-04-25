@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
+import { Platform } from 'react-native';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../supabase';
 import type { Profile } from '../types/database';
@@ -27,14 +28,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    const init = async () => {
+      // En web: extrae tokens del hash del magic link y establece la sesión manualmente
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        const hash = window.location.hash.substring(1);
+        if (hash.includes('access_token')) {
+          const params = new URLSearchParams(hash);
+          const accessToken = params.get('access_token');
+          const refreshToken = params.get('refresh_token');
+          if (accessToken && refreshToken) {
+            const { data, error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+            window.history.replaceState(null, '', '/');
+            if (!error && data.session) {
+              setSession(data.session);
+              fetchProfile(data.session.user.id);
+              return;
+            }
+          }
+        }
+      }
+
+      const { data: { session } } = await supabase.auth.getSession();
       setSession(session);
       if (session) {
         fetchProfile(session.user.id);
       } else {
         setLoading(false);
       }
-    });
+    };
+
+    init();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('[auth] onAuthStateChange', event, session?.user?.email);

@@ -4,7 +4,10 @@ import type { ServiceType } from '../types/database';
 export async function sendOTP(email: string): Promise<void> {
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: 'https://apapacha-pet.vercel.app',
+    },
   });
   if (error) throw error;
 }
