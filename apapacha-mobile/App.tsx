@@ -3,8 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { View, ActivityIndicator } from 'react-native';
+import { View, ActivityIndicator, Text } from 'react-native';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -23,13 +22,19 @@ import { CheckoutScreen } from './src/screens/CheckoutScreen';
 import { HostOnboardingScreen } from './src/screens/HostOnboardingScreen';
 import { ClientVerificationScreen } from './src/screens/ClientVerificationScreen';
 import { TrustAndSafetyScreen } from './src/screens/TrustAndSafetyScreen';
+import { InsuranceClaimScreen } from './src/screens/InsuranceClaimScreen';
 import { colors } from './src/theme/colors';
 import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
-type TabIconName = 'compass' | 'compass-outline' | 'chatbubbles' | 'chatbubbles-outline' | 'calendar' | 'calendar-outline' | 'paw' | 'paw-outline';
+const TAB_ICONS: Record<string, string> = {
+  Explore: '🧭',
+  Inbox: '💬',
+  Bookings: '📅',
+  Profile: '🐾',
+};
 
 function MainTabs() {
   return (
@@ -46,14 +51,11 @@ function MainTabs() {
           paddingBottom: 10,
           paddingTop: 10,
         },
-        tabBarIcon: ({ color, size, focused }) => {
-          let iconName: TabIconName;
-          if (route.name === 'Explore') iconName = focused ? 'compass' : 'compass-outline';
-          else if (route.name === 'Inbox') iconName = focused ? 'chatbubbles' : 'chatbubbles-outline';
-          else if (route.name === 'Bookings') iconName = focused ? 'calendar' : 'calendar-outline';
-          else iconName = focused ? 'paw' : 'paw-outline';
-          return <Ionicons name={iconName} size={size} color={color} />;
-        },
+        tabBarIcon: ({ focused }) => (
+          <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>
+            {TAB_ICONS[route.name]}
+          </Text>
+        ),
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
       })}
     >
@@ -101,6 +103,7 @@ function RootNavigator() {
       <Stack.Screen name="AddPetModal" component={AddPetScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostOnboarding" component={HostOnboardingScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="TrustAndSafety" component={TrustAndSafetyScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="InsuranceClaim" component={InsuranceClaimScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostDashboard" component={HostDashboardScreen} options={{ animation: 'fade' }} />
     </Stack.Navigator>
   );
