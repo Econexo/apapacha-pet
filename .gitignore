@@ -1,2 +1,8 @@
 .vercel
 .env*.local
+.DS_Store
+node_modules/
+apapacha-mobile/node_modules/
+apapacha-mobile/.expo/
+apapacha-mobile/dist/
+apapacha-mobile/web-build/
