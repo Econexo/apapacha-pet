@@ -25,6 +25,8 @@ import { TrustAndSafetyScreen } from './src/screens/TrustAndSafetyScreen';
 import { InsuranceClaimScreen } from './src/screens/InsuranceClaimScreen';
 import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
 import { EditProfileScreen } from './src/screens/EditProfileScreen';
+import { LeaveReviewScreen } from './src/screens/LeaveReviewScreen';
+import { ManageServiceScreen } from './src/screens/ManageServiceScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
@@ -120,7 +122,9 @@ function RootNavigator() {
       <Stack.Screen name="InsuranceClaim" component={InsuranceClaimScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostDashboard" component={HostDashboardScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="LeaveReview" component={LeaveReviewScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Admin" component={AdminScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="ManageService" component={ManageServiceScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
     </Stack.Navigator>
   );
 }

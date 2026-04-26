@@ -8,9 +8,11 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
-import type { Booking } from '../types/database';
+import type { Booking, Space, Visiter } from '../types/database';
 import { getMyHostBookings } from '../services/host.service';
 import { useAuth } from '../context/AuthContext';
+import { getMySpace } from '../services/spaces.service';
+import { getMyVisiter } from '../services/visiters.service';
 import {
   getHostStats, getHostReviews, getMonthlyEarnings,
   getProgressToNextLevel,
@@ -36,22 +38,30 @@ export function HostDashboardScreen() {
   const [stats, setStats]       = useState<HostStats | null>(null);
   const [reviews, setReviews]   = useState<Review[]>([]);
   const [earnings, setEarnings] = useState<MonthlyEarning[]>([]);
+  const [mySpace, setMySpace]   = useState<Space | null | undefined>(undefined);
+  const [myVisiter, setMyVisiter] = useState<Visiter | null | undefined>(undefined);
   const [loading, setLoading]   = useState(true);
 
-  useEffect(() => {
+  const reload = () => {
     if (!hostId) return;
     Promise.all([
       getMyHostBookings(),
       getHostStats(hostId),
       getHostReviews(hostId),
       getMonthlyEarnings(hostId),
-    ]).then(([b, s, r, e]) => {
+      getMySpace(),
+      getMyVisiter(),
+    ]).then(([b, s, r, e, sp, vi]) => {
       setBookings(b);
       setStats(s);
       setReviews(r);
       setEarnings(e);
+      setMySpace(sp);
+      setMyVisiter(vi);
     }).catch(console.error).finally(() => setLoading(false));
-  }, [hostId]);
+  };
+
+  useEffect(() => { reload(); }, [hostId]);
 
   const completedBookings = bookings.filter(b => b.status === 'completed');
   const activeBookings    = bookings.filter(b => b.status === 'active' || b.status === 'pending');
@@ -92,7 +102,7 @@ export function HostDashboardScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} />}
+          {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiter ?? null} navigation={navigation} />}
           {tab === 'historial' && <TabHistorial bookings={completedBookings} />}
           {tab === 'ganancias' && <TabGanancias earnings={earnings} />}
           {tab === 'resenas'   && <TabResenas   reviews={reviews} />}
@@ -104,10 +114,13 @@ export function HostDashboardScreen() {
 
 /* ─── TAB: RESUMEN ─────────────────────────────────────────────────────────── */
 
-function TabResumen({ stats, activeCount, completedCount }: {
+function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, navigation }: {
   stats: HostStats | null;
   activeCount: number;
   completedCount: number;
+  mySpace: Space | null;
+  myVisiter: Visiter | null;
+  navigation: Nav;
 }) {
   if (!stats) return null;
   const { level, avgRating, totalTips, totalPoints } = stats;
@@ -170,7 +183,54 @@ function TabResumen({ stats, activeCount, completedCount }: {
         <Text style={styles.infoText}>💝 Cada $1.000 de propina = 1 punto</Text>
         <Text style={styles.infoText}>📈 Más puntos = mayor nivel = más confianza</Text>
       </View>
+
+      {/* My service listings */}
+      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Mis Servicios</Text>
+      <ServiceCard
+        label="🏠 Alojamiento"
+        service={mySpace}
+        price={mySpace ? `$${mySpace.price_per_night.toLocaleString('es-CL')}/noche` : null}
+        onManage={() => navigation.navigate('ManageService', { type: 'space' })}
+      />
+      <ServiceCard
+        label="🚗 Visita domiciliaria"
+        service={myVisiter}
+        price={myVisiter ? `$${myVisiter.price_per_visit.toLocaleString('es-CL')}/visita` : null}
+        onManage={() => navigation.navigate('ManageService', { type: 'visiter' })}
+      />
     </>
+  );
+}
+
+function ServiceCard({ label, service, price, onManage }: {
+  label: string;
+  service: Space | Visiter | null;
+  price: string | null;
+  onManage: () => void;
+}) {
+  const hasService = service !== null;
+  return (
+    <View style={styles.serviceCard}>
+      <View style={styles.serviceCardLeft}>
+        <Text style={styles.serviceCardLabel}>{label}</Text>
+        {hasService ? (
+          <>
+            <Text style={styles.serviceCardTitle} numberOfLines={1}>
+              {'title' in service ? service.title : service.name}
+            </Text>
+            <View style={styles.serviceCardMeta}>
+              <View style={[styles.serviceActiveDot, { backgroundColor: service.active ? colors.accent : colors.textMuted }]} />
+              <Text style={styles.serviceCardSub}>{service.active ? 'Activo' : 'Pausado'} · {price}</Text>
+            </View>
+          </>
+        ) : (
+          <Text style={styles.serviceCardEmpty}>Sin publicación aún</Text>
+        )}
+      </View>
+      <TouchableOpacity style={styles.serviceManageBtn} onPress={onManage} activeOpacity={0.8}>
+        <Text style={styles.serviceManageBtnText}>{hasService ? 'Editar' : 'Crear'}</Text>
+      </TouchableOpacity>
+    </View>
   );
 }
 
@@ -417,6 +477,18 @@ const styles = StyleSheet.create({
   reviewComment: { fontSize: 14, color: colors.textMain, lineHeight: 20, fontStyle: 'italic', marginBottom: 8 },
   reviewTip: { backgroundColor: `${colors.primary}10`, borderRadius: 8, padding: 8, alignSelf: 'flex-start' },
   reviewTipText: { fontSize: 12, color: colors.primaryDark, fontWeight: '700' },
+
+  // Service cards
+  serviceCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 10 },
+  serviceCardLeft: { flex: 1 },
+  serviceCardLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginBottom: 4 },
+  serviceCardTitle: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
+  serviceCardMeta: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  serviceActiveDot: { width: 7, height: 7, borderRadius: 4 },
+  serviceCardSub: { fontSize: 12, color: colors.textMuted },
+  serviceCardEmpty: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
+  serviceManageBtn: { backgroundColor: colors.primaryLight, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
+  serviceManageBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
 
   // Empty
   emptyState: { alignItems: 'center', paddingVertical: 60 },
