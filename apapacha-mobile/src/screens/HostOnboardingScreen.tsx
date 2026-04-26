@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,19 +25,33 @@ export function HostOnboardingScreen() {
   const [antecedentes, setAntecedentes] = useState<string | null>(null);
   const [certVet, setCertVet]           = useState<string | null>(null);
 
-  const pickPhoto = async (setter: (v: string) => void, useCamera = false) => {
-    const perm = useCamera
-      ? await ImagePicker.requestCameraPermissionsAsync()
-      : await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (perm.status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso para continuar.');
-      return;
-    }
-    const result = useCamera
-      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
-      : await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
-    if (!result.canceled && result.assets[0]) {
-      setter(result.assets[0].fileName ?? 'foto.jpg');
+  const pickPhoto = async (setter: (v: string) => void, preferCamera = false) => {
+    const doLibrary = async () => {
+      if (Platform.OS !== 'web') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
+      }
+      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, mediaTypes: ImagePicker.MediaTypeOptions.Images });
+      if (!r.canceled && r.assets[0]) setter(r.assets[0].fileName ?? 'imagen.jpg');
+    };
+
+    const doCamera = async () => {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara.'); return; }
+      const r = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+      if (!r.canceled && r.assets[0]) setter(r.assets[0].fileName ?? 'foto.jpg');
+    };
+
+    if (Platform.OS === 'web') {
+      await doLibrary();
+    } else if (preferCamera) {
+      Alert.alert('Subir foto', 'Elige la fuente', [
+        { text: 'Cámara', onPress: doCamera },
+        { text: 'Galería', onPress: doLibrary },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+    } else {
+      await doLibrary();
     }
   };
 
@@ -79,7 +93,7 @@ export function HostOnboardingScreen() {
           </View>
         ) : (
           <TouchableOpacity style={styles.uploadBox} onPress={() => pickPhoto(setDniPhoto, true)} activeOpacity={0.8}>
-            <Text style={styles.uploadText}>📸 Tomar Foto del Documento</Text>
+            <Text style={styles.uploadText}>📸 {Platform.OS === 'web' ? 'Subir Documento' : 'Tomar Foto del Documento'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -92,7 +106,7 @@ export function HostOnboardingScreen() {
           </View>
         ) : (
           <TouchableOpacity style={styles.uploadBox} onPress={() => pickPhoto(setSelfiePhoto, true)} activeOpacity={0.8}>
-            <Text style={styles.uploadText}>🤳 Tomar Selfie</Text>
+            <Text style={styles.uploadText}>🤳 {Platform.OS === 'web' ? 'Subir Selfie' : 'Tomar Selfie'}</Text>
           </TouchableOpacity>
         )}
       </View>

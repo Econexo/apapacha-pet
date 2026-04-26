@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
@@ -19,21 +20,42 @@ export function ClientVerificationScreen() {
   const [bioVerified, setBioVerified] = useState(false);
   const [scanning, setScanning] = useState(false);
 
+  const pickFromLibrary = async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos.');
+        return;
+      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled) setDocScanned(true);
+  };
+
+  const pickFromCamera = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
+    if (!result.canceled) setDocScanned(true);
+  };
+
   const handleScanDoc = async () => {
     setScanning(true);
     try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara para escanear tu documento.');
-        return;
-      }
-      const result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        allowsEditing: false,
-      });
-      if (!result.canceled) {
-        setDocScanned(true);
+      if (Platform.OS === 'web') {
+        await pickFromLibrary();
+      } else {
+        Alert.alert('Escanear documento', 'Elige cómo subir tu documento', [
+          { text: 'Cámara', onPress: pickFromCamera },
+          { text: 'Galería', onPress: pickFromLibrary },
+          { text: 'Cancelar', style: 'cancel' },
+        ]);
       }
     } finally {
       setScanning(false);
@@ -42,8 +64,8 @@ export function ClientVerificationScreen() {
 
   const handleBiometry = () => {
     Alert.alert(
-      '🛡️ Verificación Biométrica',
-      'La verificación biométrica completa estará disponible en la versión nativa de la app. Por ahora, tu identidad se validará manualmente en 24 hrs.',
+      'Verificación Biométrica',
+      'La verificación biométrica completa estará disponible en la app nativa. Por ahora tu identidad se validará manualmente en 24 hrs.',
       [{ text: 'Entendido', onPress: () => setBioVerified(true) }]
     );
   };
