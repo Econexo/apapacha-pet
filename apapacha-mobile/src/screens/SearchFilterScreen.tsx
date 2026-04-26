@@ -89,7 +89,23 @@ export function SearchFilterScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity style={styles.submitBtn} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={styles.submitBtn}
+          onPress={() => {
+            const features: string[] = [];
+            if (medicalCert) features.push('Sitter Médico');
+            if (certifiedNets) features.push('Patio Cerrado');
+            if (noOtherPets) features.push('Sin Otros Gatos');
+            (navigation as any).navigate('MainTabs', {
+              screen: 'Explore',
+              params: {
+                filterDestination: destination.trim(),
+                filterFeatures: features,
+              },
+            });
+          }}
+          activeOpacity={0.8}
+        >
           <Text style={styles.submitBtnText}>Buscar resultados</Text>
         </TouchableOpacity>
       </View>

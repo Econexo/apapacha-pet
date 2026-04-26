@@ -7,26 +7,63 @@ import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings } from '../services/bookings.service';
+import { getMyReviewForBooking } from '../services/reviews.service';
+import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function BookingsScreen() {
   const navigation = useNavigation<Nav>();
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
+  const [hostMap, setHostMap] = useState<Record<string, { id: string; name: string }>>({});
   const [loading, setLoading] = useState(true);
 
   useFocusEffect(
     useCallback(() => {
-      getMyBookings()
-        .then(setBookings)
-        .catch(console.error)
-        .finally(() => setLoading(false));
+      loadAll();
     }, [])
   );
 
+  async function loadAll() {
+    try {
+      const data = await getMyBookings();
+      setBookings(data);
+      const completed = data.filter(b => b.status === 'completed');
+
+      // Check which completed bookings already have a review
+      const reviewed = new Set<string>();
+      await Promise.all(completed.map(async b => {
+        const r = await getMyReviewForBooking(b.id);
+        if (r) reviewed.add(b.id);
+      }));
+      setReviewedIds(reviewed);
+
+      // Fetch host info for completed bookings
+      const hosts: Record<string, { id: string; name: string }> = {};
+      await Promise.all(completed.map(async b => {
+        if (b.service_type === 'space') {
+          const { data: sp } = await supabase.from('spaces').select('host_id, title').eq('id', b.service_id).single();
+          if (sp) {
+            const { data: prof } = await supabase.from('profiles').select('id, full_name, last_name').eq('id', sp.host_id).single();
+            if (prof) hosts[b.id] = { id: prof.id, name: `${prof.full_name} ${prof.last_name ?? ''}`.trim() };
+          }
+        } else {
+          const { data: vi } = await supabase.from('visiters').select('host_id, name').eq('id', b.service_id).single();
+          if (vi) hosts[b.id] = { id: vi.host_id, name: vi.name };
+        }
+      }));
+      setHostMap(hosts);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   const active = bookings.filter(b => b.status === 'active' || b.status === 'pending');
-  const past = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
-  const fmt = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  const past   = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
+  const fmt    = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -38,11 +75,11 @@ export function BookingsScreen() {
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContainer}
-        ListHeaderComponent={
-          active.length > 0 ? <Text style={styles.sectionTitle}>En curso y próximas</Text> : null
-        }
+        ListHeaderComponent={active.length > 0 ? <Text style={styles.sectionTitle}>En curso y próximas</Text> : null}
         renderItem={({ item, index }) => {
           const isFirstPast = index === active.length;
+          const host = hostMap[item.id];
+          const hasReview = reviewedIds.has(item.id);
           return (
             <>
               {isFirstPast && past.length > 0 && (
@@ -61,12 +98,36 @@ export function BookingsScreen() {
                   <Text style={styles.title}>{item.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita Domiciliaria'}</Text>
                 </TouchableOpacity>
               ) : (
-                <View style={styles.cardPast}>
+                <View style={[styles.cardPast, item.status === 'completed' && { opacity: 1 }]}>
                   <View style={styles.cardHeader}>
-                    <Text style={styles.statusBadgePast}>{item.status === 'completed' ? 'Completada' : 'Cancelada'}</Text>
+                    <Text style={styles.statusBadgePast}>
+                      {item.status === 'completed' ? 'Completada' : 'Cancelada'}
+                    </Text>
                     <Text style={styles.dates}>{fmt(item.start_date)} - {fmt(item.end_date)}</Text>
                   </View>
                   <Text style={styles.title}>{item.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita Domiciliaria'}</Text>
+                  {item.status === 'completed' && (
+                    <View style={styles.reviewRow}>
+                      {hasReview ? (
+                        <View style={styles.reviewDone}>
+                          <Text style={styles.reviewDoneText}>⭐ Reseña enviada</Text>
+                        </View>
+                      ) : (
+                        <TouchableOpacity
+                          style={styles.reviewBtn}
+                          onPress={() => host && navigation.navigate('LeaveReview', {
+                            bookingId: item.id,
+                            hostId: host.id,
+                            hostName: host.name,
+                          })}
+                          disabled={!host}
+                          activeOpacity={0.8}
+                        >
+                          <Text style={styles.reviewBtnText}>⭐ Dejar Reseña</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
                 </View>
               )}
             </>
@@ -92,12 +153,17 @@ const styles = StyleSheet.create({
   scrollContainer: { padding: 20 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textMain, marginBottom: 16 },
   cardActive: { backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 2, borderColor: colors.primary, marginBottom: 16 },
+  cardPast: { backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16, opacity: 0.7 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
   statusBadge: { backgroundColor: colors.primary, color: colors.surface, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, fontSize: 12, fontWeight: '800' },
   statusBadgePast: { backgroundColor: colors.background, color: colors.textMuted, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 4, fontSize: 12, fontWeight: '800' },
   dates: { fontSize: 13, color: colors.textMuted },
   title: { fontSize: 16, fontWeight: '700', color: colors.textMain },
-  cardPast: { backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16, opacity: 0.7 },
+  reviewRow: { marginTop: 12, borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 },
+  reviewBtn: { backgroundColor: colors.primaryLight, paddingVertical: 10, borderRadius: 10, alignItems: 'center' },
+  reviewBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
+  reviewDone: { alignItems: 'center' },
+  reviewDoneText: { fontSize: 13, color: colors.accent, fontWeight: '700' },
   emptyState: { alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyIcon: { fontSize: 48, marginBottom: 16 },
   emptyText: { fontSize: 16, color: colors.textMuted, textAlign: 'center' },

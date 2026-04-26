@@ -3,6 +3,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIn
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import { applyAsHost } from '../services/auth.service';
@@ -14,6 +16,40 @@ export function HostOnboardingScreen() {
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<'Alojamiento' | 'Visita'>('Alojamiento');
   const [submitting, setSubmitting] = useState(false);
+
+  // Upload states: label when file picked, null otherwise
+  const [dniPhoto, setDniPhoto]         = useState<string | null>(null);
+  const [selfiePhoto, setSelfiePhoto]   = useState<string | null>(null);
+  const [mallaPhoto, setMallaPhoto]     = useState<string | null>(null);
+  const [rasPhoto, setRasPhoto]         = useState<string | null>(null);
+  const [antecedentes, setAntecedentes] = useState<string | null>(null);
+  const [certVet, setCertVet]           = useState<string | null>(null);
+
+  const pickPhoto = async (setter: (v: string) => void, useCamera = false) => {
+    const perm = useCamera
+      ? await ImagePicker.requestCameraPermissionsAsync()
+      : await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (perm.status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Necesitamos acceso para continuar.');
+      return;
+    }
+    const result = useCamera
+      ? await ImagePicker.launchCameraAsync({ quality: 0.8 })
+      : await ImagePicker.launchImageLibraryAsync({ quality: 0.8 });
+    if (!result.canceled && result.assets[0]) {
+      setter(result.assets[0].fileName ?? 'foto.jpg');
+    }
+  };
+
+  const pickDoc = async (setter: (v: string) => void) => {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: ['application/pdf', 'image/*'],
+      copyToCacheDirectory: true,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setter(result.assets[0].name);
+    }
+  };
 
   const handleNext = async () => {
     if (step < 3) { setStep(step + 1); return; }
@@ -36,11 +72,29 @@ export function HostOnboardingScreen() {
       <Text style={styles.description}>Por seguridad de nuestra comunidad felina, debemos conocer tu identidad verificada por gobierno antes de procesar pagos.</Text>
       <View style={styles.uploadBlock}>
         <Text style={styles.uploadLabel}>Cédula de Identidad o DNI Frontal</Text>
-        <TouchableOpacity style={styles.uploadBox}><Text style={styles.uploadText}>📸 Tomar Foto del Documento</Text></TouchableOpacity>
+        {dniPhoto ? (
+          <View style={styles.uploadDone}>
+            <Text style={styles.uploadDoneText}>✅ {dniPhoto}</Text>
+            <TouchableOpacity onPress={() => setDniPhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.uploadBox} onPress={() => pickPhoto(setDniPhoto, true)} activeOpacity={0.8}>
+            <Text style={styles.uploadText}>📸 Tomar Foto del Documento</Text>
+          </TouchableOpacity>
+        )}
       </View>
       <View style={styles.uploadBlock}>
         <Text style={styles.uploadLabel}>Selfie Biométrico</Text>
-        <TouchableOpacity style={styles.uploadBox}><Text style={styles.uploadText}>🤳 Escanear Rostro</Text></TouchableOpacity>
+        {selfiePhoto ? (
+          <View style={styles.uploadDone}>
+            <Text style={styles.uploadDoneText}>✅ {selfiePhoto}</Text>
+            <TouchableOpacity onPress={() => setSelfiePhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.uploadBox} onPress={() => pickPhoto(setSelfiePhoto, true)} activeOpacity={0.8}>
+            <Text style={styles.uploadText}>🤳 Tomar Selfie</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -71,15 +125,63 @@ export function HostOnboardingScreen() {
       <Text style={styles.title}>Paso 3: Evidencia de Cuidado Seguro</Text>
       {role === 'Alojamiento' ? (
         <>
-          <Text style={styles.description}>Dado que serás Hospedaje, necesitamos visualizar las mallas anti-escape instaladas en tu hogar actual.</Text>
-          <View style={styles.uploadBlock}><Text style={styles.uploadLabel}>Fotografía Balcón/Ventana Mapeada</Text><TouchableOpacity style={styles.uploadBox}><Text style={styles.uploadText}>📸 + Subir Foto de Malla</Text></TouchableOpacity></View>
-          <View style={styles.uploadBlock}><Text style={styles.uploadLabel}>Demostrar Rascador de Suelo a Techo</Text><TouchableOpacity style={styles.uploadBox}><Text style={styles.uploadText}>📸 + Subir Foto de Enriquecimiento</Text></TouchableOpacity></View>
+          <Text style={styles.description}>Necesitamos visualizar las mallas anti-escape instaladas en tu hogar actual.</Text>
+          <View style={styles.uploadBlock}>
+            <Text style={styles.uploadLabel}>Fotografía Balcón/Ventana Mapeada</Text>
+            {mallaPhoto ? (
+              <View style={styles.uploadDone}>
+                <Text style={styles.uploadDoneText}>✅ {mallaPhoto}</Text>
+                <TouchableOpacity onPress={() => setMallaPhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.uploadBox} onPress={() => pickPhoto(setMallaPhoto)} activeOpacity={0.8}>
+                <Text style={styles.uploadText}>📸 Subir Foto de Malla</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={styles.uploadBlock}>
+            <Text style={styles.uploadLabel}>Foto de Rascador de Suelo a Techo</Text>
+            {rasPhoto ? (
+              <View style={styles.uploadDone}>
+                <Text style={styles.uploadDoneText}>✅ {rasPhoto}</Text>
+                <TouchableOpacity onPress={() => setRasPhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.uploadBox} onPress={() => pickPhoto(setRasPhoto)} activeOpacity={0.8}>
+                <Text style={styles.uploadText}>📸 Subir Foto de Enriquecimiento</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </>
       ) : (
         <>
-          <Text style={styles.description}>Dado que realizarás visitas domiciliarias de atención temporal, necesitamos tus antecedentes limpios recientes.</Text>
-          <View style={styles.uploadBlock}><Text style={styles.uploadLabel}>Documental Antecedentes Civiles (Últimos 30 días)</Text><TouchableOpacity style={styles.uploadBox}><Text style={styles.uploadText}>📄 Subir PDF Certificado Oficial</Text></TouchableOpacity></View>
-          <View style={styles.uploadBlock}><Text style={styles.uploadLabel}>Certificado Asistencia Veterinaria (Opcional pero prioriza tarifa)</Text><TouchableOpacity style={styles.uploadBox}><Text style={styles.uploadText}>📄 + Subir Diploma o Registro</Text></TouchableOpacity></View>
+          <Text style={styles.description}>Necesitamos tus antecedentes civiles limpios y certificación veterinaria si la tienes.</Text>
+          <View style={styles.uploadBlock}>
+            <Text style={styles.uploadLabel}>Antecedentes Civiles (últimos 30 días)</Text>
+            {antecedentes ? (
+              <View style={styles.uploadDone}>
+                <Text style={styles.uploadDoneText}>✅ {antecedentes}</Text>
+                <TouchableOpacity onPress={() => setAntecedentes(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.uploadBox} onPress={() => pickDoc(setAntecedentes)} activeOpacity={0.8}>
+                <Text style={styles.uploadText}>📄 Subir PDF Certificado Oficial</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+          <View style={styles.uploadBlock}>
+            <Text style={styles.uploadLabel}>Certificado Veterinario (opcional)</Text>
+            {certVet ? (
+              <View style={styles.uploadDone}>
+                <Text style={styles.uploadDoneText}>✅ {certVet}</Text>
+                <TouchableOpacity onPress={() => setCertVet(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity style={styles.uploadBox} onPress={() => pickDoc(setCertVet)} activeOpacity={0.8}>
+                <Text style={styles.uploadText}>📄 Subir Diploma o Registro</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </>
       )}
     </View>
@@ -137,6 +239,9 @@ const styles = StyleSheet.create({
   uploadLabel: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 8 },
   uploadBox: { height: 100, backgroundColor: colors.background, borderRadius: 12, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center' },
   uploadText: { color: colors.primaryDark, fontWeight: '700' },
+  uploadDone: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.successBg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.successBorder },
+  uploadDoneText: { fontSize: 13, color: colors.successText, fontWeight: '700', flex: 1 },
+  uploadRetry: { fontSize: 13, color: colors.primary, fontWeight: '700', marginLeft: 8 },
   roleSelection: { gap: 16, marginBottom: 24 },
   roleCard: { padding: 16, borderRadius: 12, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.background },
   roleCardActive: { borderColor: colors.primary, backgroundColor: `${colors.primary}08` },

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { SpaceCard } from '../components/SpaceCard';
@@ -18,11 +18,29 @@ const FILTERS = ['Patio Cerrado', 'Sitter Médico', 'Sin Otros Gatos', 'Rascador
 
 export function ExploreScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<any>();
   const [activeTab, setActiveTab] = useState<'SPACES' | 'VISITERS'>('SPACES');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
-  const [spaces, setSpaces] = useState<Space[]>([]);
+  const [destination, setDestination] = useState('');
+  const [allSpaces, setAllSpaces] = useState<Space[]>([]);
   const [visiters, setVisiters] = useState<Visiter[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Pick up filter params when returning from SearchFilterScreen
+  useFocusEffect(
+    useCallback(() => {
+      const params = route.params as any;
+      if (!params) return;
+      if (params.filterDestination !== undefined) {
+        setDestination(params.filterDestination);
+      }
+      if (params.filterFeatures?.length) {
+        setActiveFilters(new Set(params.filterFeatures));
+      }
+      // clear params to avoid re-applying on next focus
+      navigation.setParams({ filterDestination: undefined, filterFeatures: undefined } as any);
+    }, [route.params])
+  );
 
   useEffect(() => {
     loadData();
@@ -35,7 +53,7 @@ export function ExploreScreen() {
         const data = await getSpaces(
           activeFilters.size > 0 ? { features: Array.from(activeFilters) } : undefined
         );
-        setSpaces(data);
+        setAllSpaces(data);
       } else {
         const data = await getVisiters();
         setVisiters(data);
@@ -55,6 +73,13 @@ export function ExploreScreen() {
     });
   };
 
+  const spaces = destination
+    ? allSpaces.filter(s =>
+        s.location.toLowerCase().includes(destination.toLowerCase()) ||
+        s.title.toLowerCase().includes(destination.toLowerCase())
+      )
+    : allSpaces;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
@@ -69,9 +94,18 @@ export function ExploreScreen() {
         <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={() => navigation.navigate('SearchModal')}>
           <View style={styles.searchIconPlaceholder}><Text>🔍</Text></View>
           <View style={styles.searchTexts}>
-            <Text style={styles.searchTitle}>{activeTab === 'SPACES' ? '¿Dónde hospedará tu compañero?' : '¿Dónde necesitas tu visita?'}</Text>
-            <Text style={styles.searchSubtitle}>Cualquier lugar • Fechas • 1 Huésped</Text>
+            <Text style={styles.searchTitle}>
+              {destination ? destination : (activeTab === 'SPACES' ? '¿Dónde hospedará tu compañero?' : '¿Dónde necesitas tu visita?')}
+            </Text>
+            <Text style={styles.searchSubtitle}>
+              {destination ? 'Toca para cambiar filtros' : 'Cualquier lugar • Fechas • 1 Huésped'}
+            </Text>
           </View>
+          {destination ? (
+            <TouchableOpacity onPress={() => setDestination('')} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <Text style={styles.clearDestination}>✕</Text>
+            </TouchableOpacity>
+          ) : null}
         </TouchableOpacity>
       </View>
 
@@ -168,4 +202,5 @@ const styles = StyleSheet.create({
   filterTextActive: { color: colors.surface },
   listContainer: { padding: 20, paddingTop: 16, paddingBottom: 100 },
   emptyText: { textAlign: 'center', color: colors.textMuted, marginTop: 40, fontSize: 15 },
+  clearDestination: { fontSize: 16, color: colors.textMuted, paddingLeft: 8, fontWeight: '700' },
 });

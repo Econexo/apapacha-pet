@@ -13,6 +13,7 @@ import { getSpaceById } from '../services/spaces.service';
 import { getVisiterById } from '../services/visiters.service';
 import { getMyPets } from '../services/pets.service';
 import { createBooking } from '../services/bookings.service';
+import { DateRangePicker } from '../components/DateRangePicker';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'Checkout'>;
@@ -32,10 +33,16 @@ export function CheckoutScreen() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const today = new Date();
-  const startDate = today.toISOString().split('T')[0];
-  const endDate = new Date(today.getTime() + 2 * 86400000).toISOString().split('T')[0];
-  const nights = 2;
+  const defaultCheckIn = new Date(); defaultCheckIn.setHours(0,0,0,0);
+  defaultCheckIn.setDate(defaultCheckIn.getDate() + 1);
+  const defaultCheckOut = new Date(defaultCheckIn); defaultCheckOut.setDate(defaultCheckOut.getDate() + 2);
+
+  const [checkIn, setCheckIn]   = useState<Date>(defaultCheckIn);
+  const [checkOut, setCheckOut] = useState<Date>(defaultCheckOut);
+
+  const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
+  const startDate = checkIn.toISOString().split('T')[0];
+  const endDate   = checkOut.toISOString().split('T')[0];
 
   useEffect(() => {
     Promise.all([
@@ -73,7 +80,7 @@ export function CheckoutScreen() {
         end_date: endDate,
         total_price: grandTotal,
       });
-      navigation.navigate('CheckIn', { bookingId: booking.id });
+      navigation.navigate('PaymentSuccess', { bookingId: booking.id });
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo confirmar la reserva');
     } finally {
@@ -118,11 +125,13 @@ export function CheckoutScreen() {
 
         <View style={styles.sectionBlock}>
           <Text style={styles.sectionTitle}>Tu Reserva</Text>
-          <View style={styles.row}>
-            <Text style={styles.rowTitle}>Fechas</Text>
-            <Text style={styles.rowValue}>{startDate} - {endDate}</Text>
-          </View>
-          <View style={styles.row}>
+          <DateRangePicker
+            checkIn={checkIn}
+            checkOut={checkOut}
+            onChangeCheckIn={setCheckIn}
+            onChangeCheckOut={setCheckOut}
+          />
+          <View style={[styles.row, { marginTop: 12 }]}>
             <Text style={styles.rowTitle}>Huésped</Text>
             <Text style={styles.rowValue}>{selectedPet ? selectedPet.name : 'Sin mascota'}</Text>
           </View>

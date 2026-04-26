@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { ChecklistRow } from '../components/ChecklistRow';
 import type { RootStackParamList } from '../types/navigation';
+import { updateBookingStatus } from '../services/bookings.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+type Route = RouteProp<RootStackParamList, 'CheckIn'>;
 
 const CHECKLIST = [
   { id: '1', label: 'Verificación de Identidad Fotográfica — El cuidador coincide con el perfil.' },
@@ -18,13 +20,28 @@ const CHECKLIST = [
 
 export function CheckInScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<Route>();
+  const { bookingId } = route.params;
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
+  const [confirming, setConfirming] = useState(false);
 
   const handleToggle = (id: string) => {
     setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
   };
 
   const allChecked = CHECKLIST.every(item => checkedItems[item.id]);
+
+  const handleConfirm = async () => {
+    setConfirming(true);
+    try {
+      await updateBookingStatus(bookingId, 'active');
+      navigation.navigate('MainTabs');
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'No se pudo iniciar la estadía');
+    } finally {
+      setConfirming(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -58,14 +75,17 @@ export function CheckInScreen() {
 
       <View style={styles.footer}>
         <TouchableOpacity
-          style={[styles.confirmBtn, !allChecked && styles.confirmBtnDisabled]}
-          disabled={!allChecked}
-          onPress={() => navigation.navigate('MainTabs')}
+          style={[styles.confirmBtn, (!allChecked || confirming) && styles.confirmBtnDisabled]}
+          disabled={!allChecked || confirming}
+          onPress={handleConfirm}
           activeOpacity={0.8}
         >
-          <Text style={[styles.confirmBtnText, !allChecked && styles.confirmBtnTextDisabled]}>
-            {allChecked ? 'Deslizar para Iniciar Estadía →' : 'Completa el Checklist'}
-          </Text>
+          {confirming
+            ? <ActivityIndicator color={colors.surface} />
+            : <Text style={[styles.confirmBtnText, !allChecked && styles.confirmBtnTextDisabled]}>
+                {allChecked ? 'Iniciar Estadía →' : 'Completa el Checklist'}
+              </Text>
+          }
         </TouchableOpacity>
       </View>
     </SafeAreaView>
