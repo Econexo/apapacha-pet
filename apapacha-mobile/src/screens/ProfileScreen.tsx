@@ -1,14 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
 import type { Pet, HostApplication } from '../types/database';
 import { getMyPets } from '../services/pets.service';
 import { getMyApplication } from '../services/host.service';
+import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,6 +34,34 @@ export function ProfileScreen() {
 
   const isHost = profile?.role === 'host';
   const statusInfo = application ? APPLICATION_STATUS_LABEL[application.status] : null;
+  const [uploadingContract, setUploadingContract] = useState(false);
+
+  const handleUploadContract = async () => {
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+      if (result.canceled || !result.assets?.[0]) return;
+      const file = result.assets[0];
+      setUploadingContract(true);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Sin sesión');
+      const response = await fetch(file.uri);
+      const blob = await response.blob();
+      const ext = file.mimeType?.includes('pdf') ? 'pdf' : 'jpg';
+      const path = `${user.id}/contrato-firmado.${ext}`;
+      const { error } = await supabase.storage.from('contracts').upload(path, blob, { upsert: true, contentType: file.mimeType ?? 'application/pdf' });
+      if (error) throw error;
+      const { data: urlData } = supabase.storage.from('contracts').getPublicUrl(path);
+      await supabase.from('profiles').update({ signed_contract_url: urlData.publicUrl }).eq('id', user.id);
+      Alert.alert('✅ Contrato enviado', 'Tu contrato firmado fue cargado exitosamente. El equipo de ApapachaPet lo revisará pronto.');
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'No se pudo subir el contrato');
+    } finally {
+      setUploadingContract(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -132,6 +163,39 @@ export function ProfileScreen() {
           </TouchableOpacity>
         )}
 
+        {(isHost || application?.status === 'approved') && (
+          <View style={styles.contractSection}>
+            <Text style={styles.sectionTitle}>Contrato de Cuidador</Text>
+            {profile?.signed_contract_url ? (
+              <View style={styles.contractSigned}>
+                <Text style={styles.contractSignedIcon}>📄</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.contractSignedTitle}>Contrato firmado cargado ✅</Text>
+                  <Text style={styles.contractSignedSub}>El equipo de ApapachaPet está revisando tu contrato.</Text>
+                </View>
+              </View>
+            ) : (
+              <View style={styles.contractPending}>
+                <Text style={styles.contractPendingText}>
+                  Revisa el contrato enviado a tu email, fírmalo e imprímelo. Luego cárgalo aquí o envíalo a{' '}
+                  <Text style={{ color: colors.primary, fontWeight: '700' }}>apapachapet.app@gmail.com</Text>
+                </Text>
+                <TouchableOpacity
+                  style={[styles.contractUploadBtn, uploadingContract && { opacity: 0.6 }]}
+                  onPress={handleUploadContract}
+                  disabled={uploadingContract}
+                  activeOpacity={0.8}
+                >
+                  {uploadingContract
+                    ? <ActivityIndicator color={colors.surface} size="small" />
+                    : <Text style={styles.contractUploadBtnText}>📎 Subir Contrato Firmado</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        )}
+
         {profile?.is_admin && (
           <TouchableOpacity style={styles.adminBtn} onPress={() => navigation.navigate('Admin')}>
             <Text style={styles.adminBtnText}>⚙️ Panel de Administración</Text>
@@ -199,4 +263,13 @@ const styles = StyleSheet.create({
   menuItemArrow: { color: colors.textMuted, fontSize: 16 },
   adminBtn: { backgroundColor: colors.primaryDark, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 8 },
   adminBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
+  contractSection: { marginBottom: 24 },
+  contractSigned: { flexDirection: 'row', alignItems: 'center', backgroundColor: `${colors.success}10`, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.successBorder, gap: 12 },
+  contractSignedIcon: { fontSize: 28 },
+  contractSignedTitle: { fontSize: 14, fontWeight: '700', color: colors.successText },
+  contractSignedSub: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  contractPending: { backgroundColor: colors.infoBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.infoBorder },
+  contractPendingText: { fontSize: 13, color: colors.textMuted, lineHeight: 20, marginBottom: 12 },
+  contractUploadBtn: { backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  contractUploadBtnText: { color: colors.surface, fontWeight: '700', fontSize: 14 },
 });

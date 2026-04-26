@@ -9,6 +9,9 @@ import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 
+const SUPABASE_FUNCTIONS_URL = 'https://mzqvkzjxubuqpdnznigy.supabase.co/functions/v1';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16cXZremp4dWJ1cXBkbnpuaWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzY2NTAsImV4cCI6MjA5MTE1MjY1MH0.t4TBnmyyKDPqTZiFOwXbko-Qa4pdund9lr6fydeRdfQ';
+
 type Tab = 'dashboard' | 'users' | 'applications' | 'bookings';
 
 interface Stats {
@@ -30,7 +33,12 @@ interface AdminUser {
   role: string;
   kyc_status: string;
   is_admin: boolean;
+  signed_contract_url: string | null;
   created_at: string;
+  // computed
+  spacesCount?: number;
+  visitersCount?: number;
+  bookingsCount?: number;
 }
 
 interface Application {
@@ -39,6 +47,7 @@ interface Application {
   service_type: string;
   status: string;
   submitted_at: string;
+  welcome_email_sent: boolean;
   profiles: { full_name: string; last_name: string | null } | null;
 }
 
@@ -105,11 +114,21 @@ export function AdminScreen() {
   }
 
   async function loadUsers() {
-    const { data } = await supabase
+    const { data: profiles } = await supabase
       .from('profiles')
-      .select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, created_at')
+      .select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, signed_contract_url, created_at')
       .order('created_at', { ascending: false });
-    setUsers(data ?? []);
+    if (!profiles) return setUsers([]);
+
+    const enriched = await Promise.all(profiles.map(async (p) => {
+      const [s, v, b] = await Promise.all([
+        supabase.from('spaces').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
+        supabase.from('visiters').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
+        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('owner_id', p.id),
+      ]);
+      return { ...p, spacesCount: s.count ?? 0, visitersCount: v.count ?? 0, bookingsCount: b.count ?? 0 };
+    }));
+    setUsers(enriched);
   }
 
   async function loadApplications() {
@@ -129,11 +148,27 @@ export function AdminScreen() {
     setBookings((data ?? []) as unknown as AdminBooking[]);
   }
 
-  async function approveApplication(id: string, userId: string) {
+  async function approveApplication(id: string, userId: string, serviceType: string) {
     const { error } = await supabase.rpc('approve_host', { target_user_id: userId });
     if (error) { Alert.alert('Error', error.message); return; }
     await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
-    Alert.alert('✅ Aprobado', 'El cuidador fue aprobado.');
+
+    // Send welcome email + contract
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      await fetch(`${SUPABASE_FUNCTIONS_URL}/send-approval-email`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session?.access_token}`,
+          apikey: SUPABASE_ANON_KEY,
+        },
+        body: JSON.stringify({ applicant_id: userId, application_id: id, service_type: serviceType }),
+      });
+      Alert.alert('✅ Aprobado', 'El cuidador fue aprobado y se envió el correo de bienvenida con el contrato.');
+    } catch {
+      Alert.alert('✅ Aprobado', 'El cuidador fue aprobado. No se pudo enviar el correo automáticamente.');
+    }
     loadApplications();
     loadStats();
   }
@@ -218,7 +253,7 @@ export function AdminScreen() {
         {activeTab === 'applications' && (
           <ApplicationsTab
             applications={applications}
-            onApprove={approveApplication}
+            onApprove={(id, userId, serviceType) => approveApplication(id, userId, serviceType)}
             onReject={rejectApplication}
             onRecover={recoverApplication}
           />
@@ -278,12 +313,30 @@ function UsersTab({ users, search, onSearch, onToggleAdmin }: {
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.cardName}>{u.full_name} {u.last_name ?? ''}</Text>
-              <Text style={styles.cardMeta}>
-                {u.role} · {u.kyc_status}
-                {u.age ? ` · ${u.age} años` : ''}
-              </Text>
-              {u.address ? <Text style={styles.cardMeta}>📍 {u.address}</Text> : null}
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+                <View style={[styles.tag, { backgroundColor: u.role === 'host' ? `${colors.accent}20` : `${colors.primary}15` }]}>
+                  <Text style={[styles.tagText, { color: u.role === 'host' ? colors.accent : colors.primary }]}>
+                    {u.role === 'host' ? '🏠 Cuidador' : u.is_admin ? '⚙️ Admin' : '🐱 Cliente'}
+                  </Text>
+                </View>
+                <View style={[styles.tag, { backgroundColor: u.kyc_status === 'verified' ? `${colors.success}20` : `${colors.warning}20` }]}>
+                  <Text style={[styles.tagText, { color: u.kyc_status === 'verified' ? colors.success : colors.warning }]}>
+                    {u.kyc_status === 'verified' ? '✓ Verificado' : '⏳ Pendiente'}
+                  </Text>
+                </View>
+                {u.signed_contract_url && (
+                  <View style={[styles.tag, { backgroundColor: `${colors.success}20` }]}>
+                    <Text style={[styles.tagText, { color: colors.success }]}>📄 Contrato firmado</Text>
+                  </View>
+                )}
+              </View>
+              {u.age ? <Text style={styles.cardMeta}>{u.age} años{u.address ? ` · 📍 ${u.address}` : ''}</Text> : null}
               {u.bio ? <Text style={styles.cardBio} numberOfLines={2}>{u.bio}</Text> : null}
+              <Text style={styles.cardMeta}>
+                {u.spacesCount ? `🏠 ${u.spacesCount} espacio(s)  ` : ''}
+                {u.visitersCount ? `🐾 ${u.visitersCount} visiter(s)  ` : ''}
+                {u.bookingsCount ? `📅 ${u.bookingsCount} reserva(s)` : ''}
+              </Text>
             </View>
           </View>
           <View style={styles.cardActions}>
@@ -302,7 +355,7 @@ function UsersTab({ users, search, onSearch, onToggleAdmin }: {
 
 function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
   applications: Application[];
-  onApprove: (id: string, userId: string) => void;
+  onApprove: (id: string, userId: string, serviceType: string) => void;
   onReject: (id: string) => void;
   onRecover: (id: string) => void;
 }) {
@@ -329,7 +382,7 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
           <View style={styles.cardActions}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnSuccess]}
-              onPress={() => onApprove(a.id, a.applicant_id)}
+              onPress={() => onApprove(a.id, a.applicant_id, a.service_type)}
             >
               <Text style={styles.actionBtnText}>✅ Aprobar</Text>
             </TouchableOpacity>
@@ -459,4 +512,6 @@ const styles = StyleSheet.create({
   statusText: { fontSize: 11, fontWeight: '700' },
   emptyState: { backgroundColor: colors.surface, borderRadius: 14, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
   emptyText: { color: colors.textMuted, fontSize: 14 },
+  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
+  tagText: { fontSize: 11, fontWeight: '700' },
 });

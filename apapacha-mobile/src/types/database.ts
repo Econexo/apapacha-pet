@@ -18,6 +18,7 @@ export interface Profile {
   stripe_account_id: string | null;
   is_admin: boolean;
   onboarding_done: boolean;
+  signed_contract_url: string | null;
   created_at: string;
 }
 
