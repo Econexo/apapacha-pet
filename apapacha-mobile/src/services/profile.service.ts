@@ -3,6 +3,10 @@ import type { Profile } from '../types/database';
 
 export async function updateProfile(data: {
   full_name?: string;
+  last_name?: string;
+  age?: number;
+  address?: string;
+  bio?: string;
   avatar_url?: string;
 }): Promise<Profile> {
   const { data: { user } } = await supabase.auth.getUser();

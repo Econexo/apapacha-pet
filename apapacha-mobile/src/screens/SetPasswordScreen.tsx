@@ -4,16 +4,21 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
+import type { RootStackParamList } from '../types/navigation';
+
+type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function SetPasswordScreen() {
+  const navigation = useNavigation<Nav>();
   const { refreshProfile } = useAuth();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
-  const [skip, setSkip] = useState(false);
 
   const isValid = password.length >= 8 && password === confirm;
 
@@ -24,6 +29,7 @@ export function SetPasswordScreen() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       await refreshProfile();
+      navigation.replace('MainTabs');
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo establecer la contraseña');
     } finally {
@@ -32,13 +38,12 @@ export function SetPasswordScreen() {
   };
 
   const handleSkip = async () => {
-    setSkip(true);
-    // Marcar como que ya pasó este paso actualizando el perfil
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
       await supabase.from('profiles').update({ onboarding_done: true }).eq('id', user.id);
     }
     await refreshProfile();
+    navigation.replace('MainTabs');
   };
 
   return (
@@ -85,7 +90,7 @@ export function SetPasswordScreen() {
           }
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.skipBtn} onPress={handleSkip} disabled={skip}>
+        <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
           <Text style={styles.skipText}>Omitir por ahora</Text>
         </TouchableOpacity>
       </View>
