@@ -25,6 +25,9 @@ import { TrustAndSafetyScreen } from './src/screens/TrustAndSafetyScreen';
 import { InsuranceClaimScreen } from './src/screens/InsuranceClaimScreen';
 import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
 import { EditProfileScreen } from './src/screens/EditProfileScreen';
+import { OnboardingScreen } from './src/screens/OnboardingScreen';
+import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
+import { AdminScreen } from './src/screens/AdminScreen';
 import { colors } from './src/theme/colors';
 import type { RootStackParamList } from './src/types/navigation';
 
@@ -89,11 +92,19 @@ function RootNavigator() {
     );
   }
 
+  const getInitialRoute = () => {
+    if (!profile?.onboarding_done) return 'Onboarding';
+    if (profile?.kyc_status === 'pending') return 'ClientVerification';
+    return 'MainTabs';
+  };
+
   return (
     <Stack.Navigator
       screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
-      initialRouteName={profile?.kyc_status === 'pending' ? 'ClientVerification' : 'MainTabs'}
+      initialRouteName={getInitialRoute()}
     >
+      <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ animation: 'fade' }} />
+      <Stack.Screen name="SetPassword" component={SetPasswordScreen} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ClientVerification" component={ClientVerificationScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ animation: 'fade' }} />
       <Stack.Screen name="SearchModal" component={SearchFilterScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
@@ -109,6 +120,7 @@ function RootNavigator() {
       <Stack.Screen name="InsuranceClaim" component={InsuranceClaimScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostDashboard" component={HostDashboardScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="Admin" component={AdminScreen} options={{ animation: 'fade' }} />
     </Stack.Navigator>
   );
 }

@@ -132,6 +132,12 @@ export function ProfileScreen() {
           </TouchableOpacity>
         )}
 
+        {profile?.is_admin && (
+          <TouchableOpacity style={styles.adminBtn} onPress={() => navigation.navigate('Admin')}>
+            <Text style={styles.adminBtnText}>⚙️ Panel de Administración</Text>
+          </TouchableOpacity>
+        )}
+
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Cuenta y Legal</Text>
         <View style={styles.settingsMenu}>
           <TouchableOpacity style={styles.menuItem}><Text style={styles.menuItemText}>Métodos de Pago</Text><Text style={styles.menuItemArrow}>→</Text></TouchableOpacity>
@@ -191,4 +197,6 @@ const styles = StyleSheet.create({
   menuItemLast: { borderBottomWidth: 0 },
   menuItemText: { fontSize: 15, fontWeight: '500', color: colors.textMain },
   menuItemArrow: { color: colors.textMuted, fontSize: 16 },
+  adminBtn: { backgroundColor: colors.primaryDark, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 8 },
+  adminBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
 });

@@ -8,10 +8,16 @@ export type PaymentStatus = 'unpaid' | 'payment_pending' | 'paid' | 'refunded';
 export interface Profile {
   id: string;
   full_name: string;
+  last_name: string | null;
+  age: number | null;
+  address: string | null;
+  bio: string | null;
   avatar_url: string | null;
   role: UserRole;
   kyc_status: KycStatus;
   stripe_account_id: string | null;
+  is_admin: boolean;
+  onboarding_done: boolean;
   created_at: string;
 }
 

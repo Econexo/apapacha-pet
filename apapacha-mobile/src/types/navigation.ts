@@ -1,6 +1,9 @@
 export type RootStackParamList = {
   Login: undefined;
+  Onboarding: undefined;
+  SetPassword: undefined;
   ClientVerification: undefined;
+  Admin: undefined;
   MainTabs: undefined;
   SearchModal: undefined;
   SpaceDetail: { id: string };
