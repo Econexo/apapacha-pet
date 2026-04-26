@@ -6,7 +6,7 @@ export async function sendOTP(email: string): Promise<void> {
     email,
     options: {
       shouldCreateUser: true,
-      emailRedirectTo: 'https://apapacha-pet.vercel.app',
+      emailRedirectTo: 'https://apapacha-mobile.vercel.app',
     },
   });
   if (error) throw error;
