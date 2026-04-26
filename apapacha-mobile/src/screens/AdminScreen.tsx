@@ -145,6 +145,12 @@ export function AdminScreen() {
     loadStats();
   }
 
+  async function recoverApplication(id: string) {
+    await supabase.from('host_applications').update({ status: 'pending' }).eq('id', id);
+    loadApplications();
+    loadStats();
+  }
+
   async function toggleAdmin(userId: string, current: boolean) {
     await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId);
     loadUsers();
@@ -214,6 +220,7 @@ export function AdminScreen() {
             applications={applications}
             onApprove={approveApplication}
             onReject={rejectApplication}
+            onRecover={recoverApplication}
           />
         )}
         {activeTab === 'bookings' && <BookingsTab bookings={bookings} />}
@@ -293,13 +300,16 @@ function UsersTab({ users, search, onSearch, onToggleAdmin }: {
   );
 }
 
-function ApplicationsTab({ applications, onApprove, onReject }: {
+function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
   applications: Application[];
   onApprove: (id: string, userId: string) => void;
   onReject: (id: string) => void;
+  onRecover: (id: string) => void;
 }) {
-  const pending = applications.filter(a => a.status === 'pending');
-  const rest = applications.filter(a => a.status !== 'pending');
+  const pending  = applications.filter(a => a.status === 'pending');
+  const approved = applications.filter(a => a.status === 'approved');
+  const rejected = applications.filter(a => a.status === 'rejected');
+
   return (
     <View>
       <Text style={styles.sectionTitle}>
@@ -332,17 +342,42 @@ function ApplicationsTab({ applications, onApprove, onReject }: {
           </View>
         </View>
       ))}
-      {rest.length > 0 && (
+
+      {approved.length > 0 && (
         <>
-          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Historial</Text>
-          {rest.map(a => (
-            <View key={a.id} style={styles.card}>
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Aprobadas ({approved.length})</Text>
+          {approved.map(a => (
+            <View key={a.id} style={[styles.card, { borderLeftWidth: 3, borderLeftColor: colors.accent }]}>
               <Text style={styles.cardName}>
                 {a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}
               </Text>
               <Text style={styles.cardMeta}>
-                {a.service_type} · {a.status} · {new Date(a.submitted_at).toLocaleDateString('es-CL')}
+                {a.service_type} · ✅ aprobada · {new Date(a.submitted_at).toLocaleDateString('es-CL')}
               </Text>
+            </View>
+          ))}
+        </>
+      )}
+
+      {rejected.length > 0 && (
+        <>
+          <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Rechazadas ({rejected.length})</Text>
+          {rejected.map(a => (
+            <View key={a.id} style={[styles.card, { borderLeftWidth: 3, borderLeftColor: colors.danger }]}>
+              <Text style={styles.cardName}>
+                {a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}
+              </Text>
+              <Text style={styles.cardMeta}>
+                {a.service_type} · {new Date(a.submitted_at).toLocaleDateString('es-CL')}
+              </Text>
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.actionBtnSecondary]}
+                  onPress={() => onRecover(a.id)}
+                >
+                  <Text style={styles.actionBtnText}>↩ Recuperar postulación</Text>
+                </TouchableOpacity>
+              </View>
             </View>
           ))}
         </>
