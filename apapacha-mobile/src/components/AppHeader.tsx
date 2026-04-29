@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '../theme/colors';
 
@@ -21,8 +21,11 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
         ) : null}
       </View>
       <View style={styles.center}>
-        <Text style={styles.brand}>ApapachaPet</Text>
-        <Text style={styles.paw}>🐾</Text>
+        <Image
+          source={require('../../assets/Logo.png')}
+          style={styles.logo}
+          resizeMode="contain"
+        />
       </View>
       <View style={styles.side}>
         {rightElement ?? null}
@@ -42,9 +45,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.border,
   },
   side: { width: 56, alignItems: 'flex-start' },
-  center: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
-  brand: { fontSize: 18, fontWeight: '900', color: colors.primaryDark, letterSpacing: -0.5 },
-  paw: { fontSize: 18 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  logo: { width: 120, height: 36 },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
 });

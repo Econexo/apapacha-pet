@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "apapacha-mobile",
+    "name": "ApapachaPet",
     "slug": "apapacha-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,7 +10,7 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#6B35A0"
     },
     "ios": {
       "supportsTablet": true
