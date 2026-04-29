@@ -3,7 +3,7 @@ export type KycStatus = 'pending' | 'under_review' | 'verified' | 'rejected';
 export type ServiceType = 'space' | 'visiter';
 export type BookingStatus = 'pending' | 'active' | 'completed' | 'cancelled';
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
-export type PaymentStatus = 'unpaid' | 'payment_pending' | 'paid' | 'refunded';
+export type PaymentStatus = 'pending' | 'receipt_submitted' | 'paid' | 'refunded';
 
 export interface Profile {
   id: string;
@@ -74,7 +74,7 @@ export interface Booking {
   status: BookingStatus;
   total_price: number;
   insurance_included: boolean;
-  stripe_payment_intent_id: string | null;
+  payment_receipt_url: string | null;
   payment_status: PaymentStatus;
   created_at: string;
 }

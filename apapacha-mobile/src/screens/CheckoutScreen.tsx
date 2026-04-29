@@ -80,7 +80,7 @@ export function CheckoutScreen() {
         end_date: endDate,
         total_price: grandTotal,
       });
-      navigation.navigate('PaymentSuccess', { bookingId: booking.id });
+      navigation.navigate('TransferInstructions', { bookingId: booking.id, amount: grandTotal });
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo confirmar la reserva');
     } finally {

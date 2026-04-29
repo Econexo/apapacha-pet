@@ -28,6 +28,7 @@ import { EditProfileScreen } from './src/screens/EditProfileScreen';
 import { LeaveReviewScreen } from './src/screens/LeaveReviewScreen';
 import { ManageServiceScreen } from './src/screens/ManageServiceScreen';
 import { HomeScreen } from './src/screens/HomeScreen';
+import { TransferInstructionsScreen } from './src/screens/TransferInstructionsScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
@@ -116,6 +117,7 @@ function RootNavigator() {
       <Stack.Screen name="SpaceDetail" component={SpaceDetailScreen} />
       <Stack.Screen name="VisiterDetail" component={VisiterDetailScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
+      <Stack.Screen name="TransferInstructions" component={TransferInstructionsScreen} />
       <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="CheckIn" component={CheckInScreen} />
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />

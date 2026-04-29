@@ -20,6 +20,7 @@
     "@stripe/stripe-js": "^9.3.1",
     "@supabase/supabase-js": "2.101.1",
     "expo": "~54.0.33",
+    "expo-clipboard": "~8.0.8",
     "expo-document-picker": "~14.0.8",
     "expo-image-picker": "~17.0.10",
     "expo-status-bar": "~3.0.9",

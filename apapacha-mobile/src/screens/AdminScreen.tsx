@@ -8,11 +8,12 @@ import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
+import { confirmBookingPayment } from '../services/bookings.service';
 
 const SUPABASE_FUNCTIONS_URL = 'https://mzqvkzjxubuqpdnznigy.supabase.co/functions/v1';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16cXZremp4dWJ1cXBkbnpuaWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzY2NTAsImV4cCI6MjA5MTE1MjY1MH0.t4TBnmyyKDPqTZiFOwXbko-Qa4pdund9lr6fydeRdfQ';
 
-type Tab = 'dashboard' | 'users' | 'applications' | 'bookings';
+type Tab = 'dashboard' | 'users' | 'applications' | 'bookings' | 'payments';
 
 interface Stats {
   totalUsers: number;
@@ -62,6 +63,17 @@ interface AdminBooking {
   profiles: { full_name: string } | null;
 }
 
+interface PendingPayment {
+  id: string;
+  total_price: number;
+  payment_receipt_url: string | null;
+  start_date: string;
+  end_date: string;
+  service_type: string;
+  created_at: string;
+  profiles: { full_name: string } | null;
+}
+
 export function AdminScreen() {
   const navigation = useNavigation();
   const { profile } = useAuth();
@@ -70,6 +82,7 @@ export function AdminScreen() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
@@ -84,7 +97,7 @@ export function AdminScreen() {
 
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([loadStats(), loadUsers(), loadApplications(), loadBookings()]);
+    await Promise.all([loadStats(), loadUsers(), loadApplications(), loadBookings(), loadPendingPayments()]);
     setLoading(false);
   };
 
@@ -146,6 +159,26 @@ export function AdminScreen() {
       .order('created_at', { ascending: false })
       .limit(50);
     setBookings((data ?? []) as unknown as AdminBooking[]);
+  }
+
+  async function loadPendingPayments() {
+    const { data } = await supabase
+      .from('bookings')
+      .select('id, total_price, payment_receipt_url, start_date, end_date, service_type, created_at, profiles(full_name)')
+      .eq('payment_status', 'receipt_submitted')
+      .order('created_at', { ascending: false });
+    setPendingPayments((data ?? []) as unknown as PendingPayment[]);
+  }
+
+  async function handleConfirmPayment(bookingId: string) {
+    try {
+      await confirmBookingPayment(bookingId);
+      Alert.alert('✅ Pago confirmado', 'La reserva está ahora activa.');
+      loadPendingPayments();
+      loadStats();
+    } catch (e: any) {
+      Alert.alert('Error', e.message);
+    }
   }
 
   async function approveApplication(id: string, userId: string, serviceType: string) {
@@ -216,20 +249,23 @@ export function AdminScreen() {
 
       {/* Tabs */}
       <View style={styles.tabBar}>
-        {(['dashboard', 'users', 'applications', 'bookings'] as Tab[]).map(tab => (
+        {(['dashboard', 'users', 'applications', 'payments', 'bookings'] as Tab[]).map(tab => (
           <TouchableOpacity
             key={tab}
             style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
             onPress={() => setActiveTab(tab)}
           >
             <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === 'dashboard' ? '📊' : tab === 'users' ? '👥' : tab === 'applications' ? '📝' : '📅'}
+              {tab === 'dashboard' ? '📊' : tab === 'users' ? '👥' : tab === 'applications' ? '📝' : tab === 'payments' ? '💰' : '📅'}
             </Text>
             <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab === 'dashboard' ? 'Stats' : tab === 'users' ? 'Usuarios' : tab === 'applications' ? 'Postulaciones' : 'Reservas'}
+              {tab === 'dashboard' ? 'Stats' : tab === 'users' ? 'Usuarios' : tab === 'applications' ? 'Postul.' : tab === 'payments' ? 'Pagos' : 'Reservas'}
             </Text>
             {tab === 'applications' && (stats?.pendingApplications ?? 0) > 0 && (
               <View style={styles.badge}><Text style={styles.badgeText}>{stats?.pendingApplications}</Text></View>
+            )}
+            {tab === 'payments' && pendingPayments.length > 0 && (
+              <View style={styles.badge}><Text style={styles.badgeText}>{pendingPayments.length}</Text></View>
             )}
           </TouchableOpacity>
         ))}
@@ -257,6 +293,9 @@ export function AdminScreen() {
             onReject={rejectApplication}
             onRecover={recoverApplication}
           />
+        )}
+        {activeTab === 'payments' && (
+          <PaymentsTab payments={pendingPayments} onConfirm={handleConfirmPayment} />
         )}
         {activeTab === 'bookings' && <BookingsTab bookings={bookings} />}
       </ScrollView>
@@ -435,6 +474,50 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
           ))}
         </>
       )}
+    </View>
+  );
+}
+
+function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onConfirm: (id: string) => void }) {
+  const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
+  return (
+    <View>
+      <Text style={styles.sectionTitle}>Comprobantes Pendientes ({payments.length})</Text>
+      {payments.length === 0 && (
+        <View style={styles.emptyState}><Text style={styles.emptyText}>Sin comprobantes pendientes ✅</Text></View>
+      )}
+      {payments.map(p => (
+        <View key={p.id} style={[styles.card, { borderColor: colors.warning, borderWidth: 1.5 }]}>
+          <Text style={styles.cardName}>{p.profiles?.full_name ?? 'Usuario'}</Text>
+          <Text style={styles.cardMeta}>
+            {p.service_type} · {p.start_date} → {p.end_date}
+          </Text>
+          <Text style={[styles.cardName, { color: colors.primary, marginTop: 4 }]}>{fmt(p.total_price)}</Text>
+          {p.payment_receipt_url ? (
+            <TouchableOpacity
+              style={{ marginTop: 8, backgroundColor: `${colors.primary}10`, borderRadius: 8, padding: 8, borderWidth: 1, borderColor: `${colors.primary}30` }}
+              onPress={() => Alert.alert('Comprobante', p.payment_receipt_url ?? '')}
+            >
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>📎 Ver comprobante</Text>
+            </TouchableOpacity>
+          ) : null}
+          <View style={styles.cardActions}>
+            <TouchableOpacity
+              style={[styles.actionBtn, styles.actionBtnSuccess]}
+              onPress={() => Alert.alert(
+                'Confirmar pago',
+                `¿Confirmar la transferencia de ${fmt(p.total_price)} de ${p.profiles?.full_name ?? 'este usuario'}?`,
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Confirmar', onPress: () => onConfirm(p.id) },
+                ]
+              )}
+            >
+              <Text style={styles.actionBtnText}>✅ Confirmar pago</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ))}
     </View>
   );
 }

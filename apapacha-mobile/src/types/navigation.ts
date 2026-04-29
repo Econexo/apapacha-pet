@@ -9,6 +9,7 @@ export type RootStackParamList = {
   SpaceDetail: { id: string };
   VisiterDetail: { id: string };
   Checkout: { id: string; type: 'space' | 'visiter' };
+  TransferInstructions: { bookingId: string; amount: number };
   PaymentSuccess: { bookingId: string };
   CheckIn: { bookingId: string };
   ChatDetail: { id: string };
