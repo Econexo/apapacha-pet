@@ -42,14 +42,17 @@ export async function upsertMyVisiter(input: {
 }): Promise<Visiter> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
-  const payload = {
-    ...input,
+  const base = {
+    name: input.name,
+    profession_title: input.profession_title,
+    bio: input.bio,
+    price_per_visit: input.price_per_visit,
+    active: input.active,
     host_id: user.id,
-    rating: input.id ? undefined : 0,
-    total_visits: input.id ? undefined : 0,
-    image_url: null,
   };
-  if (!input.id) delete payload.id;
+  const payload = input.id
+    ? { ...base, id: input.id }
+    : { ...base, rating: 0, total_visits: 0, image_url: null as string | null };
   const { data, error } = await supabase
     .from('visiters')
     .upsert(payload, { onConflict: 'id' })

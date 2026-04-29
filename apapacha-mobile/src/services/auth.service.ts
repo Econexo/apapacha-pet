@@ -1,23 +1,14 @@
 import { supabase } from '../../supabase';
 import type { ServiceType } from '../types/database';
 
-export async function sendOTP(email: string): Promise<void> {
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: true,
-      emailRedirectTo: 'https://apapacha-mobile.vercel.app',
-    },
-  });
+export async function signIn(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) throw error;
 }
 
-export async function verifyOTP(email: string, token: string): Promise<void> {
-  const { error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
-  if (error) {
-    const { error: error2 } = await supabase.auth.verifyOtp({ email, token, type: 'magiclink' });
-    if (error2) throw new Error(error2.message || error.message);
-  }
+export async function signUp(email: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
 }
 
 export async function getSession() {
@@ -35,7 +26,7 @@ export async function completeKyc(): Promise<void> {
   if (!user) throw new Error('Not authenticated');
   const { error } = await supabase
     .from('profiles')
-    .update({ kyc_status: 'verified' })
+    .update({ kyc_status: 'under_review' })
     .eq('id', user.id);
   if (error) throw error;
 }

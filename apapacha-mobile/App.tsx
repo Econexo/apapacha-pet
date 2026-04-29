@@ -27,6 +27,7 @@ import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
 import { EditProfileScreen } from './src/screens/EditProfileScreen';
 import { LeaveReviewScreen } from './src/screens/LeaveReviewScreen';
 import { ManageServiceScreen } from './src/screens/ManageServiceScreen';
+import { HomeScreen } from './src/screens/HomeScreen';
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
@@ -37,6 +38,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
 const TAB_ICONS: Record<string, string> = {
+  Home: '🏡',
   Explore: '🧭',
   Inbox: '💬',
   Bookings: '📅',
@@ -66,6 +68,7 @@ function MainTabs() {
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
       })}
     >
+      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
       <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: 'Explorar' }} />
       <Tab.Screen name="Inbox" component={InboxScreen} options={{ title: 'Mensajes' }} />
       <Tab.Screen name="Bookings" component={BookingsScreen} options={{ title: 'Reservas' }} />

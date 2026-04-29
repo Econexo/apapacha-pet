@@ -12,7 +12,7 @@ export type RootStackParamList = {
   PaymentSuccess: { bookingId: string };
   CheckIn: { bookingId: string };
   ChatDetail: { id: string };
-  AddPetModal: undefined;
+  AddPetModal: { petId?: string } | undefined;
   HostOnboarding: undefined;
   TrustAndSafety: undefined;
   HostDashboard: undefined;

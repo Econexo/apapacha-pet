@@ -53,8 +53,18 @@ export async function upsertMySpace(input: {
 }): Promise<Space> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
-  const payload = { ...input, host_id: user.id, image_urls: [], rating: input.id ? undefined : 0 };
-  if (!input.id) delete payload.id;
+  const base = {
+    title: input.title,
+    description: input.description,
+    location: input.location,
+    price_per_night: input.price_per_night,
+    features: input.features,
+    active: input.active,
+    host_id: user.id,
+  };
+  const payload = input.id
+    ? { ...base, id: input.id }
+    : { ...base, image_urls: [] as string[], rating: 0 };
   const { data, error } = await supabase
     .from('spaces')
     .upsert(payload, { onConflict: 'id' })

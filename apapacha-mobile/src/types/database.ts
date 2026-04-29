@@ -1,5 +1,5 @@
 export type UserRole = 'owner' | 'host';
-export type KycStatus = 'pending' | 'verified' | 'rejected';
+export type KycStatus = 'pending' | 'under_review' | 'verified' | 'rejected';
 export type ServiceType = 'space' | 'visiter';
 export type BookingStatus = 'pending' | 'active' | 'completed' | 'cancelled';
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';

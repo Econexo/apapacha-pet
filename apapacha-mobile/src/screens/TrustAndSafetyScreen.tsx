@@ -36,7 +36,7 @@ const POLICIES: PolicySection[] = [
     id: '3',
     title: '3. Verificación de Identidad (KYC) y Pagos',
     icon: '🔒',
-    body: 'Todos los usuarios pasan por verificación de identidad antes de acceder al marketplace. Evadir las pasarelas de pago de ApapachaPet anula instantáneamente la póliza de seguro y resulta en la expulsión definitiva.\n\nLos pagos se procesan vía Stripe. Tus datos de pago jamás se almacenan en servidores de ApapachaPet.',
+    body: 'Todos los usuarios pasan por verificación de identidad antes de acceder al marketplace. Evadir las pasarelas de pago de ApapachaPet anula instantáneamente la póliza de seguro y resulta en la expulsión definitiva.\n\nLos pagos se coordinan directamente con el equipo ApapachaPet mediante transferencia bancaria o los medios acordados al confirmar el servicio. Ante cualquier duda de pago escribe a apapachapet.app@gmail.com.',
   },
   {
     id: '4',
@@ -54,7 +54,7 @@ const POLICIES: PolicySection[] = [
     id: '6',
     title: '6. Privacidad y Datos Personales',
     icon: '🔐',
-    body: 'ApapachaPet cumple con la Ley 19.628 sobre protección de datos personales de Chile. Tus datos biométricos (KYC) están encriptados y no se comparten con terceros sin consentimiento explícito.\n\nPuedes solicitar la eliminación de tu cuenta y datos personales en cualquier momento contactando a privacidad@apapacha.cl.',
+    body: 'ApapachaPet cumple con la Ley 19.628 sobre protección de datos personales de Chile. Tus datos biométricos (KYC) están encriptados y no se comparten con terceros sin consentimiento explícito.\n\nPuedes solicitar la eliminación de tu cuenta y datos personales en cualquier momento contactando a apapachapet.app@gmail.com.',
   },
 ];
 

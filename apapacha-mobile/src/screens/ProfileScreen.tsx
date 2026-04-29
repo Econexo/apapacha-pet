@@ -86,11 +86,23 @@ export function ProfileScreen() {
           <View style={styles.ownerInfo}>
             <Text style={styles.ownerName}>{profile?.full_name || 'Mi Perfil'}</Text>
             <Text style={styles.ownerStatus}>
-              {profile?.kyc_status === 'verified' ? '✓ Identidad Verificada' : '⏳ Verificación Pendiente'}
+              {profile?.kyc_status === 'verified'
+                ? '✓ Identidad Verificada'
+                : profile?.kyc_status === 'under_review'
+                  ? '🔍 Verificación en revisión'
+                  : '⏳ Verificación Pendiente'}
             </Text>
             {isHost && <Text style={styles.hostBadge}>🌟 Cuidador Activo</Text>}
           </View>
         </View>
+
+        {profile?.kyc_status === 'under_review' && (
+          <View style={styles.reviewBanner}>
+            <Text style={styles.reviewBannerText}>
+              🔍 Tu identidad está siendo revisada por el equipo. Puedes usar la app con normalidad, pero algunas funciones se habilitarán al ser aprobado (24-48 hrs).
+            </Text>
+          </View>
+        )}
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Mi Familia Felina</Text>
@@ -111,13 +123,16 @@ export function ProfileScreen() {
               )}
               <View style={styles.catInfo}>
                 <Text style={styles.catName}>{pet.name}</Text>
-                <Text style={styles.catDetails}>{pet.breed || 'Sin raza especificada'} • {pet.age_years} años</Text>
+                <Text style={styles.catDetails}>{pet.breed || 'Sin raza'} • {pet.age_years} años</Text>
                 <Text style={styles.catDetails}>{pet.sterilized ? 'Esterilizado' : 'No esterilizado'} • {pet.weight_kg} kg</Text>
               </View>
+              <TouchableOpacity style={styles.editPetBtn} onPress={() => navigation.navigate('AddPetModal', { petId: pet.id })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+                <Text style={styles.editPetBtnText}>✏️</Text>
+              </TouchableOpacity>
             </View>
             {pet.medical_alerts.length > 0 && (
               <View style={styles.alertBlock}>
-                <Text style={styles.alertTitle}>⚠️ Alertas Médicas (Estricto)</Text>
+                <Text style={styles.alertTitle}>⚠️ Alertas Médicas</Text>
                 {pet.medical_alerts.map((alert, i) => (
                   <Text key={i} style={styles.alertText}>• {alert}</Text>
                 ))}
@@ -245,6 +260,10 @@ const styles = StyleSheet.create({
   alertBlock: { backgroundColor: colors.dangerBg, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.dangerBorder },
   alertTitle: { fontSize: 14, fontWeight: '800', color: colors.dangerText, marginBottom: 8 },
   alertText: { fontSize: 13, color: colors.dangerTextDark, marginBottom: 4 },
+  reviewBanner: { backgroundColor: '#FFF8E7', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#F59E0B40', marginBottom: 20 },
+  reviewBannerText: { fontSize: 13, color: '#92400E', lineHeight: 18 },
+  editPetBtn: { padding: 4 },
+  editPetBtnText: { fontSize: 18 },
   emptyPets: { backgroundColor: colors.surface, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', marginBottom: 24 },
   emptyPetsText: { color: colors.textMuted, fontSize: 14 },
   onboardingBtn: { backgroundColor: colors.warning, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8 },
