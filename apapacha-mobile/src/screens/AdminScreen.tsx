@@ -158,21 +158,30 @@ export function AdminScreen() {
   }
 
   async function loadUsers() {
-    const { data: profiles } = await supabase
+    const { data: profiles, error } = await supabase
       .from('profiles')
       .select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, signed_contract_url, created_at')
       .order('created_at', { ascending: false });
-    if (!profiles) return setUsers([]);
+    if (error) {
+      console.error('[AdminScreen] loadUsers query error:', error.message);
+      return setUsers([]);
+    }
+    if (!profiles || profiles.length === 0) return setUsers([]);
 
-    const enriched = await Promise.all(profiles.map(async (p) => {
-      const [s, v, b] = await Promise.all([
-        supabase.from('spaces').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
-        supabase.from('visiters').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
-        supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('owner_id', p.id),
-      ]);
-      return { ...p, spacesCount: s.count ?? 0, visitersCount: v.count ?? 0, bookingsCount: b.count ?? 0 };
-    }));
-    setUsers(enriched);
+    try {
+      const enriched = await Promise.all(profiles.map(async (p) => {
+        const [s, v, b] = await Promise.all([
+          supabase.from('spaces').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
+          supabase.from('visiters').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
+          supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('owner_id', p.id),
+        ]);
+        return { ...p, spacesCount: s.count ?? 0, visitersCount: v.count ?? 0, bookingsCount: b.count ?? 0 };
+      }));
+      setUsers(enriched);
+    } catch (e) {
+      console.error('[AdminScreen] loadUsers enrichment error:', e);
+      setUsers(profiles.map(p => ({ ...p, spacesCount: 0, visitersCount: 0, bookingsCount: 0 })));
+    }
   }
 
   async function loadSpaces() {
