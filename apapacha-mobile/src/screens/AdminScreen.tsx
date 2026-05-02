@@ -5,10 +5,21 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import { confirmBookingPayment } from '../services/bookings.service';
+
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TAB_ICONS: Record<string, IoniconName> = {
+  dashboard:    'stats-chart-outline',
+  users:        'people-outline',
+  applications: 'document-text-outline',
+  payments:     'card-outline',
+  bookings:     'calendar-outline',
+};
 
 const SUPABASE_FUNCTIONS_URL = 'https://mzqvkzjxubuqpdnznigy.supabase.co/functions/v1';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16cXZremp4dWJ1cXBkbnpuaWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzY2NTAsImV4cCI6MjA5MTE1MjY1MH0.t4TBnmyyKDPqTZiFOwXbko-Qa4pdund9lr6fydeRdfQ';
@@ -241,7 +252,7 @@ export function AdminScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backBtnText}>←</Text>
+          <Ionicons name="arrow-back" size={22} color={colors.primary} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Panel Admin</Text>
         <View style={{ width: 40 }} />
@@ -255,9 +266,11 @@ export function AdminScreen() {
             style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
             onPress={() => setActiveTab(tab)}
           >
-            <Text style={[styles.tabText, activeTab === tab && styles.tabTextActive]}>
-              {tab === 'dashboard' ? '📊' : tab === 'users' ? '👥' : tab === 'applications' ? '📝' : tab === 'payments' ? '💰' : '📅'}
-            </Text>
+            <Ionicons
+              name={TAB_ICONS[tab]}
+              size={20}
+              color={activeTab === tab ? colors.primary : colors.textMuted}
+            />
             <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
               {tab === 'dashboard' ? 'Stats' : tab === 'users' ? 'Usuarios' : tab === 'applications' ? 'Postul.' : tab === 'payments' ? 'Pagos' : 'Reservas'}
             </Text>
@@ -305,13 +318,13 @@ export function AdminScreen() {
 
 function DashboardTab({ stats }: { stats: Stats | null }) {
   if (!stats) return null;
-  const cards = [
-    { label: 'Usuarios', value: stats.totalUsers, icon: '👥', color: colors.primary },
-    { label: 'Espacios', value: stats.totalSpaces, icon: '🏠', color: colors.accent },
-    { label: 'Visiters', value: stats.totalVisitors, icon: '🐾', color: colors.lilac },
-    { label: 'Reservas', value: stats.totalBookings, icon: '📅', color: colors.info },
-    { label: 'Activas', value: stats.activeBookings, icon: '✅', color: colors.success },
-    { label: 'Pendientes', value: stats.pendingApplications, icon: '⏳', color: colors.warning },
+  const cards: { label: string; value: number; icon: IoniconName; color: string }[] = [
+    { label: 'Usuarios',   value: stats.totalUsers,          icon: 'people-outline',           color: colors.primary  },
+    { label: 'Espacios',   value: stats.totalSpaces,         icon: 'home-outline',             color: colors.accent   },
+    { label: 'Visiters',   value: stats.totalVisitors,       icon: 'paw-outline',              color: colors.lilac    },
+    { label: 'Reservas',   value: stats.totalBookings,       icon: 'calendar-outline',         color: colors.info     },
+    { label: 'Activas',    value: stats.activeBookings,      icon: 'checkmark-circle-outline', color: colors.success  },
+    { label: 'Pendientes', value: stats.pendingApplications, icon: 'time-outline',             color: colors.warning  },
   ];
   return (
     <View>
@@ -319,7 +332,7 @@ function DashboardTab({ stats }: { stats: Stats | null }) {
       <View style={styles.statsGrid}>
         {cards.map(c => (
           <View key={c.label} style={[styles.statCard, { borderTopColor: c.color }]}>
-            <Text style={styles.statIcon}>{c.icon}</Text>
+            <Ionicons name={c.icon} size={24} color={c.color} style={{ marginBottom: 6 }} />
             <Text style={[styles.statValue, { color: c.color }]}>{c.value}</Text>
             <Text style={styles.statLabel}>{c.label}</Text>
           </View>
@@ -348,34 +361,70 @@ function UsersTab({ users, search, onSearch, onToggleAdmin }: {
         <View key={u.id} style={styles.card}>
           <View style={styles.cardRow}>
             <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{(u.full_name?.[0] ?? '?').toUpperCase()}</Text>
+              <Text style={styles.avatarText}>{(u.full_name?.[0] ?? u.id?.[0] ?? '?').toUpperCase()}</Text>
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.cardName}>{u.full_name} {u.last_name ?? ''}</Text>
+              <Text style={styles.cardName}>{u.full_name ?? '(sin nombre)'} {u.last_name ?? ''}</Text>
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-                <View style={[styles.tag, { backgroundColor: u.role === 'host' ? `${colors.accent}20` : `${colors.primary}15` }]}>
+                <View style={[styles.tag, { backgroundColor: u.role === 'host' ? `${colors.accent}20` : `${colors.primary}15`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                  <Ionicons
+                    name={u.role === 'host' ? 'home-outline' : u.is_admin ? 'settings-outline' : 'paw-outline'}
+                    size={11}
+                    color={u.role === 'host' ? colors.accent : colors.primary}
+                  />
                   <Text style={[styles.tagText, { color: u.role === 'host' ? colors.accent : colors.primary }]}>
-                    {u.role === 'host' ? '🏠 Cuidador' : u.is_admin ? '⚙️ Admin' : '🐱 Cliente'}
+                    {u.role === 'host' ? 'Cuidador' : u.is_admin ? 'Admin' : 'Cliente'}
                   </Text>
                 </View>
-                <View style={[styles.tag, { backgroundColor: u.kyc_status === 'verified' ? `${colors.success}20` : `${colors.warning}20` }]}>
+                <View style={[styles.tag, { backgroundColor: u.kyc_status === 'verified' ? `${colors.success}20` : `${colors.warning}20`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                  <Ionicons
+                    name={u.kyc_status === 'verified' ? 'shield-checkmark-outline' : 'time-outline'}
+                    size={11}
+                    color={u.kyc_status === 'verified' ? colors.success : colors.warning}
+                  />
                   <Text style={[styles.tagText, { color: u.kyc_status === 'verified' ? colors.success : colors.warning }]}>
-                    {u.kyc_status === 'verified' ? '✓ Verificado' : '⏳ Pendiente'}
+                    {u.kyc_status === 'verified' ? 'Verificado' : 'Pendiente'}
                   </Text>
                 </View>
                 {u.signed_contract_url && (
-                  <View style={[styles.tag, { backgroundColor: `${colors.success}20` }]}>
-                    <Text style={[styles.tagText, { color: colors.success }]}>📄 Contrato firmado</Text>
+                  <View style={[styles.tag, { backgroundColor: `${colors.success}20`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                    <Ionicons name="document-text-outline" size={11} color={colors.success} />
+                    <Text style={[styles.tagText, { color: colors.success }]}>Contrato</Text>
                   </View>
                 )}
               </View>
-              {u.age ? <Text style={styles.cardMeta}>{u.age} años{u.address ? ` · 📍 ${u.address}` : ''}</Text> : null}
+              {u.age ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                  <Text style={styles.cardMeta}>{u.age} años</Text>
+                  {u.address ? (
+                    <>
+                      <Ionicons name="location-outline" size={11} color={colors.textMuted} />
+                      <Text style={styles.cardMeta}>{u.address}</Text>
+                    </>
+                  ) : null}
+                </View>
+              ) : null}
               {u.bio ? <Text style={styles.cardBio} numberOfLines={2}>{u.bio}</Text> : null}
-              <Text style={styles.cardMeta}>
-                {u.spacesCount ? `🏠 ${u.spacesCount} espacio(s)  ` : ''}
-                {u.visitersCount ? `🐾 ${u.visitersCount} visiter(s)  ` : ''}
-                {u.bookingsCount ? `📅 ${u.bookingsCount} reserva(s)` : ''}
-              </Text>
+              <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
+                {!!u.spacesCount && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Ionicons name="home-outline" size={11} color={colors.textMuted} />
+                    <Text style={styles.cardMeta}>{u.spacesCount} espacio(s)</Text>
+                  </View>
+                )}
+                {!!u.visitersCount && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Ionicons name="paw-outline" size={11} color={colors.textMuted} />
+                    <Text style={styles.cardMeta}>{u.visitersCount} visiter(s)</Text>
+                  </View>
+                )}
+                {!!u.bookingsCount && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                    <Ionicons name="calendar-outline" size={11} color={colors.textMuted} />
+                    <Text style={styles.cardMeta}>{u.bookingsCount} reserva(s)</Text>
+                  </View>
+                )}
+              </View>
             </View>
           </View>
           <View style={styles.cardActions}>
@@ -408,7 +457,10 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
         Postulaciones Pendientes ({pending.length})
       </Text>
       {pending.length === 0 && (
-        <View style={styles.emptyState}><Text style={styles.emptyText}>Sin postulaciones pendientes ✅</Text></View>
+        <View style={styles.emptyState}>
+          <Ionicons name="checkmark-circle-outline" size={32} color={colors.accent} style={{ marginBottom: 8 }} />
+          <Text style={styles.emptyText}>Sin postulaciones pendientes</Text>
+        </View>
       )}
       {pending.map(a => (
         <View key={a.id} style={[styles.card, styles.cardPending]}>
@@ -423,13 +475,15 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
               style={[styles.actionBtn, styles.actionBtnSuccess]}
               onPress={() => onApprove(a.id, a.applicant_id, a.service_type)}
             >
-              <Text style={styles.actionBtnText}>✅ Aprobar</Text>
+              <Ionicons name="checkmark-outline" size={14} color={colors.accent} />
+              <Text style={styles.actionBtnText}>Aprobar</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnDanger]}
               onPress={() => onReject(a.id)}
             >
-              <Text style={styles.actionBtnText}>❌ Rechazar</Text>
+              <Ionicons name="close-outline" size={14} color={colors.danger} />
+              <Text style={styles.actionBtnText}>Rechazar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -443,9 +497,10 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
               <Text style={styles.cardName}>
                 {a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}
               </Text>
-              <Text style={styles.cardMeta}>
-                {a.service_type} · ✅ aprobada · {new Date(a.submitted_at).toLocaleDateString('es-CL')}
-              </Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                <Ionicons name="checkmark-circle-outline" size={12} color={colors.accent} />
+                <Text style={styles.cardMeta}>{a.service_type} · aprobada · {new Date(a.submitted_at).toLocaleDateString('es-CL')}</Text>
+              </View>
             </View>
           ))}
         </>
@@ -467,7 +522,8 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
                   style={[styles.actionBtn, styles.actionBtnSecondary]}
                   onPress={() => onRecover(a.id)}
                 >
-                  <Text style={styles.actionBtnText}>↩ Recuperar postulación</Text>
+                  <Ionicons name="refresh-outline" size={14} color={colors.primary} />
+                  <Text style={styles.actionBtnText}>Recuperar postulación</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -484,7 +540,10 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
     <View>
       <Text style={styles.sectionTitle}>Comprobantes Pendientes ({payments.length})</Text>
       {payments.length === 0 && (
-        <View style={styles.emptyState}><Text style={styles.emptyText}>Sin comprobantes pendientes ✅</Text></View>
+        <View style={styles.emptyState}>
+          <Ionicons name="checkmark-circle-outline" size={32} color={colors.accent} style={{ marginBottom: 8 }} />
+          <Text style={styles.emptyText}>Sin comprobantes pendientes</Text>
+        </View>
       )}
       {payments.map(p => (
         <View key={p.id} style={[styles.card, { borderColor: colors.warning, borderWidth: 1.5 }]}>
@@ -495,10 +554,11 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
           <Text style={[styles.cardName, { color: colors.primary, marginTop: 4 }]}>{fmt(p.total_price)}</Text>
           {p.payment_receipt_url ? (
             <TouchableOpacity
-              style={{ marginTop: 8, backgroundColor: `${colors.primary}10`, borderRadius: 8, padding: 8, borderWidth: 1, borderColor: `${colors.primary}30` }}
+              style={{ marginTop: 8, backgroundColor: `${colors.primary}10`, borderRadius: 8, padding: 8, borderWidth: 1, borderColor: `${colors.primary}30`, flexDirection: 'row', alignItems: 'center', gap: 6 }}
               onPress={() => Alert.alert('Comprobante', p.payment_receipt_url ?? '')}
             >
-              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>📎 Ver comprobante</Text>
+              <Ionicons name="attach-outline" size={14} color={colors.primary} />
+              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Ver comprobante</Text>
             </TouchableOpacity>
           ) : null}
           <View style={styles.cardActions}>
@@ -513,7 +573,8 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
                 ]
               )}
             >
-              <Text style={styles.actionBtnText}>✅ Confirmar pago</Text>
+              <Ionicons name="checkmark-outline" size={14} color={colors.accent} />
+              <Text style={styles.actionBtnText}>Confirmar pago</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -563,8 +624,6 @@ const styles = StyleSheet.create({
   tabBar: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   tabItem: { flex: 1, alignItems: 'center', paddingVertical: 10, position: 'relative' },
   tabItemActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabText: { fontSize: 18, opacity: 0.4 },
-  tabTextActive: { opacity: 1 },
   tabLabel: { fontSize: 10, color: colors.textMuted, fontWeight: '600', marginTop: 2 },
   tabLabelActive: { color: colors.primary },
   badge: { position: 'absolute', top: 6, right: 8, backgroundColor: colors.danger, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
@@ -573,7 +632,6 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain, marginBottom: 16 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   statCard: { width: '30%', flexGrow: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 14, alignItems: 'center', borderTopWidth: 3, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
-  statIcon: { fontSize: 24, marginBottom: 6 },
   statValue: { fontSize: 24, fontWeight: '800' },
   statLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600', marginTop: 2 },
   searchInput: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, color: colors.textMain, marginBottom: 16 },
@@ -586,7 +644,7 @@ const styles = StyleSheet.create({
   cardMeta: { fontSize: 12, color: colors.textMuted, marginBottom: 2 },
   cardBio: { fontSize: 12, color: colors.textMuted, marginTop: 4, fontStyle: 'italic' },
   cardActions: { flexDirection: 'row', gap: 8, marginTop: 12 },
-  actionBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  actionBtn: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 5 },
   actionBtnSuccess: { backgroundColor: `${colors.accent}20`, borderWidth: 1, borderColor: colors.accent },
   actionBtnDanger: { backgroundColor: `${colors.danger}10`, borderWidth: 1, borderColor: colors.danger },
   actionBtnSecondary: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },

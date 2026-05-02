@@ -50,14 +50,23 @@ export async function upsertMyVisiter(input: {
     active: input.active,
     host_id: user.id,
   };
-  const payload = input.id
-    ? { ...base, id: input.id }
-    : { ...base, rating: 0, total_visits: 0, image_url: null as string | null };
-  const { data, error } = await supabase
-    .from('visiters')
-    .upsert(payload, { onConflict: 'id' })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  if (input.id) {
+    const { data, error } = await supabase
+      .from('visiters')
+      .update(base)
+      .eq('id', input.id)
+      .eq('host_id', user.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  } else {
+    const { data, error } = await supabase
+      .from('visiters')
+      .insert({ ...base, rating: 0, total_visits: 0, image_url: null as string | null })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
 }

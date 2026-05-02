@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,10 +16,11 @@ import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const APPLICATION_STATUS_LABEL: Record<string, { icon: string; text: string; color: string }> = {
-  pending:  { icon: '⏳', text: 'Postulación en revisión',  color: colors.warning  },
-  approved: { icon: '✅', text: 'Cuidador aprobado',        color: colors.accent   },
-  rejected: { icon: '❌', text: 'Postulación rechazada',    color: colors.danger   },
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+const APPLICATION_STATUS_LABEL: Record<string, { icon: IoniconName; text: string; color: string }> = {
+  pending:  { icon: 'time-outline',            text: 'Postulación en revisión', color: colors.warning },
+  approved: { icon: 'checkmark-circle-outline', text: 'Cuidador aprobado',       color: colors.accent  },
+  rejected: { icon: 'close-circle-outline',     text: 'Postulación rechazada',   color: colors.danger  },
 };
 
 export function ProfileScreen() {
@@ -85,14 +87,22 @@ export function ProfileScreen() {
           )}
           <View style={styles.ownerInfo}>
             <Text style={styles.ownerName}>{profile?.full_name || 'Mi Perfil'}</Text>
-            <Text style={styles.ownerStatus}>
-              {profile?.kyc_status === 'verified'
-                ? '✓ Identidad Verificada'
-                : profile?.kyc_status === 'under_review'
-                  ? '🔍 Verificación en revisión'
-                  : '⏳ Verificación Pendiente'}
-            </Text>
-            {isHost && <Text style={styles.hostBadge}>🌟 Cuidador Activo</Text>}
+            <View style={styles.kycRow}>
+              <Ionicons
+                name={profile?.kyc_status === 'verified' ? 'shield-checkmark-outline' : profile?.kyc_status === 'under_review' ? 'hourglass-outline' : 'time-outline'}
+                size={14}
+                color={profile?.kyc_status === 'verified' ? colors.accent : colors.warning}
+              />
+              <Text style={styles.ownerStatus}>
+                {profile?.kyc_status === 'verified' ? 'Identidad Verificada' : profile?.kyc_status === 'under_review' ? 'Verificación en revisión' : 'Verificación Pendiente'}
+              </Text>
+            </View>
+            {isHost && (
+              <View style={styles.hostBadgeRow}>
+                <Ionicons name="star-outline" size={13} color={colors.primary} />
+                <Text style={styles.hostBadge}>Cuidador Activo</Text>
+              </View>
+            )}
           </View>
         </View>
 
@@ -127,12 +137,15 @@ export function ProfileScreen() {
                 <Text style={styles.catDetails}>{pet.sterilized ? 'Esterilizado' : 'No esterilizado'} • {pet.weight_kg} kg</Text>
               </View>
               <TouchableOpacity style={styles.editPetBtn} onPress={() => navigation.navigate('AddPetModal', { petId: pet.id })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-                <Text style={styles.editPetBtnText}>✏️</Text>
+                <Ionicons name="create-outline" size={20} color={colors.primary} />
               </TouchableOpacity>
             </View>
             {pet.medical_alerts.length > 0 && (
               <View style={styles.alertBlock}>
-                <Text style={styles.alertTitle}>⚠️ Alertas Médicas</Text>
+                <View style={styles.alertTitleRow}>
+                  <Ionicons name="warning-outline" size={14} color={colors.dangerText} />
+                  <Text style={styles.alertTitle}>Alertas Médicas</Text>
+                </View>
                 {pet.medical_alerts.map((alert, i) => (
                   <Text key={i} style={styles.alertText}>• {alert}</Text>
                 ))}
@@ -154,11 +167,12 @@ export function ProfileScreen() {
             style={styles.hostDashboardBtn}
             onPress={() => navigation.navigate('HostDashboard')}
           >
-            <Text style={styles.hostDashboardBtnText}>🏠 Ir a mi Panel de Cuidador</Text>
+            <Ionicons name="home-outline" size={18} color={colors.surface} />
+            <Text style={styles.hostDashboardBtnText}>Ir a mi Panel de Cuidador</Text>
           </TouchableOpacity>
         ) : statusInfo ? (
           <View style={[styles.applicationStatus, { borderColor: statusInfo.color }]}>
-            <Text style={styles.applicationStatusIcon}>{statusInfo.icon}</Text>
+            <Ionicons name={statusInfo.icon} size={28} color={statusInfo.color} />
             <View style={styles.applicationStatusText}>
               <Text style={[styles.applicationStatusTitle, { color: statusInfo.color }]}>
                 {statusInfo.text}
@@ -174,7 +188,8 @@ export function ProfileScreen() {
           </View>
         ) : (
           <TouchableOpacity style={styles.onboardingBtn} onPress={() => navigation.navigate('HostOnboarding')}>
-            <Text style={styles.onboardingBtnText}>🌟 Postular para ser Cuidador / Visiter</Text>
+            <Ionicons name="star-outline" size={18} color={colors.surface} />
+            <Text style={styles.onboardingBtnText}>Postular para ser Cuidador / Visiter</Text>
           </TouchableOpacity>
         )}
 
@@ -183,9 +198,9 @@ export function ProfileScreen() {
             <Text style={styles.sectionTitle}>Contrato de Cuidador</Text>
             {profile?.signed_contract_url ? (
               <View style={styles.contractSigned}>
-                <Text style={styles.contractSignedIcon}>📄</Text>
+                <Ionicons name="document-text-outline" size={28} color={colors.successText} />
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.contractSignedTitle}>Contrato firmado cargado ✅</Text>
+                  <Text style={styles.contractSignedTitle}>Contrato firmado cargado</Text>
                   <Text style={styles.contractSignedSub}>El equipo de ApapachaPet está revisando tu contrato.</Text>
                 </View>
               </View>
@@ -201,10 +216,14 @@ export function ProfileScreen() {
                   disabled={uploadingContract}
                   activeOpacity={0.8}
                 >
-                  {uploadingContract
-                    ? <ActivityIndicator color={colors.surface} size="small" />
-                    : <Text style={styles.contractUploadBtnText}>📎 Subir Contrato Firmado</Text>
-                  }
+                  {uploadingContract ? (
+                    <ActivityIndicator color={colors.surface} size="small" />
+                  ) : (
+                    <>
+                      <Ionicons name="attach-outline" size={16} color={colors.surface} />
+                      <Text style={styles.contractUploadBtnText}>Subir Contrato Firmado</Text>
+                    </>
+                  )}
                 </TouchableOpacity>
               </View>
             )}
@@ -213,18 +232,24 @@ export function ProfileScreen() {
 
         {profile?.is_admin && (
           <TouchableOpacity style={styles.adminBtn} onPress={() => navigation.navigate('Admin')}>
-            <Text style={styles.adminBtnText}>⚙️ Panel de Administración</Text>
+            <Ionicons name="settings-outline" size={18} color={colors.surface} />
+            <Text style={styles.adminBtnText}>Panel de Administración</Text>
           </TouchableOpacity>
         )}
 
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Cuenta y Legal</Text>
         <View style={styles.settingsMenu}>
-          <TouchableOpacity style={styles.menuItem}><Text style={styles.menuItemText}>Métodos de Pago</Text><Text style={styles.menuItemArrow}>→</Text></TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem}>
+            <Text style={styles.menuItemText}>Métodos de Pago</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('TrustAndSafety')}>
-            <Text style={styles.menuItemText}>Políticas de Seguridad y Seguros</Text><Text style={styles.menuItemArrow}>→</Text>
+            <Text style={styles.menuItemText}>Políticas de Seguridad y Seguros</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={signOut}>
             <Text style={[styles.menuItemText, { color: colors.danger }]}>Cerrar Sesión</Text>
+            <Ionicons name="log-out-outline" size={16} color={colors.danger} />
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -245,8 +270,10 @@ const styles = StyleSheet.create({
   avatarText: { color: colors.surface, fontSize: 24, fontWeight: '700' },
   ownerInfo: { flex: 1 },
   ownerName: { fontSize: 20, fontWeight: '700', color: colors.textMain },
-  ownerStatus: { fontSize: 14, color: colors.accent, fontWeight: '600', marginTop: 4 },
-  hostBadge: { fontSize: 13, color: colors.primary, fontWeight: '700', marginTop: 2 },
+  kycRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
+  ownerStatus: { fontSize: 14, color: colors.accent, fontWeight: '600' },
+  hostBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
+  hostBadge: { fontSize: 13, color: colors.primary, fontWeight: '700' },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8 },
   sectionTitle: { fontSize: 18, fontWeight: '700', color: colors.textMain },
   addPetBtn: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8 },
@@ -258,20 +285,19 @@ const styles = StyleSheet.create({
   catName: { fontSize: 20, fontWeight: '800', color: colors.textMain, marginBottom: 4 },
   catDetails: { fontSize: 13, color: colors.textMuted, marginBottom: 2 },
   alertBlock: { backgroundColor: colors.dangerBg, padding: 12, borderRadius: 12, borderWidth: 1, borderColor: colors.dangerBorder },
-  alertTitle: { fontSize: 14, fontWeight: '800', color: colors.dangerText, marginBottom: 8 },
+  alertTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
+  alertTitle: { fontSize: 14, fontWeight: '800', color: colors.dangerText },
   alertText: { fontSize: 13, color: colors.dangerTextDark, marginBottom: 4 },
   reviewBanner: { backgroundColor: '#FFF8E7', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#F59E0B40', marginBottom: 20 },
   reviewBannerText: { fontSize: 13, color: '#92400E', lineHeight: 18 },
   editPetBtn: { padding: 4 },
-  editPetBtnText: { fontSize: 18 },
   emptyPets: { backgroundColor: colors.surface, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center', marginBottom: 24 },
   emptyPetsText: { color: colors.textMuted, fontSize: 14 },
-  onboardingBtn: { backgroundColor: colors.warning, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8 },
+  onboardingBtn: { backgroundColor: colors.warning, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8, flexDirection: 'row', justifyContent: 'center', gap: 8 },
   onboardingBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
-  hostDashboardBtn: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8 },
+  hostDashboardBtn: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8, flexDirection: 'row', justifyContent: 'center', gap: 8 },
   hostDashboardBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
   applicationStatus: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 2, marginTop: 16, marginBottom: 8, gap: 12 },
-  applicationStatusIcon: { fontSize: 28 },
   applicationStatusText: { flex: 1 },
   applicationStatusTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
   applicationStatusSub: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
@@ -280,15 +306,14 @@ const styles = StyleSheet.create({
   menuItemLast: { borderBottomWidth: 0 },
   menuItemText: { fontSize: 15, fontWeight: '500', color: colors.textMain },
   menuItemArrow: { color: colors.textMuted, fontSize: 16 },
-  adminBtn: { backgroundColor: colors.primaryDark, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 8 },
+  adminBtn: { backgroundColor: colors.primaryDark, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 8, marginBottom: 8, flexDirection: 'row', justifyContent: 'center', gap: 8 },
   adminBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
   contractSection: { marginBottom: 24 },
   contractSigned: { flexDirection: 'row', alignItems: 'center', backgroundColor: `${colors.success}10`, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.successBorder, gap: 12 },
-  contractSignedIcon: { fontSize: 28 },
   contractSignedTitle: { fontSize: 14, fontWeight: '700', color: colors.successText },
   contractSignedSub: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   contractPending: { backgroundColor: colors.infoBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.infoBorder },
   contractPendingText: { fontSize: 13, color: colors.textMuted, lineHeight: 20, marginBottom: 12 },
-  contractUploadBtn: { backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
+  contractUploadBtn: { backgroundColor: colors.primary, paddingVertical: 12, borderRadius: 10, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6 },
   contractUploadBtnText: { color: colors.surface, fontWeight: '700', fontSize: 14 },
 });

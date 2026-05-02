@@ -38,7 +38,7 @@ export function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.brandContainer}>
-          <Image source={require('../../assets/Logo.png')} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require('../../assets/LogoSplash.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.brandSubtitle}>Hospitalidad Felina Premium</Text>
         </View>
 

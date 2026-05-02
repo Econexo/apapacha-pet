@@ -145,7 +145,7 @@ export function ManageServiceScreen() {
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <ScrollView style={styles.scrollView} contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
           {isSpace ? <SpaceForm
             title={title} setTitle={setTitle}
             desc={desc} setDesc={setDesc}
@@ -329,7 +329,8 @@ const styles = StyleSheet.create({
   backBtnText: { fontSize: 24, color: colors.primary },
   headerTitle: { fontSize: 17, fontWeight: '800', color: colors.textMain },
   loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  scroll: { padding: 20, paddingBottom: 100 },
+  scrollView: { flex: 1 },
+  scroll: { padding: 20, paddingBottom: 40 },
   serviceTypeBadge: { alignSelf: 'flex-start', backgroundColor: colors.primaryLight, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, fontSize: 13, fontWeight: '700', color: colors.primaryDark, marginBottom: 20 },
   label: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 6, marginTop: 16 },
   sublabel: { fontSize: 12, color: colors.textMuted, marginBottom: 10, marginTop: -4 },

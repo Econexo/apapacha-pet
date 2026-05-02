@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
@@ -128,23 +129,23 @@ export function HomeScreen() {
         <Text style={styles.actionsTitle}>Acciones rápidas</Text>
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionCard} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Explore' })} activeOpacity={0.8}>
-            <Text style={styles.actionEmoji}>🏠</Text>
+            <Ionicons name="search" size={28} color={colors.primary} />
             <Text style={styles.actionLabel}>Reservar</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionCard} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Bookings' })} activeOpacity={0.8}>
-            <Text style={styles.actionEmoji}>📅</Text>
+            <Ionicons name="calendar-outline" size={28} color={colors.primary} />
             <Text style={styles.actionLabel}>Historial</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionCard} onPress={() => firstPet ? navigation.navigate('AddPetModal', { petId: firstPet.id }) : navigation.navigate('AddPetModal')} activeOpacity={0.8}>
-            <Text style={styles.actionEmoji}>🐱</Text>
+            <Ionicons name="paw-outline" size={28} color={colors.primary} />
             <Text style={styles.actionLabel}>{firstPet ? firstPet.name : 'Mi gato'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionCard, styles.actionCardDanger]}
-            onPress={() => Alert.alert('🚨 Emergencia Veterinaria', 'Contacta a tu veterinario de confianza o escríbenos a apapachapet.app@gmail.com', [{ text: 'Entendido' }])}
+            onPress={() => Alert.alert('Emergencia Veterinaria', 'Contacta a tu veterinario de confianza o escríbenos a apapachapet.app@gmail.com', [{ text: 'Entendido' }])}
             activeOpacity={0.8}
           >
-            <Text style={styles.actionEmoji}>🚨</Text>
+            <Ionicons name="warning-outline" size={28} color={colors.dangerText} />
             <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Emergencia</Text>
           </TouchableOpacity>
         </View>

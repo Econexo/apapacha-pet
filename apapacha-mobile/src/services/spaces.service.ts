@@ -62,14 +62,23 @@ export async function upsertMySpace(input: {
     active: input.active,
     host_id: user.id,
   };
-  const payload = input.id
-    ? { ...base, id: input.id }
-    : { ...base, image_urls: [] as string[], rating: 0 };
-  const { data, error } = await supabase
-    .from('spaces')
-    .upsert(payload, { onConflict: 'id' })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  if (input.id) {
+    const { data, error } = await supabase
+      .from('spaces')
+      .update(base)
+      .eq('id', input.id)
+      .eq('host_id', user.id)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  } else {
+    const { data, error } = await supabase
+      .from('spaces')
+      .insert({ ...base, image_urls: [] as string[], rating: 0 })
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  }
 }

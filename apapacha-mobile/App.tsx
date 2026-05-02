@@ -3,7 +3,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, ActivityIndicator, Text } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { LoginScreen } from './src/screens/LoginScreen';
@@ -38,12 +39,14 @@ import type { RootStackParamList } from './src/types/navigation';
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
 
-const TAB_ICONS: Record<string, string> = {
-  Home: '🏡',
-  Explore: '🧭',
-  Inbox: '💬',
-  Bookings: '📅',
-  Profile: '🐾',
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
+const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> = {
+  Home:     { active: 'home',           inactive: 'home-outline'           },
+  Explore:  { active: 'compass',        inactive: 'compass-outline'        },
+  Inbox:    { active: 'chatbubbles',    inactive: 'chatbubbles-outline'    },
+  Bookings: { active: 'calendar',       inactive: 'calendar-outline'       },
+  Profile:  { active: 'person-circle',  inactive: 'person-circle-outline'  },
 };
 
 function MainTabs() {
@@ -61,11 +64,10 @@ function MainTabs() {
           paddingBottom: 10,
           paddingTop: 10,
         },
-        tabBarIcon: ({ focused }) => (
-          <Text style={{ fontSize: 22, opacity: focused ? 1 : 0.5 }}>
-            {TAB_ICONS[route.name]}
-          </Text>
-        ),
+        tabBarIcon: ({ focused, color, size }) => {
+          const icons = TAB_ICONS[route.name];
+          return <Ionicons name={focused ? icons.active : icons.inactive} size={size ?? 24} color={color} />;
+        },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
       })}
     >

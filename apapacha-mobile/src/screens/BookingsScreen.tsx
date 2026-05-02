@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
@@ -10,13 +11,22 @@ import { getMyBookings, cancelBooking } from '../services/bookings.service';
 import { getMyReviewForBooking } from '../services/reviews.service';
 import { supabase } from '../../supabase';
 
+type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
+
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const PAYMENT_STATUS_LABEL: Record<string, { text: string; color: string }> = {
-  pending:            { text: '⏳ Pago pendiente',    color: '#F59E0B' },
-  receipt_submitted:  { text: '🔍 Comprobante enviado', color: '#6366F1' },
-  paid:               { text: '💰 Pagado',             color: '#10B981' },
-  refunded:           { text: '↩ Reembolsado',         color: '#6B7280' },
+const PAYMENT_STATUS_CONFIG: Record<string, { text: string; color: string; icon: IoniconName }> = {
+  pending:            { text: 'Pago pendiente',     color: '#F59E0B', icon: 'time-outline'              },
+  receipt_submitted:  { text: 'Comprobante enviado', color: '#6366F1', icon: 'document-attach-outline'  },
+  paid:               { text: 'Pagado',              color: '#10B981', icon: 'checkmark-circle-outline' },
+  refunded:           { text: 'Reembolsado',         color: '#6B7280', icon: 'arrow-undo-outline'       },
+};
+
+const STATUS_CONFIG: Record<string, { icon: IoniconName; color: string; label: string }> = {
+  active:    { icon: 'radio-button-on',        color: '#10B981', label: 'En curso'   },
+  pending:   { icon: 'time-outline',           color: colors.primary, label: 'Pendiente' },
+  completed: { icon: 'checkmark-circle-outline', color: colors.accent, label: 'Completada' },
+  cancelled: { icon: 'close-circle-outline',   color: colors.danger,  label: 'Cancelada'  },
 };
 
 export function BookingsScreen() {
@@ -102,8 +112,9 @@ export function BookingsScreen() {
           const isFirstPast = index === active.length;
           const host = hostMap[item.id];
           const hasReview = reviewedIds.has(item.id);
-          const payStatus = PAYMENT_STATUS_LABEL[item.payment_status ?? 'pending'];
           const isActive = item.status === 'active' || item.status === 'pending';
+          const statusCfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.pending;
+          const payStatus = PAYMENT_STATUS_CONFIG[item.payment_status ?? 'pending'];
 
           return (
             <>
@@ -113,18 +124,18 @@ export function BookingsScreen() {
               <View style={[styles.card, isActive ? styles.cardActive : styles.cardPast, item.status === 'cancelled' && styles.cardCancelled]}>
                 {/* Header row */}
                 <View style={styles.cardHeader}>
-                  <View style={[styles.statusBadge, { backgroundColor: isActive ? `${colors.primary}15` : colors.background }]}>
-                    <Text style={[styles.statusText, { color: isActive ? colors.primary : colors.textMuted }]}>
-                      {item.status === 'active' ? '🟢 En curso' : item.status === 'pending' ? '⏳ Pendiente' : item.status === 'completed' ? '✅ Completada' : '❌ Cancelada'}
-                    </Text>
+                  <View style={[styles.statusBadge, { backgroundColor: `${statusCfg.color}15`, flexDirection: 'row', alignItems: 'center', gap: 5 }]}>
+                    <Ionicons name={statusCfg.icon} size={12} color={statusCfg.color} />
+                    <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
                   </View>
                   <Text style={styles.dates}>{fmt(item.start_date)} — {fmt(item.end_date)}</Text>
                 </View>
 
                 {/* Service type */}
-                <Text style={styles.serviceTitle}>
-                  {item.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita Domiciliaria'}
-                </Text>
+                <View style={styles.serviceRow}>
+                  <Ionicons name={item.service_type === 'space' ? 'home-outline' : 'car-outline'} size={15} color={colors.textMuted} />
+                  <Text style={styles.serviceTitle}>{item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria'}</Text>
+                </View>
 
                 {/* Price */}
                 <Text style={styles.priceLabel}>${item.total_price.toLocaleString('es-CL')} CLP</Text>
@@ -132,7 +143,10 @@ export function BookingsScreen() {
                 {/* Payment status for active/pending */}
                 {isActive && payStatus && (
                   <View style={[styles.paymentRow, { backgroundColor: `${payStatus.color}12` }]}>
-                    <Text style={[styles.paymentText, { color: payStatus.color }]}>{payStatus.text}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                      <Ionicons name={payStatus.icon} size={13} color={payStatus.color} />
+                      <Text style={[styles.paymentText, { color: payStatus.color }]}>{payStatus.text}</Text>
+                    </View>
                     {item.payment_status === 'pending' && (
                       <TouchableOpacity
                         onPress={() => navigation.navigate('TransferInstructions', { bookingId: item.id, amount: item.total_price })}
@@ -153,7 +167,8 @@ export function BookingsScreen() {
                         onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
                         activeOpacity={0.8}
                       >
-                        <Text style={styles.actionBtnText}>💬 Chat</Text>
+                        <Ionicons name="chatbubble-outline" size={14} color={colors.textMain} />
+                        <Text style={styles.actionBtnText}>Chat</Text>
                       </TouchableOpacity>
                       {item.status === 'pending' && (
                         <TouchableOpacity
@@ -161,6 +176,7 @@ export function BookingsScreen() {
                           onPress={() => handleCancel(item.id)}
                           activeOpacity={0.8}
                         >
+                          <Ionicons name="close-outline" size={14} color={colors.danger} />
                           <Text style={[styles.actionBtnText, { color: colors.danger }]}>Cancelar</Text>
                         </TouchableOpacity>
                       )}
@@ -176,11 +192,13 @@ export function BookingsScreen() {
                           disabled={!host}
                           activeOpacity={0.8}
                         >
-                          <Text style={styles.actionBtnText}>⭐ Reseñar</Text>
+                          <Ionicons name="star-outline" size={14} color={colors.textMain} />
+                          <Text style={styles.actionBtnText}>Reseñar</Text>
                         </TouchableOpacity>
                       ) : (
                         <View style={styles.reviewDone}>
-                          <Text style={styles.reviewDoneText}>⭐ Reseña enviada</Text>
+                          <Ionicons name="star" size={14} color={colors.accent} />
+                          <Text style={styles.reviewDoneText}>Reseña enviada</Text>
                         </View>
                       )}
                       {host && (
@@ -189,7 +207,8 @@ export function BookingsScreen() {
                           onPress={() => navigation.navigate('Checkout', { id: host.serviceId, type: host.serviceType as 'space' | 'visiter' })}
                           activeOpacity={0.8}
                         >
-                          <Text style={[styles.actionBtnText, { color: colors.primaryDark }]}>🔄 Repetir</Text>
+                          <Ionicons name="refresh-outline" size={14} color={colors.primaryDark} />
+                          <Text style={[styles.actionBtnText, { color: colors.primaryDark }]}>Repetir</Text>
                         </TouchableOpacity>
                       )}
                     </>
@@ -202,7 +221,7 @@ export function BookingsScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📅</Text>
+              <Ionicons name="calendar-outline" size={56} color={`${colors.primary}60`} />
               <Text style={styles.emptyTitle}>Sin reservas aún</Text>
               <Text style={styles.emptyText}>Cuando reserves un espacio o visita, aparecerá aquí.</Text>
               <TouchableOpacity
@@ -226,7 +245,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
   scrollContainer: { padding: 20, paddingBottom: 40 },
   emptyContainer: { flexGrow: 1 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: colors.textMuted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5, fontSize: 12 },
+  sectionTitle: { fontSize: 12, fontWeight: '700', color: colors.textMuted, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
   card: { borderRadius: 16, padding: 16, marginBottom: 14, borderWidth: 1 },
   cardActive: { backgroundColor: colors.surface, borderColor: colors.primary },
   cardPast: { backgroundColor: colors.surface, borderColor: colors.border },
@@ -235,20 +254,20 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20 },
   statusText: { fontSize: 12, fontWeight: '700' },
   dates: { fontSize: 12, color: colors.textMuted },
-  serviceTitle: { fontSize: 16, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
+  serviceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  serviceTitle: { fontSize: 16, fontWeight: '700', color: colors.textMain },
   priceLabel: { fontSize: 13, color: colors.textMuted, marginBottom: 10 },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 10 },
   paymentText: { fontSize: 12, fontWeight: '700' },
   paymentAction: { fontSize: 12, fontWeight: '700' },
   actionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  actionBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border },
+  actionBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8, backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionBtnDanger: { borderColor: `${colors.danger}40`, backgroundColor: `${colors.danger}08` },
   actionBtnRepeat: { borderColor: `${colors.primary}30`, backgroundColor: `${colors.primary}08` },
   actionBtnText: { fontSize: 13, fontWeight: '700', color: colors.textMain },
-  reviewDone: { paddingHorizontal: 14, paddingVertical: 8 },
+  reviewDone: { paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 5 },
   reviewDoneText: { fontSize: 13, color: colors.accent, fontWeight: '700' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
-  emptyIcon: { fontSize: 56 },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
   emptyBtn: { marginTop: 8, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
