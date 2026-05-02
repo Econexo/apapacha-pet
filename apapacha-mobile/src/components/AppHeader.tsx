@@ -9,6 +9,11 @@ interface AppHeaderProps {
 }
 
 const NAV_HEIGHT = 56;
+// La imagen LogoHeader.png es 1485×1485. El logo ocupa la banda central.
+// Renderizamos la imagen a IMG_HEIGHT píxeles de alto (cuadrada) y la
+// centramos dentro de NAV_HEIGHT usando top negativo. overflow:hidden recorta.
+const IMG_HEIGHT = 300;
+const IMG_OFFSET = -Math.round((IMG_HEIGHT - NAV_HEIGHT) / 2); // -122
 
 export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
@@ -23,11 +28,10 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
             </TouchableOpacity>
           ) : null}
         </View>
-        {/* Logo: cuadrado que llena el ancho, centrado verticalmente → clip muestra la banda del logo */}
         <View style={styles.logoWrap}>
           <Image
             source={require('../../assets/LogoHeader.png')}
-            style={styles.logoImg}
+            style={[styles.logoImg, { top: IMG_OFFSET }]}
             resizeMode="contain"
           />
         </View>
@@ -56,12 +60,13 @@ const styles = StyleSheet.create({
     flex: 1,
     height: NAV_HEIGHT,
     overflow: 'hidden',
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'relative',
   },
   logoImg: {
-    width: '100%',
-    aspectRatio: 1,
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: IMG_HEIGHT,
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
