@@ -60,8 +60,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoImg: {
-    width: 130,
-    height: 130,
+    width: 156,
+    height: 156,
+    marginTop: 10,
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
