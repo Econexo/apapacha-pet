@@ -31,7 +31,7 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
               styles.logoImg,
               // React Native Web pasa estas props directamente al <img> como CSS.
               // object-fit:cover + object-position:center centra el logo correctamente.
-              { objectFit: 'cover', objectPosition: 'center' } as any,
+              { objectFit: 'cover', objectPosition: 'center 35%' } as any,
             ]}
             resizeMode="cover"
           />
