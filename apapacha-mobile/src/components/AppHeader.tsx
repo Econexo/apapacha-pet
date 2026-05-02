@@ -23,11 +23,12 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
             </TouchableOpacity>
           ) : null}
         </View>
+        {/* Logo: cuadrado que llena el ancho, centrado verticalmente → clip muestra la banda del logo */}
         <View style={styles.logoWrap}>
           <Image
             source={require('../../assets/LogoHeader.png')}
             style={styles.logoImg}
-            resizeMode="cover"
+            resizeMode="contain"
           />
         </View>
         <View style={styles.side}>
@@ -55,10 +56,12 @@ const styles = StyleSheet.create({
     flex: 1,
     height: NAV_HEIGHT,
     overflow: 'hidden',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   logoImg: {
     width: '100%',
-    height: NAV_HEIGHT,
+    aspectRatio: 1,
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
