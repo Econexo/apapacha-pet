@@ -8,20 +8,14 @@ interface AppHeaderProps {
   rightElement?: React.ReactNode;
 }
 
-const CONTENT_HEIGHT = 64;
+const NAV_HEIGHT = 56;
 
 export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
-  const totalHeight = insets.top + CONTENT_HEIGHT;
 
   return (
-    <View style={[styles.container, { height: totalHeight }]}>
-      <Image
-        source={require('../../assets/LogoHeader.png')}
-        style={StyleSheet.absoluteFillObject}
-        resizeMode="cover"
-      />
-      <View style={[styles.nav, { paddingTop: insets.top }]}>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
+      <View style={styles.nav}>
         <View style={styles.side}>
           {onBack ? (
             <TouchableOpacity onPress={onBack} style={styles.backBtn} activeOpacity={0.7}>
@@ -29,7 +23,13 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
             </TouchableOpacity>
           ) : null}
         </View>
-        <View style={{ flex: 1 }} />
+        <View style={styles.logoWrap}>
+          <Image
+            source={require('../../assets/LogoHeader.png')}
+            style={styles.logoImg}
+            resizeMode="cover"
+          />
+        </View>
         <View style={styles.side}>
           {rightElement ?? null}
         </View>
@@ -43,15 +43,23 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: colors.border,
-    overflow: 'hidden',
   },
   nav: {
-    flex: 1,
+    height: NAV_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 8,
   },
   side: { width: 52, alignItems: 'center', justifyContent: 'center' },
+  logoWrap: {
+    flex: 1,
+    height: NAV_HEIGHT,
+    overflow: 'hidden',
+  },
+  logoImg: {
+    width: '100%',
+    height: NAV_HEIGHT,
+  },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
 });
