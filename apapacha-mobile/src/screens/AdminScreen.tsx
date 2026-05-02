@@ -47,10 +47,25 @@ interface AdminUser {
   is_admin: boolean;
   signed_contract_url: string | null;
   created_at: string;
-  // computed
   spacesCount?: number;
   visitersCount?: number;
   bookingsCount?: number;
+}
+
+interface AdminSpace {
+  id: string;
+  title: string;
+  location: string;
+  price_per_night: number;
+  active: boolean;
+}
+
+interface AdminVisiter {
+  id: string;
+  name: string;
+  profession_title: string;
+  price_per_visit: number;
+  active: boolean;
 }
 
 interface Application {
@@ -91,6 +106,8 @@ export function AdminScreen() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
+  const [spaces, setSpaces] = useState<AdminSpace[]>([]);
+  const [visiters, setVisiters] = useState<AdminVisiter[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
@@ -108,7 +125,10 @@ export function AdminScreen() {
 
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([loadStats(), loadUsers(), loadApplications(), loadBookings(), loadPendingPayments()]);
+    await Promise.all([
+      loadStats(), loadUsers(), loadSpaces(), loadVisiters(),
+      loadApplications(), loadBookings(), loadPendingPayments(),
+    ]);
     setLoading(false);
   };
 
@@ -155,6 +175,22 @@ export function AdminScreen() {
     setUsers(enriched);
   }
 
+  async function loadSpaces() {
+    const { data } = await supabase
+      .from('spaces')
+      .select('id, title, location, price_per_night, active')
+      .order('created_at', { ascending: false });
+    setSpaces((data ?? []) as AdminSpace[]);
+  }
+
+  async function loadVisiters() {
+    const { data } = await supabase
+      .from('visiters')
+      .select('id, name, profession_title, price_per_visit, active')
+      .order('created_at', { ascending: false });
+    setVisiters((data ?? []) as AdminVisiter[]);
+  }
+
   async function loadApplications() {
     const { data } = await supabase
       .from('host_applications')
@@ -197,7 +233,6 @@ export function AdminScreen() {
     if (error) { Alert.alert('Error', error.message); return; }
     await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
 
-    // Send welcome email + contract
     try {
       const { data: { session } } = await supabase.auth.getSession();
       await fetch(`${SUPABASE_FUNCTIONS_URL}/send-approval-email`, {
@@ -258,7 +293,6 @@ export function AdminScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      {/* Tabs */}
       <View style={styles.tabBar}>
         {(['dashboard', 'users', 'applications', 'payments', 'bookings'] as Tab[]).map(tab => (
           <TouchableOpacity
@@ -290,7 +324,17 @@ export function AdminScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={colors.primary} />}
         showsVerticalScrollIndicator={false}
       >
-        {activeTab === 'dashboard' && <DashboardTab stats={stats} />}
+        {activeTab === 'dashboard' && (
+          <DashboardTab
+            stats={stats}
+            users={users}
+            spaces={spaces}
+            visiters={visiters}
+            bookings={bookings}
+            applications={applications}
+            onTabChange={setActiveTab}
+          />
+        )}
         {activeTab === 'users' && (
           <UsersTab
             users={filteredUsers}
@@ -316,31 +360,181 @@ export function AdminScreen() {
   );
 }
 
-function DashboardTab({ stats }: { stats: Stats | null }) {
+// ─── Dashboard Tab ────────────────────────────────────────────────────────────
+
+type CardKey = 'users' | 'spaces' | 'visiters' | 'bookings' | 'active' | 'pending';
+
+function DashboardTab({ stats, users, spaces, visiters, bookings, applications, onTabChange }: {
+  stats: Stats | null;
+  users: AdminUser[];
+  spaces: AdminSpace[];
+  visiters: AdminVisiter[];
+  bookings: AdminBooking[];
+  applications: Application[];
+  onTabChange: (tab: Tab) => void;
+}) {
+  const [expanded, setExpanded] = useState<CardKey | null>(null);
+
   if (!stats) return null;
-  const cards: { label: string; value: number; icon: IoniconName; color: string }[] = [
-    { label: 'Usuarios',   value: stats.totalUsers,          icon: 'people-outline',           color: colors.primary  },
-    { label: 'Espacios',   value: stats.totalSpaces,         icon: 'home-outline',             color: colors.accent   },
-    { label: 'Visiters',   value: stats.totalVisitors,       icon: 'paw-outline',              color: colors.lilac    },
-    { label: 'Reservas',   value: stats.totalBookings,       icon: 'calendar-outline',         color: colors.info     },
-    { label: 'Activas',    value: stats.activeBookings,      icon: 'checkmark-circle-outline', color: colors.success  },
-    { label: 'Pendientes', value: stats.pendingApplications, icon: 'time-outline',             color: colors.warning  },
+
+  const toggle = (key: CardKey) => setExpanded(prev => prev === key ? null : key);
+
+  const activeBookings = bookings.filter(b => b.status === 'active');
+  const pendingApps = applications.filter(a => a.status === 'pending');
+
+  const cards: { key: CardKey; label: string; value: number; icon: IoniconName; color: string }[] = [
+    { key: 'users',    label: 'Usuarios',   value: stats.totalUsers,          icon: 'people-outline',           color: colors.primary  },
+    { key: 'spaces',   label: 'Espacios',   value: stats.totalSpaces,         icon: 'home-outline',             color: colors.accent   },
+    { key: 'visiters', label: 'Visiters',   value: stats.totalVisitors,       icon: 'paw-outline',              color: colors.lilac    },
+    { key: 'bookings', label: 'Reservas',   value: stats.totalBookings,       icon: 'calendar-outline',         color: colors.info     },
+    { key: 'active',   label: 'Activas',    value: stats.activeBookings,      icon: 'checkmark-circle-outline', color: colors.success  },
+    { key: 'pending',  label: 'Pendientes', value: stats.pendingApplications, icon: 'time-outline',             color: colors.warning  },
   ];
+
   return (
     <View>
       <Text style={styles.sectionTitle}>Resumen General</Text>
-      <View style={styles.statsGrid}>
-        {cards.map(c => (
-          <View key={c.label} style={[styles.statCard, { borderTopColor: c.color }]}>
-            <Ionicons name={c.icon} size={24} color={c.color} style={{ marginBottom: 6 }} />
-            <Text style={[styles.statValue, { color: c.color }]}>{c.value}</Text>
-            <Text style={styles.statLabel}>{c.label}</Text>
+      {cards.map(c => {
+        const isOpen = expanded === c.key;
+        return (
+          <View key={c.key} style={[styles.expandCard, { borderTopColor: c.color }]}>
+            <TouchableOpacity
+              style={styles.expandCardHeader}
+              onPress={() => toggle(c.key)}
+              activeOpacity={0.7}
+            >
+              <View style={styles.expandCardLeft}>
+                <Ionicons name={c.icon} size={22} color={c.color} />
+                <View style={{ marginLeft: 12 }}>
+                  <Text style={[styles.expandCardValue, { color: c.color }]}>{c.value}</Text>
+                  <Text style={styles.expandCardLabel}>{c.label}</Text>
+                </View>
+              </View>
+              <Ionicons
+                name={isOpen ? 'chevron-up' : 'chevron-down'}
+                size={16}
+                color={colors.textMuted}
+              />
+            </TouchableOpacity>
+
+            {isOpen && (
+              <View style={styles.expandContent}>
+                {c.key === 'users' && (
+                  users.length === 0
+                    ? <Text style={styles.expandEmpty}>Sin usuarios registrados</Text>
+                    : users.map(u => (
+                      <View key={u.id} style={styles.expandRow}>
+                        <View style={[styles.miniAvatar, { backgroundColor: u.role === 'host' ? `${colors.accent}30` : `${colors.primary}20` }]}>
+                          <Text style={[styles.miniAvatarText, { color: u.role === 'host' ? colors.accent : colors.primary }]}>
+                            {(u.full_name?.[0] ?? '?').toUpperCase()}
+                          </Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.expandRowName}>{u.full_name ?? '(sin nombre)'} {u.last_name ?? ''}</Text>
+                          <Text style={styles.expandRowMeta}>{u.role === 'host' ? 'Cuidador' : u.is_admin ? 'Admin' : 'Cliente'} · KYC: {u.kyc_status}</Text>
+                        </View>
+                      </View>
+                    ))
+                )}
+
+                {c.key === 'spaces' && (
+                  spaces.length === 0
+                    ? <Text style={styles.expandEmpty}>Sin espacios publicados</Text>
+                    : spaces.map(s => (
+                      <View key={s.id} style={styles.expandRow}>
+                        <Ionicons name="home-outline" size={16} color={colors.accent} style={{ marginRight: 10, marginTop: 1 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.expandRowName}>{s.title}</Text>
+                          <Text style={styles.expandRowMeta}>{s.location} · ${s.price_per_night.toLocaleString('es-CL')}/noche · {s.active ? 'Activo' : 'Inactivo'}</Text>
+                        </View>
+                      </View>
+                    ))
+                )}
+
+                {c.key === 'visiters' && (
+                  visiters.length === 0
+                    ? <Text style={styles.expandEmpty}>Sin visiters publicados</Text>
+                    : visiters.map(v => (
+                      <View key={v.id} style={styles.expandRow}>
+                        <Ionicons name="paw-outline" size={16} color={colors.lilac} style={{ marginRight: 10, marginTop: 1 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.expandRowName}>{v.name}</Text>
+                          <Text style={styles.expandRowMeta}>{v.profession_title} · ${v.price_per_visit.toLocaleString('es-CL')}/visita · {v.active ? 'Activo' : 'Inactivo'}</Text>
+                        </View>
+                      </View>
+                    ))
+                )}
+
+                {c.key === 'bookings' && (
+                  bookings.length === 0
+                    ? <Text style={styles.expandEmpty}>Sin reservas</Text>
+                    : bookings.slice(0, 10).map(b => (
+                      <View key={b.id} style={styles.expandRow}>
+                        <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[b.status] ?? colors.textMuted, marginRight: 10, marginTop: 5 }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.expandRowName}>{b.profiles?.full_name ?? 'Usuario'}</Text>
+                          <Text style={styles.expandRowMeta}>{b.service_type} · {b.start_date} → {b.end_date} · ${b.total_price.toLocaleString('es-CL')}</Text>
+                        </View>
+                      </View>
+                    ))
+                )}
+
+                {c.key === 'active' && (
+                  activeBookings.length === 0
+                    ? <Text style={styles.expandEmpty}>Sin reservas activas en este momento</Text>
+                    : activeBookings.map(b => (
+                      <View key={b.id} style={styles.expandRow}>
+                        <View style={[styles.statusDot, { backgroundColor: colors.success, marginRight: 10, marginTop: 5 }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.expandRowName}>{b.profiles?.full_name ?? 'Usuario'}</Text>
+                          <Text style={styles.expandRowMeta}>{b.service_type} · {b.start_date} → {b.end_date}</Text>
+                        </View>
+                      </View>
+                    ))
+                )}
+
+                {c.key === 'pending' && (
+                  pendingApps.length === 0
+                    ? <Text style={styles.expandEmpty}>Sin postulaciones pendientes</Text>
+                    : pendingApps.map(a => (
+                      <View key={a.id} style={styles.expandRow}>
+                        <Ionicons name="time-outline" size={16} color={colors.warning} style={{ marginRight: 10, marginTop: 1 }} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.expandRowName}>{a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}</Text>
+                          <Text style={styles.expandRowMeta}>{a.service_type} · {new Date(a.submitted_at).toLocaleDateString('es-CL')}</Text>
+                        </View>
+                      </View>
+                    ))
+                )}
+
+                {(c.key === 'users' || c.key === 'bookings' || c.key === 'pending') && (
+                  <TouchableOpacity
+                    style={styles.expandSeeAll}
+                    onPress={() => {
+                      setExpanded(null);
+                      onTabChange(c.key === 'users' ? 'users' : c.key === 'pending' ? 'applications' : 'bookings');
+                    }}
+                  >
+                    <Text style={styles.expandSeeAllText}>Ver todos en pestaña →</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            )}
           </View>
-        ))}
-      </View>
+        );
+      })}
     </View>
   );
 }
+
+const STATUS_COLOR: Record<string, string> = {
+  pending: colors.warning,
+  active: colors.accent,
+  completed: colors.success,
+  cancelled: colors.danger,
+};
+
+// ─── Users Tab ────────────────────────────────────────────────────────────────
 
 function UsersTab({ users, search, onSearch, onToggleAdmin }: {
   users: AdminUser[]; search: string;
@@ -357,6 +551,12 @@ function UsersTab({ users, search, onSearch, onToggleAdmin }: {
         placeholder="Buscar por nombre..."
         placeholderTextColor={colors.textMuted}
       />
+      {users.length === 0 && (
+        <View style={styles.emptyState}>
+          <Ionicons name="people-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
+          <Text style={styles.emptyText}>Sin usuarios registrados</Text>
+        </View>
+      )}
       {users.map(u => (
         <View key={u.id} style={styles.card}>
           <View style={styles.cardRow}>
@@ -441,6 +641,8 @@ function UsersTab({ users, search, onSearch, onToggleAdmin }: {
   );
 }
 
+// ─── Applications Tab ─────────────────────────────────────────────────────────
+
 function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
   applications: Application[];
   onApprove: (id: string, userId: string, serviceType: string) => void;
@@ -453,9 +655,7 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>
-        Postulaciones Pendientes ({pending.length})
-      </Text>
+      <Text style={styles.sectionTitle}>Postulaciones Pendientes ({pending.length})</Text>
       {pending.length === 0 && (
         <View style={styles.emptyState}>
           <Ionicons name="checkmark-circle-outline" size={32} color={colors.accent} style={{ marginBottom: 8 }} />
@@ -534,6 +734,8 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
   );
 }
 
+// ─── Payments Tab ─────────────────────────────────────────────────────────────
+
 function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onConfirm: (id: string) => void }) {
   const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
   return (
@@ -583,16 +785,18 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
   );
 }
 
+// ─── Bookings Tab ─────────────────────────────────────────────────────────────
+
 function BookingsTab({ bookings }: { bookings: AdminBooking[] }) {
-  const STATUS_COLOR: Record<string, string> = {
-    pending: colors.warning,
-    active: colors.accent,
-    completed: colors.success,
-    cancelled: colors.danger,
-  };
   return (
     <View>
       <Text style={styles.sectionTitle}>Reservas Recientes ({bookings.length})</Text>
+      {bookings.length === 0 && (
+        <View style={styles.emptyState}>
+          <Ionicons name="calendar-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
+          <Text style={styles.emptyText}>Sin reservas registradas</Text>
+        </View>
+      )}
       {bookings.map(b => (
         <View key={b.id} style={styles.card}>
           <View style={styles.cardRow}>
@@ -605,8 +809,8 @@ function BookingsTab({ bookings }: { bookings: AdminBooking[] }) {
                 ${b.total_price.toLocaleString('es-CL')} CLP
               </Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLOR[b.status]}20`, borderColor: STATUS_COLOR[b.status] }]}>
-              <Text style={[styles.statusText, { color: STATUS_COLOR[b.status] }]}>{b.status}</Text>
+            <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLOR[b.status] ?? colors.textMuted}20`, borderColor: STATUS_COLOR[b.status] ?? colors.textMuted }]}>
+              <Text style={[styles.statusText, { color: STATUS_COLOR[b.status] ?? colors.textMuted }]}>{b.status}</Text>
             </View>
           </View>
         </View>
@@ -615,11 +819,12 @@ function BookingsTab({ bookings }: { bookings: AdminBooking[] }) {
   );
 }
 
+// ─── Styles ───────────────────────────────────────────────────────────────────
+
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { padding: 8 },
-  backBtnText: { fontSize: 24, color: colors.primary },
   headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
   tabBar: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   tabItem: { flex: 1, alignItems: 'center', paddingVertical: 10, position: 'relative' },
@@ -630,10 +835,24 @@ const styles = StyleSheet.create({
   badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
   scrollContent: { padding: 16, paddingBottom: 40 },
   sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain, marginBottom: 16 },
-  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  statCard: { width: '30%', flexGrow: 1, backgroundColor: colors.surface, borderRadius: 14, padding: 14, alignItems: 'center', borderTopWidth: 3, shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, elevation: 2 },
-  statValue: { fontSize: 24, fontWeight: '800' },
-  statLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600', marginTop: 2 },
+
+  // Expandable cards
+  expandCard: { backgroundColor: colors.surface, borderRadius: 14, marginBottom: 10, borderTopWidth: 3, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
+  expandCardHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 14 },
+  expandCardLeft: { flexDirection: 'row', alignItems: 'center' },
+  expandCardValue: { fontSize: 22, fontWeight: '800', lineHeight: 26 },
+  expandCardLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
+  expandContent: { borderTopWidth: 1, borderTopColor: colors.border, paddingHorizontal: 14, paddingBottom: 10, paddingTop: 8 },
+  expandEmpty: { fontSize: 13, color: colors.textMuted, paddingVertical: 8, textAlign: 'center' },
+  expandRow: { flexDirection: 'row', alignItems: 'flex-start', paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: `${colors.border}80` },
+  expandRowName: { fontSize: 13, fontWeight: '700', color: colors.textMain },
+  expandRowMeta: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
+  expandSeeAll: { marginTop: 10, alignItems: 'center' },
+  expandSeeAllText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+  miniAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  miniAvatarText: { fontSize: 12, fontWeight: '700' },
+  statusDot: { width: 8, height: 8, borderRadius: 4 },
+
   searchInput: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, color: colors.textMain, marginBottom: 16 },
   card: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
   cardPending: { borderColor: colors.warning, borderWidth: 1.5 },

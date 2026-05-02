@@ -107,7 +107,17 @@ export function BookingsScreen() {
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContainer, bookings.length === 0 && styles.emptyContainer]}
-        ListHeaderComponent={active.length > 0 ? <Text style={styles.sectionTitle}>En curso y próximas</Text> : null}
+        ListHeaderComponent={
+          <>
+            {active.length > 0 && <Text style={styles.sectionTitle}>En curso y próximas</Text>}
+            {active.length === 0 && past.length > 0 && (
+              <View style={styles.emptyActiveCard}>
+                <Ionicons name="calendar-outline" size={20} color={colors.textMuted} style={{ marginRight: 8 }} />
+                <Text style={styles.emptyActiveText}>Sin reservas pendientes</Text>
+              </View>
+            )}
+          </>
+        }
         renderItem={({ item, index }) => {
           const isFirstPast = index === active.length;
           const host = hostMap[item.id];
@@ -272,4 +282,6 @@ const styles = StyleSheet.create({
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
   emptyBtn: { marginTop: 8, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 },
   emptyBtnText: { color: colors.surface, fontWeight: '800', fontSize: 14 },
+  emptyActiveCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
+  emptyActiveText: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
 });
