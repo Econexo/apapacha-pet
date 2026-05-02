@@ -24,14 +24,17 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
           ) : null}
         </View>
 
-        <View style={styles.logoRow}>
+        <View style={styles.logoWrap}>
           <Image
-            source={require('../../assets/icon.png')}
-            style={styles.logoIcon}
-            resizeMode="contain"
+            source={require('../../assets/LogoHeader.png')}
+            style={[
+              styles.logoImg,
+              // React Native Web pasa estas props directamente al <img> como CSS.
+              // object-fit:cover + object-position:center centra el logo correctamente.
+              { objectFit: 'cover', objectPosition: 'center' } as any,
+            ]}
+            resizeMode="cover"
           />
-          <Text style={styles.logoTextA}>papacha</Text>
-          <Text style={styles.logoTextPet}>Pet</Text>
         </View>
 
         <View style={styles.side}>
@@ -55,28 +58,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   side: { width: 52, alignItems: 'center', justifyContent: 'center' },
-  logoRow: {
+  logoWrap: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
+    height: NAV_HEIGHT,
+    overflow: 'hidden',
   },
-  logoIcon: {
-    width: 36,
-    height: 36,
-  },
-  logoTextA: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.primaryDark,
-    letterSpacing: -0.5,
-  },
-  logoTextPet: {
-    fontSize: 22,
-    fontWeight: '800',
-    color: colors.accent,
-    letterSpacing: -0.5,
+  logoImg: {
+    width: '100%',
+    height: '100%',
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
