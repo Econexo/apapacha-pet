@@ -9,11 +9,6 @@ interface AppHeaderProps {
 }
 
 const NAV_HEIGHT = 56;
-// La imagen LogoHeader.png es 1485×1485. El logo ocupa la banda central.
-// Renderizamos la imagen a IMG_HEIGHT píxeles de alto (cuadrada) y la
-// centramos dentro de NAV_HEIGHT usando top negativo. overflow:hidden recorta.
-const IMG_HEIGHT = 300;
-const IMG_OFFSET = -Math.round((IMG_HEIGHT - NAV_HEIGHT) / 2); // -122
 
 export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
   const insets = useSafeAreaInsets();
@@ -28,13 +23,17 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
             </TouchableOpacity>
           ) : null}
         </View>
-        <View style={styles.logoWrap}>
+
+        <View style={styles.logoRow}>
           <Image
-            source={require('../../assets/LogoHeader.png')}
-            style={[styles.logoImg, { top: IMG_OFFSET }]}
+            source={require('../../assets/icon.png')}
+            style={styles.logoIcon}
             resizeMode="contain"
           />
+          <Text style={styles.logoTextA}>papacha</Text>
+          <Text style={styles.logoTextPet}>Pet</Text>
         </View>
+
         <View style={styles.side}>
           {rightElement ?? null}
         </View>
@@ -56,15 +55,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
   },
   side: { width: 52, alignItems: 'center', justifyContent: 'center' },
-  logoWrap: {
+  logoRow: {
     flex: 1,
-    height: NAV_HEIGHT,
-    overflow: 'hidden',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
-  logoImg: {
-    width: '100%',
-    height: IMG_HEIGHT,
-    marginTop: IMG_OFFSET,
+  logoIcon: {
+    width: 36,
+    height: 36,
+  },
+  logoTextA: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.primaryDark,
+    letterSpacing: -0.5,
+  },
+  logoTextPet: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: colors.accent,
+    letterSpacing: -0.5,
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
