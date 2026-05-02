@@ -27,13 +27,7 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
         <View style={styles.logoWrap}>
           <Image
             source={require('../../assets/LogoHeader.png')}
-            style={[
-              styles.logoImg,
-              // React Native Web pasa estas props directamente al <img> como CSS.
-              // object-fit:cover + object-position:center centra el logo correctamente.
-              { objectFit: 'cover', objectPosition: 'center 35%' } as any,
-            ]}
-            resizeMode="cover"
+            style={styles.logoImg}
           />
         </View>
 
@@ -66,8 +60,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   logoImg: {
-    width: '50%',
-    height: '50%',
+    width: 130,
+    height: 130,
   },
   backBtn: { padding: 4 },
   backText: { fontSize: 28, color: colors.primary, fontWeight: '300', lineHeight: 28 },
