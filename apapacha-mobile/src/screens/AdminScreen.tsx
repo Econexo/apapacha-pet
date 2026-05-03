@@ -114,6 +114,7 @@ export function AdminScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
+  const [usersError, setUsersError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!profile?.is_admin) {
@@ -158,12 +159,14 @@ export function AdminScreen() {
   }
 
   async function loadUsers() {
+    setUsersError(null);
     const { data: profiles, error } = await supabase
       .from('profiles')
       .select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, signed_contract_url, created_at')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('[AdminScreen] loadUsers query error:', error.message);
+      setUsersError(error.message);
       return setUsers([]);
     }
     if (!profiles || profiles.length === 0) return setUsers([]);
@@ -406,6 +409,7 @@ export function AdminScreen() {
             onToggleAdmin={toggleAdmin}
             onUpdateKyc={updateKycStatus}
             onDeleteProfile={deleteProfileUser}
+            dbError={usersError}
           />
         )}
         {activeTab === 'applications' && (
@@ -641,12 +645,13 @@ const STATUS_COLOR: Record<string, string> = {
 
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 
-function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDeleteProfile }: {
+function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDeleteProfile, dbError }: {
   users: AdminUser[]; search: string;
   onSearch: (v: string) => void;
   onToggleAdmin: (id: string, current: boolean) => void;
   onUpdateKyc: (id: string, status: string) => void;
   onDeleteProfile: (id: string, name: string) => void;
+  dbError?: string | null;
 }) {
   return (
     <View>
@@ -658,7 +663,13 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
         placeholder="Buscar por nombre..."
         placeholderTextColor={colors.textMuted}
       />
-      {users.length === 0 && (
+      {dbError && (
+        <View style={{ backgroundColor: `${colors.danger}15`, borderRadius: 10, padding: 12, marginBottom: 12, borderWidth: 1, borderColor: `${colors.danger}40` }}>
+          <Text style={{ color: colors.danger, fontWeight: '700', fontSize: 12, marginBottom: 4 }}>Error SQL:</Text>
+          <Text style={{ color: colors.danger, fontSize: 12 }}>{dbError}</Text>
+        </View>
+      )}
+      {users.length === 0 && !dbError && (
         <View style={styles.emptyState}>
           <Ionicons name="people-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
           <Text style={styles.emptyText}>Sin usuarios registrados</Text>
