@@ -332,10 +332,11 @@ export function AdminScreen() {
     loadBookings(); loadStats();
   }
 
-  const filteredUsers = users.filter(u =>
-    u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
-    u.last_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredUsers = !search
+    ? users
+    : users.filter(u =>
+        `${u.full_name ?? ''} ${u.last_name ?? ''}`.toLowerCase().includes(search.toLowerCase())
+      );
 
   if (loading) {
     return (
