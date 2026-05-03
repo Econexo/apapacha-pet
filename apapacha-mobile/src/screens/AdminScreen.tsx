@@ -45,7 +45,7 @@ interface AdminUser {
   role: string;
   kyc_status: string;
   is_admin: boolean;
-  signed_contract_url: string | null;
+  signed_contract_url?: string | null;
   created_at: string;
   spacesCount?: number;
   visitersCount?: number;
@@ -162,7 +162,7 @@ export function AdminScreen() {
     setUsersError(null);
     const { data: profiles, error } = await supabase
       .from('profiles')
-      .select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, signed_contract_url, created_at')
+      .select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, created_at')
       .order('created_at', { ascending: false });
     if (error) {
       console.error('[AdminScreen] loadUsers query error:', error.message);
@@ -291,14 +291,16 @@ export function AdminScreen() {
     Alert.alert('Eliminar perfil', `Eliminar el perfil de ${name}. Su cuenta de login seguirá activa.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        await supabase.from('profiles').delete().eq('id', userId);
+        const { error } = await supabase.from('profiles').delete().eq('id', userId);
+        if (error) { Alert.alert('Error', error.message); return; }
         loadUsers(); loadStats();
       }},
     ]);
   }
 
   async function toggleSpaceActive(spaceId: string, current: boolean) {
-    await supabase.from('spaces').update({ active: !current }).eq('id', spaceId);
+    const { error } = await supabase.from('spaces').update({ active: !current }).eq('id', spaceId);
+    if (error) { Alert.alert('Error', error.message); return; }
     loadSpaces();
   }
 
@@ -306,14 +308,16 @@ export function AdminScreen() {
     Alert.alert('Eliminar espacio', `¿Eliminar "${title}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        await supabase.from('spaces').delete().eq('id', spaceId);
+        const { error } = await supabase.from('spaces').delete().eq('id', spaceId);
+        if (error) { Alert.alert('Error', error.message); return; }
         loadSpaces(); loadStats();
       }},
     ]);
   }
 
   async function toggleVisiterActive(visiterId: string, current: boolean) {
-    await supabase.from('visiters').update({ active: !current }).eq('id', visiterId);
+    const { error } = await supabase.from('visiters').update({ active: !current }).eq('id', visiterId);
+    if (error) { Alert.alert('Error', error.message); return; }
     loadVisiters();
   }
 
@@ -321,7 +325,8 @@ export function AdminScreen() {
     Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        await supabase.from('visiters').delete().eq('id', visiterId);
+        const { error } = await supabase.from('visiters').delete().eq('id', visiterId);
+        if (error) { Alert.alert('Error', error.message); return; }
         loadVisiters(); loadStats();
       }},
     ]);
