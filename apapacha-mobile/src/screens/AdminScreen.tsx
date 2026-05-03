@@ -279,6 +279,56 @@ export function AdminScreen() {
     loadUsers();
   }
 
+  async function updateKycStatus(userId: string, status: string) {
+    await supabase.from('profiles').update({ kyc_status: status }).eq('id', userId);
+    loadUsers();
+  }
+
+  async function deleteProfileUser(userId: string, name: string) {
+    Alert.alert('Eliminar perfil', `Eliminar el perfil de ${name}. Su cuenta de login seguirá activa.`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+        await supabase.from('profiles').delete().eq('id', userId);
+        loadUsers(); loadStats();
+      }},
+    ]);
+  }
+
+  async function toggleSpaceActive(spaceId: string, current: boolean) {
+    await supabase.from('spaces').update({ active: !current }).eq('id', spaceId);
+    loadSpaces();
+  }
+
+  async function deleteSpace(spaceId: string, title: string) {
+    Alert.alert('Eliminar espacio', `¿Eliminar "${title}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+        await supabase.from('spaces').delete().eq('id', spaceId);
+        loadSpaces(); loadStats();
+      }},
+    ]);
+  }
+
+  async function toggleVisiterActive(visiterId: string, current: boolean) {
+    await supabase.from('visiters').update({ active: !current }).eq('id', visiterId);
+    loadVisiters();
+  }
+
+  async function deleteVisiter(visiterId: string, name: string) {
+    Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?`, [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+        await supabase.from('visiters').delete().eq('id', visiterId);
+        loadVisiters(); loadStats();
+      }},
+    ]);
+  }
+
+  async function updateBookingStatus(bookingId: string, status: string) {
+    await supabase.from('bookings').update({ status }).eq('id', bookingId);
+    loadBookings(); loadStats();
+  }
+
   const filteredUsers = users.filter(u =>
     u.full_name?.toLowerCase().includes(search.toLowerCase()) ||
     u.last_name?.toLowerCase().includes(search.toLowerCase())
@@ -342,6 +392,10 @@ export function AdminScreen() {
             bookings={bookings}
             applications={applications}
             onTabChange={setActiveTab}
+            onToggleSpace={toggleSpaceActive}
+            onDeleteSpace={deleteSpace}
+            onToggleVisiter={toggleVisiterActive}
+            onDeleteVisiter={deleteVisiter}
           />
         )}
         {activeTab === 'users' && (
@@ -350,6 +404,8 @@ export function AdminScreen() {
             search={search}
             onSearch={setSearch}
             onToggleAdmin={toggleAdmin}
+            onUpdateKyc={updateKycStatus}
+            onDeleteProfile={deleteProfileUser}
           />
         )}
         {activeTab === 'applications' && (
@@ -363,7 +419,7 @@ export function AdminScreen() {
         {activeTab === 'payments' && (
           <PaymentsTab payments={pendingPayments} onConfirm={handleConfirmPayment} />
         )}
-        {activeTab === 'bookings' && <BookingsTab bookings={bookings} />}
+        {activeTab === 'bookings' && <BookingsTab bookings={bookings} onUpdateStatus={updateBookingStatus} />}
       </ScrollView>
     </SafeAreaView>
   );
@@ -373,7 +429,7 @@ export function AdminScreen() {
 
 type CardKey = 'users' | 'spaces' | 'visiters' | 'bookings' | 'active' | 'pending';
 
-function DashboardTab({ stats, users, spaces, visiters, bookings, applications, onTabChange }: {
+function DashboardTab({ stats, users, spaces, visiters, bookings, applications, onTabChange, onToggleSpace, onDeleteSpace, onToggleVisiter, onDeleteVisiter }: {
   stats: Stats | null;
   users: AdminUser[];
   spaces: AdminSpace[];
@@ -381,6 +437,10 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
   bookings: AdminBooking[];
   applications: Application[];
   onTabChange: (tab: Tab) => void;
+  onToggleSpace: (id: string, current: boolean) => void;
+  onDeleteSpace: (id: string, title: string) => void;
+  onToggleVisiter: (id: string, current: boolean) => void;
+  onDeleteVisiter: (id: string, name: string) => void;
 }) {
   const [expanded, setExpanded] = useState<CardKey | null>(null);
 
@@ -450,11 +510,29 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
                   spaces.length === 0
                     ? <Text style={styles.expandEmpty}>Sin espacios publicados</Text>
                     : spaces.map(s => (
-                      <View key={s.id} style={styles.expandRow}>
-                        <Ionicons name="home-outline" size={16} color={colors.accent} style={{ marginRight: 10, marginTop: 1 }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.expandRowName}>{s.title}</Text>
-                          <Text style={styles.expandRowMeta}>{s.location} · ${s.price_per_night.toLocaleString('es-CL')}/noche · {s.active ? 'Activo' : 'Inactivo'}</Text>
+                      <View key={s.id} style={[styles.expandRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', width: '100%' }}>
+                          <Ionicons name="home-outline" size={16} color={colors.accent} style={{ marginRight: 10, marginTop: 1 }} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.expandRowName}>{s.title}</Text>
+                            <Text style={styles.expandRowMeta}>{s.location} · ${s.price_per_night.toLocaleString('es-CL')}/noche</Text>
+                          </View>
+                        </View>
+                        <View style={styles.expandRowActions}>
+                          <TouchableOpacity
+                            style={[styles.miniActionBtn, { backgroundColor: s.active ? `${colors.warning}15` : `${colors.accent}15`, borderColor: s.active ? colors.warning : colors.accent }]}
+                            onPress={() => onToggleSpace(s.id, s.active)}
+                          >
+                            <Ionicons name={s.active ? 'pause-circle-outline' : 'play-circle-outline'} size={12} color={s.active ? colors.warning : colors.accent} />
+                            <Text style={[styles.miniActionText, { color: s.active ? colors.warning : colors.accent }]}>{s.active ? 'Desactivar' : 'Activar'}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.miniActionBtn, { backgroundColor: `${colors.danger}10`, borderColor: colors.danger }]}
+                            onPress={() => onDeleteSpace(s.id, s.title)}
+                          >
+                            <Ionicons name="trash-outline" size={12} color={colors.danger} />
+                            <Text style={[styles.miniActionText, { color: colors.danger }]}>Eliminar</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     ))
@@ -464,11 +542,29 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
                   visiters.length === 0
                     ? <Text style={styles.expandEmpty}>Sin visiters publicados</Text>
                     : visiters.map(v => (
-                      <View key={v.id} style={styles.expandRow}>
-                        <Ionicons name="paw-outline" size={16} color={colors.lilac} style={{ marginRight: 10, marginTop: 1 }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.expandRowName}>{v.name}</Text>
-                          <Text style={styles.expandRowMeta}>{v.profession_title} · ${v.price_per_visit.toLocaleString('es-CL')}/visita · {v.active ? 'Activo' : 'Inactivo'}</Text>
+                      <View key={v.id} style={[styles.expandRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', width: '100%' }}>
+                          <Ionicons name="paw-outline" size={16} color={colors.lilac} style={{ marginRight: 10, marginTop: 1 }} />
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.expandRowName}>{v.name}</Text>
+                            <Text style={styles.expandRowMeta}>{v.profession_title} · ${v.price_per_visit.toLocaleString('es-CL')}/visita</Text>
+                          </View>
+                        </View>
+                        <View style={styles.expandRowActions}>
+                          <TouchableOpacity
+                            style={[styles.miniActionBtn, { backgroundColor: v.active ? `${colors.warning}15` : `${colors.accent}15`, borderColor: v.active ? colors.warning : colors.accent }]}
+                            onPress={() => onToggleVisiter(v.id, v.active)}
+                          >
+                            <Ionicons name={v.active ? 'pause-circle-outline' : 'play-circle-outline'} size={12} color={v.active ? colors.warning : colors.accent} />
+                            <Text style={[styles.miniActionText, { color: v.active ? colors.warning : colors.accent }]}>{v.active ? 'Desactivar' : 'Activar'}</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[styles.miniActionBtn, { backgroundColor: `${colors.danger}10`, borderColor: colors.danger }]}
+                            onPress={() => onDeleteVisiter(v.id, v.name)}
+                          >
+                            <Ionicons name="trash-outline" size={12} color={colors.danger} />
+                            <Text style={[styles.miniActionText, { color: colors.danger }]}>Eliminar</Text>
+                          </TouchableOpacity>
                         </View>
                       </View>
                     ))
@@ -545,10 +641,12 @@ const STATUS_COLOR: Record<string, string> = {
 
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 
-function UsersTab({ users, search, onSearch, onToggleAdmin }: {
+function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDeleteProfile }: {
   users: AdminUser[]; search: string;
   onSearch: (v: string) => void;
   onToggleAdmin: (id: string, current: boolean) => void;
+  onUpdateKyc: (id: string, status: string) => void;
+  onDeleteProfile: (id: string, name: string) => void;
 }) {
   return (
     <View>
@@ -642,6 +740,28 @@ function UsersTab({ users, search, onSearch, onToggleAdmin }: {
               onPress={() => onToggleAdmin(u.id, u.is_admin)}
             >
               <Text style={styles.actionBtnText}>{u.is_admin ? 'Quitar Admin' : 'Hacer Admin'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, u.kyc_status === 'verified' ? styles.actionBtnDanger : styles.actionBtnSuccess]}
+              onPress={() => Alert.alert(
+                'Gestionar KYC',
+                `${u.full_name} — estado: ${u.kyc_status}`,
+                [
+                  { text: 'Cancelar', style: 'cancel' },
+                  ...(u.kyc_status !== 'verified' ? [{ text: '✓ Verificar', onPress: () => onUpdateKyc(u.id, 'verified') }] : []),
+                  ...(u.kyc_status !== 'rejected' ? [{ text: '✗ Rechazar', style: 'destructive' as const, onPress: () => onUpdateKyc(u.id, 'rejected') }] : []),
+                  ...(u.kyc_status !== 'pending'  ? [{ text: 'Resetear', onPress: () => onUpdateKyc(u.id, 'pending') }] : []),
+                ]
+              )}
+            >
+              <Ionicons name={u.kyc_status === 'verified' ? 'shield-checkmark-outline' : 'shield-outline'} size={13} color={u.kyc_status === 'verified' ? colors.accent : colors.warning} />
+              <Text style={styles.actionBtnText}>KYC</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.actionBtn, { flex: 0, paddingHorizontal: 10, borderColor: `${colors.danger}40`, backgroundColor: `${colors.danger}08` }]}
+              onPress={() => onDeleteProfile(u.id, u.full_name ?? 'usuario')}
+            >
+              <Ionicons name="trash-outline" size={14} color={colors.danger} />
             </TouchableOpacity>
           </View>
         </View>
@@ -796,7 +916,7 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
 
 // ─── Bookings Tab ─────────────────────────────────────────────────────────────
 
-function BookingsTab({ bookings }: { bookings: AdminBooking[] }) {
+function BookingsTab({ bookings, onUpdateStatus }: { bookings: AdminBooking[]; onUpdateStatus: (id: string, status: string) => void }) {
   return (
     <View>
       <Text style={styles.sectionTitle}>Reservas Recientes ({bookings.length})</Text>
@@ -822,6 +942,32 @@ function BookingsTab({ bookings }: { bookings: AdminBooking[] }) {
               <Text style={[styles.statusText, { color: STATUS_COLOR[b.status] ?? colors.textMuted }]}>{b.status}</Text>
             </View>
           </View>
+          {(b.status === 'pending' || b.status === 'active') && (
+            <View style={[styles.cardActions, { marginTop: 10 }]}>
+              {b.status === 'active' && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.actionBtnSuccess]}
+                  onPress={() => Alert.alert('Completar reserva', '¿Marcar como completada?', [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Completar', onPress: () => onUpdateStatus(b.id, 'completed') },
+                  ])}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={14} color={colors.accent} />
+                  <Text style={styles.actionBtnText}>Completar</Text>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnDanger]}
+                onPress={() => Alert.alert('Cancelar reserva', '¿Confirmar cancelación?', [
+                  { text: 'Volver', style: 'cancel' },
+                  { text: 'Cancelar', style: 'destructive', onPress: () => onUpdateStatus(b.id, 'cancelled') },
+                ])}
+              >
+                <Ionicons name="close-circle-outline" size={14} color={colors.danger} />
+                <Text style={styles.actionBtnText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
       ))}
     </View>
@@ -861,6 +1007,9 @@ const styles = StyleSheet.create({
   miniAvatar: { width: 28, height: 28, borderRadius: 14, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
   miniAvatarText: { fontSize: 12, fontWeight: '700' },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
+  expandRowActions: { flexDirection: 'row', gap: 6, paddingLeft: 26, paddingTop: 4 },
+  miniActionBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1 },
+  miniActionText: { fontSize: 11, fontWeight: '700' },
 
   searchInput: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, color: colors.textMain, marginBottom: 16 },
   card: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
