@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
-  TouchableOpacity, ActivityIndicator, Alert, Switch,
+  TouchableOpacity, ActivityIndicator, Alert, Switch, Image, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
-import { getMySpace, upsertMySpace } from '../services/spaces.service';
-import { getMyVisiter, upsertMyVisiter } from '../services/visiters.service';
+import { getMySpace, upsertMySpace, uploadSpacePhoto } from '../services/spaces.service';
+import { getMyVisiter, upsertMyVisiter, uploadVisiterPhoto } from '../services/visiters.service';
 import type { Space, Visiter } from '../types/database';
 
 type Route = RouteProp<RootStackParamList, 'ManageService'>;
@@ -41,6 +42,14 @@ export function ManageServiceScreen() {
   const [bio, setBio]           = useState('');
   const [priceVisit, setPriceVisit] = useState('');
 
+  // Images (spaces)
+  const [imageUris, setImageUris]     = useState<string[]>([]); // local URIs to upload
+  const [existingUrls, setExistingUrls] = useState<string[]>([]); // already uploaded
+
+  // Image (visiters — single photo)
+  const [visiterImageUri, setVisiterImageUri]       = useState<string | null>(null);
+  const [visiterExistingUrl, setVisiterExistingUrl] = useState<string | null>(null);
+
   // Shared
   const [active, setActive]     = useState(true);
 
@@ -57,6 +66,7 @@ export function ManageServiceScreen() {
             setPriceNight(String(s.price_per_night));
             setFeatures(s.features ?? []);
             setActive(s.active);
+            setExistingUrls(s.image_urls ?? []);
           }
         } else {
           const v = await getMyVisiter();
@@ -67,6 +77,7 @@ export function ManageServiceScreen() {
             setBio(v.bio);
             setPriceVisit(String(v.price_per_visit));
             setActive(v.active);
+            setVisiterExistingUrl(v.image_url ?? null);
           }
         }
       } catch (e) {
@@ -76,10 +87,24 @@ export function ManageServiceScreen() {
       }
     };
     load();
-  }, []);
+  }, [isSpace]);
 
   const toggleFeature = (f: string) => {
     setFeatures(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
+  };
+
+  const pickImage = async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permiso requerido'); return; }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'] as ImagePicker.MediaType[],
+      allowsEditing: true, aspect: [4, 3], quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) {
+      setImageUris(prev => [...prev, result.assets[0].uri]);
+    }
   };
 
   const handleSave = async () => {
@@ -97,6 +122,9 @@ export function ManageServiceScreen() {
     setSaving(true);
     try {
       if (isSpace) {
+        // Upload any new local images first
+        const newUrls = await Promise.all(imageUris.map(uri => uploadSpacePhoto(uri)));
+        const allImageUrls = [...existingUrls, ...newUrls];
         await upsertMySpace({
           id: existingId,
           title: title.trim(),
@@ -105,8 +133,13 @@ export function ManageServiceScreen() {
           price_per_night: Number(priceNight),
           features,
           active,
+          image_urls: allImageUrls,
         });
       } else {
+        let finalImageUrl = visiterExistingUrl;
+        if (visiterImageUri) {
+          finalImageUrl = await uploadVisiterPhoto(visiterImageUri);
+        }
         await upsertMyVisiter({
           id: existingId,
           name: name.trim(),
@@ -114,6 +147,7 @@ export function ManageServiceScreen() {
           bio: bio.trim(),
           price_per_visit: Number(priceVisit),
           active,
+          image_url: finalImageUrl,
         });
       }
       Alert.alert(
@@ -152,11 +186,28 @@ export function ManageServiceScreen() {
             location={location} setLocation={setLocation}
             priceNight={priceNight} setPriceNight={setPriceNight}
             features={features} toggleFeature={toggleFeature}
+            existingUrls={existingUrls} setExistingUrls={setExistingUrls}
+            imageUris={imageUris} setImageUris={setImageUris}
+            onPickImage={pickImage}
           /> : <VisiterForm
             name={name} setName={setName}
             profTitle={profTitle} setProfTitle={setProfTitle}
             bio={bio} setBio={setBio}
             priceVisit={priceVisit} setPriceVisit={setPriceVisit}
+            existingUrl={visiterExistingUrl}
+            localUri={visiterImageUri}
+            onPickImage={async () => {
+              if (Platform.OS !== 'web') {
+                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+                if (status !== 'granted') { Alert.alert('Permiso requerido'); return; }
+              }
+              const result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ['images'] as ImagePicker.MediaType[],
+                allowsEditing: true, aspect: [1, 1], quality: 0.85,
+              });
+              if (!result.canceled && result.assets[0]) setVisiterImageUri(result.assets[0].uri);
+            }}
+            onRemoveImage={() => { setVisiterImageUri(null); setVisiterExistingUrl(null); }}
           />}
 
           {/* Active toggle */}
@@ -192,16 +243,51 @@ export function ManageServiceScreen() {
   );
 }
 
-function SpaceForm({ title, setTitle, desc, setDesc, location, setLocation, priceNight, setPriceNight, features, toggleFeature }: {
+function SpaceForm({ title, setTitle, desc, setDesc, location, setLocation, priceNight, setPriceNight, features, toggleFeature, existingUrls, setExistingUrls, imageUris, setImageUris, onPickImage }: {
   title: string; setTitle: (v: string) => void;
   desc: string; setDesc: (v: string) => void;
   location: string; setLocation: (v: string) => void;
   priceNight: string; setPriceNight: (v: string) => void;
   features: string[]; toggleFeature: (f: string) => void;
+  existingUrls: string[]; setExistingUrls: (v: string[]) => void;
+  imageUris: string[]; setImageUris: (v: string[]) => void;
+  onPickImage: () => void;
 }) {
+  const allPhotos = [...existingUrls, ...imageUris];
   return (
     <>
       <Text style={styles.serviceTypeBadge}>🏠 Alojamiento catificado</Text>
+
+      <Text style={styles.label}>Fotos del espacio</Text>
+      <Text style={styles.sublabel}>Agrega hasta 5 fotos. La primera será la principal.</Text>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 8 }}>
+        <View style={{ flexDirection: 'row', gap: 10, paddingVertical: 4 }}>
+          {allPhotos.map((uri, i) => (
+            <View key={uri + i} style={styles.photoThumb}>
+              <Image source={{ uri }} style={styles.photoThumbImg} />
+              <TouchableOpacity
+                style={styles.photoRemoveBtn}
+                onPress={() => {
+                  if (i < existingUrls.length) {
+                    setExistingUrls(existingUrls.filter((_, idx) => idx !== i));
+                  } else {
+                    setImageUris(imageUris.filter((_, idx) => idx !== (i - existingUrls.length)));
+                  }
+                }}
+              >
+                <Text style={styles.photoRemoveText}>✕</Text>
+              </TouchableOpacity>
+              {i === 0 && <View style={styles.mainBadge}><Text style={styles.mainBadgeText}>Principal</Text></View>}
+            </View>
+          ))}
+          {allPhotos.length < 5 && (
+            <TouchableOpacity style={styles.photoAddBtn} onPress={onPickImage} activeOpacity={0.8}>
+              <Text style={styles.photoAddIcon}>📷</Text>
+              <Text style={styles.photoAddText}>Añadir</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </ScrollView>
 
       <Text style={styles.label}>Título de la publicación *</Text>
       <TextInput
@@ -266,15 +352,41 @@ function SpaceForm({ title, setTitle, desc, setDesc, location, setLocation, pric
   );
 }
 
-function VisiterForm({ name, setName, profTitle, setProfTitle, bio, setBio, priceVisit, setPriceVisit }: {
+function VisiterForm({ name, setName, profTitle, setProfTitle, bio, setBio, priceVisit, setPriceVisit, existingUrl, localUri, onPickImage, onRemoveImage }: {
   name: string; setName: (v: string) => void;
   profTitle: string; setProfTitle: (v: string) => void;
   bio: string; setBio: (v: string) => void;
   priceVisit: string; setPriceVisit: (v: string) => void;
+  existingUrl: string | null; localUri: string | null;
+  onPickImage: () => void; onRemoveImage: () => void;
 }) {
+  const photoUri = localUri ?? existingUrl;
   return (
     <>
       <Text style={styles.serviceTypeBadge}>🚗 Visita domiciliaria</Text>
+
+      <Text style={styles.label}>Tu foto de perfil</Text>
+      <Text style={styles.sublabel}>Una foto tuya ayuda a generar confianza con los clientes.</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 20 }}>
+        {photoUri ? (
+          <View style={styles.photoThumb}>
+            <Image source={{ uri: photoUri }} style={styles.photoThumbImg} />
+            <TouchableOpacity style={styles.photoRemoveBtn} onPress={onRemoveImage}>
+              <Text style={styles.photoRemoveText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <TouchableOpacity style={styles.photoAddBtn} onPress={onPickImage} activeOpacity={0.8}>
+            <Text style={styles.photoAddIcon}>📷</Text>
+            <Text style={styles.photoAddText}>Añadir</Text>
+          </TouchableOpacity>
+        )}
+        {photoUri && (
+          <TouchableOpacity onPress={onPickImage} activeOpacity={0.8}>
+            <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 14 }}>Cambiar foto</Text>
+          </TouchableOpacity>
+        )}
+      </View>
 
       <Text style={styles.label}>Tu nombre como cuidador *</Text>
       <TextInput
@@ -342,6 +454,15 @@ const styles = StyleSheet.create({
   featureChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   featureChipText: { fontSize: 12, fontWeight: '600', color: colors.textMuted },
   featureChipTextActive: { color: colors.primaryDark, fontWeight: '800' },
+  photoThumb: { width: 100, height: 80, borderRadius: 10, overflow: 'hidden', position: 'relative' },
+  photoThumbImg: { width: '100%', height: '100%', resizeMode: 'cover' },
+  photoRemoveBtn: { position: 'absolute', top: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 10, width: 20, height: 20, alignItems: 'center', justifyContent: 'center' },
+  photoRemoveText: { color: '#fff', fontSize: 11, fontWeight: '800' },
+  mainBadge: { position: 'absolute', bottom: 4, left: 4, backgroundColor: colors.primary, borderRadius: 6, paddingHorizontal: 5, paddingVertical: 2 },
+  mainBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
+  photoAddBtn: { width: 100, height: 80, borderRadius: 10, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, gap: 4 },
+  photoAddIcon: { fontSize: 22 },
+  photoAddText: { fontSize: 11, color: colors.textMuted, fontWeight: '700' },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.background, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginTop: 24 },
   toggleLabel: { fontSize: 15, fontWeight: '700', color: colors.textMain },
   toggleSub: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
