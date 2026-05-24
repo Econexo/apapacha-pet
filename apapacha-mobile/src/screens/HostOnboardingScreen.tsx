@@ -8,6 +8,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import { applyAsHost } from '../services/auth.service';
+import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -17,59 +18,103 @@ export function HostOnboardingScreen() {
   const [role, setRole] = useState<'Alojamiento' | 'Visita'>('Alojamiento');
   const [submitting, setSubmitting] = useState(false);
 
-  // Upload states: label when file picked, null otherwise
-  const [dniPhoto, setDniPhoto]         = useState<string | null>(null);
-  const [selfiePhoto, setSelfiePhoto]   = useState<string | null>(null);
-  const [mallaPhoto, setMallaPhoto]     = useState<string | null>(null);
-  const [rasPhoto, setRasPhoto]         = useState<string | null>(null);
-  const [antecedentes, setAntecedentes] = useState<string | null>(null);
-  const [certVet, setCertVet]           = useState<string | null>(null);
+  // { uri, name } when file picked, null otherwise
+  const [dniPhoto, setDniPhoto]         = useState<{ uri: string; name: string } | null>(null);
+  const [selfiePhoto, setSelfiePhoto]   = useState<{ uri: string; name: string } | null>(null);
+  const [mallaPhoto, setMallaPhoto]     = useState<{ uri: string; name: string } | null>(null);
+  const [rasPhoto, setRasPhoto]         = useState<{ uri: string; name: string } | null>(null);
+  const [antecedentes, setAntecedentes] = useState<{ uri: string; name: string } | null>(null);
+  const [certVet, setCertVet]           = useState<{ uri: string; name: string } | null>(null);
 
-  const pickPhoto = async (setter: (v: string) => void, preferCamera = false) => {
+  const pickPhoto = async (setter: (v: { uri: string; name: string }) => void, preferCamera = false) => {
     const doLibrary = async () => {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
       }
-      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, mediaTypes: ImagePicker.MediaTypeOptions.Images });
-      if (!r.canceled && r.assets[0]) setter(r.assets[0].fileName ?? 'imagen.jpg');
+      const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, mediaTypes: ['images'] as ImagePicker.MediaType[] });
+      if (!r.canceled && r.assets[0]) setter({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? 'imagen.jpg' });
     };
-
     const doCamera = async () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara.'); return; }
       const r = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-      if (!r.canceled && r.assets[0]) setter(r.assets[0].fileName ?? 'foto.jpg');
+      if (!r.canceled && r.assets[0]) setter({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? 'foto.jpg' });
     };
-
-    if (Platform.OS === 'web') {
-      await doLibrary();
-    } else if (preferCamera) {
+    if (Platform.OS === 'web') { await doLibrary(); }
+    else if (preferCamera) {
       Alert.alert('Subir foto', 'Elige la fuente', [
         { text: 'Cámara', onPress: doCamera },
         { text: 'Galería', onPress: doLibrary },
         { text: 'Cancelar', style: 'cancel' },
       ]);
-    } else {
-      await doLibrary();
+    } else { await doLibrary(); }
+  };
+
+  const pickDoc = async (setter: (v: { uri: string; name: string }) => void) => {
+    const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
+    if (!result.canceled && result.assets[0]) {
+      setter({ uri: result.assets[0].uri, name: result.assets[0].name });
     }
   };
 
-  const pickDoc = async (setter: (v: string) => void) => {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: ['application/pdf', 'image/*'],
-      copyToCacheDirectory: true,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setter(result.assets[0].name);
-    }
+  const uploadFile = async (file: { uri: string; name: string }, folder: string): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    const response = await fetch(file.uri);
+    const blob = await response.blob();
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const path = `${user.id}/kyc/${folder}-${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from('kyc-docs').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
+    if (error) throw error;
+    return supabase.storage.from('kyc-docs').getPublicUrl(path).data.publicUrl;
   };
 
   const handleNext = async () => {
-    if (step < 3) { setStep(step + 1); return; }
+    if (step === 1) {
+      if (!dniPhoto || !selfiePhoto) {
+        Alert.alert('Documentos requeridos', 'Debes subir tu cédula de identidad y el selfie biométrico.');
+        return;
+      }
+      setStep(2); return;
+    }
+    if (step === 2) { setStep(3); return; }
+
+    // Step 3 — validate & submit
+    const isSpace = role === 'Alojamiento';
+    if (isSpace && (!mallaPhoto || !rasPhoto)) {
+      Alert.alert('Evidencia requerida', 'Debes subir las fotos de malla y rascador.');
+      return;
+    }
+    if (!isSpace && !antecedentes) {
+      Alert.alert('Documento requerido', 'Debes subir el certificado de antecedentes.');
+      return;
+    }
+
     setSubmitting(true);
     try {
-      await applyAsHost({ service_type: role === 'Alojamiento' ? 'space' : 'visiter' });
+      const [dniUrl, selfieUrl] = await Promise.all([
+        uploadFile(dniPhoto!, 'dni'),
+        uploadFile(selfiePhoto!, 'selfie'),
+      ]);
+      let evidenceUrl1: string | undefined;
+      let evidenceUrl2: string | undefined;
+      if (isSpace) {
+        [evidenceUrl1, evidenceUrl2] = await Promise.all([
+          uploadFile(mallaPhoto!, 'malla'),
+          uploadFile(rasPhoto!, 'rascador'),
+        ]);
+      } else {
+        evidenceUrl1 = await uploadFile(antecedentes!, 'antecedentes');
+        if (certVet) evidenceUrl2 = await uploadFile(certVet, 'cert-vet');
+      }
+      await applyAsHost({
+        service_type: isSpace ? 'space' : 'visiter',
+        kyc_doc_url: dniUrl,
+        selfie_url: selfieUrl,
+        evidence_url_1: evidenceUrl1,
+        evidence_url_2: evidenceUrl2,
+      });
       Alert.alert('¡Solicitud enviada!', 'Revisaremos tu solicitud y te notificaremos en 24-48 horas.', [
         { text: 'OK', onPress: () => navigation.navigate('MainTabs') },
       ]);
@@ -88,7 +133,7 @@ export function HostOnboardingScreen() {
         <Text style={styles.uploadLabel}>Cédula de Identidad o DNI Frontal</Text>
         {dniPhoto ? (
           <View style={styles.uploadDone}>
-            <Text style={styles.uploadDoneText}>✅ {dniPhoto}</Text>
+            <Text style={styles.uploadDoneText}>✅ {dniPhoto?.name}</Text>
             <TouchableOpacity onPress={() => setDniPhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
           </View>
         ) : (
@@ -101,7 +146,7 @@ export function HostOnboardingScreen() {
         <Text style={styles.uploadLabel}>Selfie Biométrico</Text>
         {selfiePhoto ? (
           <View style={styles.uploadDone}>
-            <Text style={styles.uploadDoneText}>✅ {selfiePhoto}</Text>
+            <Text style={styles.uploadDoneText}>✅ {selfiePhoto?.name}</Text>
             <TouchableOpacity onPress={() => setSelfiePhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
           </View>
         ) : (
@@ -144,7 +189,7 @@ export function HostOnboardingScreen() {
             <Text style={styles.uploadLabel}>Fotografía Balcón/Ventana Mapeada</Text>
             {mallaPhoto ? (
               <View style={styles.uploadDone}>
-                <Text style={styles.uploadDoneText}>✅ {mallaPhoto}</Text>
+                <Text style={styles.uploadDoneText}>✅ {mallaPhoto?.name}</Text>
                 <TouchableOpacity onPress={() => setMallaPhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
               </View>
             ) : (
@@ -157,7 +202,7 @@ export function HostOnboardingScreen() {
             <Text style={styles.uploadLabel}>Foto de Rascador de Suelo a Techo</Text>
             {rasPhoto ? (
               <View style={styles.uploadDone}>
-                <Text style={styles.uploadDoneText}>✅ {rasPhoto}</Text>
+                <Text style={styles.uploadDoneText}>✅ {rasPhoto?.name}</Text>
                 <TouchableOpacity onPress={() => setRasPhoto(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
               </View>
             ) : (
@@ -174,7 +219,7 @@ export function HostOnboardingScreen() {
             <Text style={styles.uploadLabel}>Antecedentes Civiles (últimos 30 días)</Text>
             {antecedentes ? (
               <View style={styles.uploadDone}>
-                <Text style={styles.uploadDoneText}>✅ {antecedentes}</Text>
+                <Text style={styles.uploadDoneText}>✅ {antecedentes?.name}</Text>
                 <TouchableOpacity onPress={() => setAntecedentes(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
               </View>
             ) : (
@@ -187,7 +232,7 @@ export function HostOnboardingScreen() {
             <Text style={styles.uploadLabel}>Certificado Veterinario (opcional)</Text>
             {certVet ? (
               <View style={styles.uploadDone}>
-                <Text style={styles.uploadDoneText}>✅ {certVet}</Text>
+                <Text style={styles.uploadDoneText}>✅ {certVet?.name}</Text>
                 <TouchableOpacity onPress={() => setCertVet(null)}><Text style={styles.uploadRetry}>Cambiar</Text></TouchableOpacity>
               </View>
             ) : (
