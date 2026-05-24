@@ -26,7 +26,7 @@ export interface Pet {
   id: string;
   owner_id: string;
   name: string;
-  breed: string;
+  breed: string | null;
   age_years: number;
   weight_kg: number;
   sterilized: boolean;
@@ -43,7 +43,7 @@ export interface Space {
   location: string;
   price_per_night: number;
   rating: number;
-  image_urls: string[];
+  image_urls: string[] | null;
   features: string[];
   active: boolean;
   created_at: string;
@@ -93,6 +93,9 @@ export interface HostApplication {
   service_type: ServiceType;
   kyc_doc_url: string | null;
   safety_evidence_url: string | null;
+  selfie_url: string | null;
+  evidence_url_2: string | null;
   status: ApplicationStatus;
   submitted_at: string;
+  welcome_email_sent: boolean | null;
 }
