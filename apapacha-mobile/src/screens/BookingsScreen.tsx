@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,7 +8,6 @@ import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings, cancelBooking } from '../services/bookings.service';
-import { getMyReviewForBooking } from '../services/reviews.service';
 import { supabase } from '../../supabase';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -33,42 +32,66 @@ export function BookingsScreen() {
   const navigation = useNavigation<Nav>();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
-  const [hostMap, setHostMap] = useState<Record<string, { id: string; name: string; serviceId: string; serviceType: string }>>({});
+  const [hostMap, setHostMap] = useState<Record<string, { id: string; name: string; serviceId: string; serviceType: string; serviceName: string }>>({});
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
-  useFocusEffect(useCallback(() => { loadAll(); }, []));
+  useFocusEffect(useCallback(() => {
+    let cancelled = false;
+    loadAll(cancelled).finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []));
 
-  async function loadAll() {
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadAll();
+    setRefreshing(false);
+  };
+
+  async function loadAll(cancelled = false) {
     try {
       const data = await getMyBookings();
+      if (cancelled) return;
       setBookings(data);
 
-      const completed = data.filter(b => b.status === 'completed');
-      const reviewed = new Set<string>();
-      await Promise.all(completed.map(async b => {
-        const r = await getMyReviewForBooking(b.id);
-        if (r) reviewed.add(b.id);
-      }));
-      setReviewedIds(reviewed);
+      const spaceIds   = [...new Set(data.filter(b => b.service_type === 'space').map(b => b.service_id))];
+      const visiterIds = [...new Set(data.filter(b => b.service_type === 'visiter').map(b => b.service_id))];
+      const completedIds = data.filter(b => b.status === 'completed').map(b => b.id);
 
-      const hosts: Record<string, { id: string; name: string; serviceId: string; serviceType: string }> = {};
-      await Promise.all(data.map(async b => {
+      const [spacesRes, visitersRes, reviewsRes] = await Promise.all([
+        spaceIds.length
+          ? supabase.from('spaces').select('id, host_id, title, profiles(id, full_name, last_name)').in('id', spaceIds)
+          : Promise.resolve({ data: [] }),
+        visiterIds.length
+          ? supabase.from('visiters').select('id, host_id, name').in('id', visiterIds)
+          : Promise.resolve({ data: [] }),
+        completedIds.length
+          ? supabase.from('reviews').select('booking_id').in('booking_id', completedIds)
+          : Promise.resolve({ data: [] }),
+      ]);
+
+      if (cancelled) return;
+
+      const hosts: Record<string, { id: string; name: string; serviceId: string; serviceType: string; serviceName: string }> = {};
+      for (const b of data) {
         if (b.service_type === 'space') {
-          const { data: sp } = await supabase.from('spaces').select('host_id, title, id').eq('id', b.service_id).single();
+          const sp = (spacesRes.data ?? []).find((s: any) => s.id === b.service_id);
           if (sp) {
-            const { data: prof } = await supabase.from('profiles').select('id, full_name, last_name').eq('id', sp.host_id).single();
-            if (prof) hosts[b.id] = { id: prof.id, name: `${prof.full_name} ${prof.last_name ?? ''}`.trim(), serviceId: sp.id, serviceType: 'space' };
+            const prof = sp.profiles as any;
+            hosts[b.id] = { id: prof?.id ?? sp.host_id, name: prof ? `${prof.full_name} ${prof.last_name ?? ''}`.trim() : 'Cuidador', serviceId: sp.id, serviceType: 'space', serviceName: sp.title };
           }
         } else {
-          const { data: vi } = await supabase.from('visiters').select('host_id, name, id').eq('id', b.service_id).single();
-          if (vi) hosts[b.id] = { id: vi.host_id, name: vi.name, serviceId: vi.id, serviceType: 'visiter' };
+          const vi = (visitersRes.data ?? []).find((v: any) => v.id === b.service_id);
+          if (vi) hosts[b.id] = { id: vi.host_id, name: vi.name, serviceId: vi.id, serviceType: 'visiter', serviceName: vi.name };
         }
-      }));
+      }
+
+      const reviewed = new Set<string>((reviewsRes.data ?? []).map((r: any) => r.booking_id));
+
       setHostMap(hosts);
+      setReviewedIds(reviewed);
     } catch (e) {
       console.error(e);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -107,6 +130,7 @@ export function BookingsScreen() {
         keyExtractor={item => item.id}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContainer, bookings.length === 0 && styles.emptyContainer]}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
         ListHeaderComponent={
           <>
             {active.length > 0 && <Text style={styles.sectionTitle}>En curso y próximas</Text>}
@@ -141,10 +165,18 @@ export function BookingsScreen() {
                   <Text style={styles.dates}>{fmt(item.start_date)} — {fmt(item.end_date)}</Text>
                 </View>
 
-                {/* Service type */}
+                {/* Service type + name */}
                 <View style={styles.serviceRow}>
                   <Ionicons name={item.service_type === 'space' ? 'home-outline' : 'car-outline'} size={15} color={colors.textMuted} />
-                  <Text style={styles.serviceTitle}>{item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria'}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.serviceTitle} numberOfLines={1}>
+                      {host?.serviceName ?? (item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria')}
+                    </Text>
+                    <Text style={styles.serviceSubLabel}>
+                      {item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria'}
+                      {host?.name ? ` · ${host.name}` : ''}
+                    </Text>
+                  </View>
                 </View>
 
                 {/* Price */}
@@ -266,6 +298,7 @@ const styles = StyleSheet.create({
   dates: { fontSize: 12, color: colors.textMuted },
   serviceRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
   serviceTitle: { fontSize: 16, fontWeight: '700', color: colors.textMain },
+  serviceSubLabel: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
   priceLabel: { fontSize: 13, color: colors.textMuted, marginBottom: 10 },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 10 },
   paymentText: { fontSize: 12, fontWeight: '700' },
