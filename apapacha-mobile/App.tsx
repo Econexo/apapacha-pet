@@ -101,8 +101,11 @@ function RootNavigator() {
   }
 
   const getInitialRoute = () => {
-    if (!profile?.onboarding_done) return 'Onboarding';
-    if (profile?.kyc_status === 'pending') return 'ClientVerification';
+    // Onboarding solo si explícitamente false Y el perfil parece recién creado (sin datos)
+    const needsOnboarding = profile?.onboarding_done === false && !profile?.age && !profile?.address;
+    if (needsOnboarding) return 'Onboarding';
+    // ClientVerification solo si kyc está pending Y nunca ha subido docs (under_review/verified/rejected ya pasaron por ahí)
+    if (profile?.kyc_status === 'pending' && profile?.onboarding_done === true) return 'ClientVerification';
     return 'MainTabs';
   };
 
