@@ -45,16 +45,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   async function fetchProfile(userId: string, attempt = 0) {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('profiles')
       .select('*')
       .eq('id', userId)
       .single();
-    if (!data && attempt < 3) {
+    if (error?.code === 'PGRST116' && attempt < 3) {
       await new Promise(r => setTimeout(r, 800));
       return fetchProfile(userId, attempt + 1);
     }
-    setProfile(data);
+    if (error && error.code !== 'PGRST116') console.error('[AuthContext] fetchProfile:', error.message);
+    setProfile(data ?? null);
     setLoading(false);
   }
 
