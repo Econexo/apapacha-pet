@@ -29,7 +29,7 @@ export function ClientVerificationScreen() {
       }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'] as ImagePicker.MediaType[],
       quality: 0.8,
     });
     if (!result.canceled) setDocScanned(true);
