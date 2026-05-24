@@ -32,7 +32,7 @@ export function VisiterCard({
           <Text style={styles.profession} numberOfLines={1}>{professionTitle}</Text>
           
           <View style={styles.statsRow}>
-            <Text style={styles.statText}>⭐ {rating}</Text>
+            <Text style={styles.statText}>{rating > 0 ? `⭐ ${rating}` : '✨ Nuevo'}</Text>
             <Text style={styles.statDot}> • </Text>
             <Text style={styles.statText}>{totalVisits} visitas</Text>
           </View>
@@ -41,7 +41,7 @@ export function VisiterCard({
       
       <View style={styles.footerRow}>
         <Text style={styles.priceLabel}>Tarifa base:</Text>
-        <Text style={styles.priceValue}>${pricePerVisit} <Text style={styles.priceDetail}>/ 40 min</Text></Text>
+        <Text style={styles.priceValue}>${pricePerVisit.toLocaleString('es-CL')} <Text style={styles.priceDetail}>/ visita</Text></Text>
       </View>
     </TouchableOpacity>
   );
