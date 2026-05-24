@@ -9,6 +9,7 @@ import type { RootStackParamList } from '../types/navigation';
 import type { Message } from '../types/database';
 import { getMessages, sendMessage, subscribeToMessages } from '../services/messages.service';
 import { useAuth } from '../context/AuthContext';
+import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'ChatDetail'>;
@@ -20,15 +21,43 @@ export function ChatDetailScreen() {
   const { id: bookingId } = route.params;
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
+  const [headerTitle, setHeaderTitle] = useState('Chat de Reserva');
   const scrollRef = useRef<ScrollView>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    getMessages(bookingId).then(setMessages).catch(console.error);
-    channelRef.current = subscribeToMessages(bookingId, newMsg => {
-      setMessages(prev => [...prev, newMsg]);
-    });
-    return () => { channelRef.current?.unsubscribe(); };
+    supabase
+      .from('bookings')
+      .select('service_type, service_id')
+      .eq('id', bookingId)
+      .single()
+      .then(async ({ data: booking }) => {
+        if (!booking) return;
+        if (booking.service_type === 'space') {
+          const { data } = await supabase.from('spaces').select('title').eq('id', booking.service_id).single();
+          if (data) setHeaderTitle(data.title);
+        } else {
+          const { data } = await supabase.from('visiters').select('name').eq('id', booking.service_id).single();
+          if (data) setHeaderTitle(data.name);
+        }
+      });
+  }, [bookingId]);
+
+  useEffect(() => {
+    let cancelled = false;
+    getMessages(bookingId).then(initial => {
+      if (cancelled) return;
+      setMessages(initial);
+      channelRef.current = subscribeToMessages(bookingId, newMsg => {
+        setMessages(prev =>
+          prev.some(m => m.id === newMsg.id) ? prev : [...prev, newMsg]
+        );
+      });
+    }).catch(console.error);
+    return () => {
+      cancelled = true;
+      channelRef.current?.unsubscribe();
+    };
   }, [bookingId]);
 
   useEffect(() => {
@@ -54,7 +83,7 @@ export function ChatDetailScreen() {
         <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerName}>Chat de Reserva</Text>
+        <Text style={styles.headerName} numberOfLines={1}>{headerTitle}</Text>
         <View style={styles.placeholderSpace} />
       </View>
 
