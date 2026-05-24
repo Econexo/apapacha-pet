@@ -14,7 +14,7 @@ import { getVisiters } from '../services/visiters.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const FILTERS = ['Patio Cerrado', 'Sitter Médico', 'Sin Otros Gatos', 'Rascadores Premium'];
+const FILTERS = ['Mallas certificadas', 'Sin otros animales', 'Sin niños', 'Rascadores'];
 
 export function ExploreScreen() {
   const navigation = useNavigation<Nav>();
@@ -150,7 +150,7 @@ export function ExploreScreen() {
               location={item.location}
               pricePerNight={item.price_per_night}
               rating={item.rating}
-              imageUrl={item.image_urls[0] ?? ''}
+              imageUrl={item.image_urls?.[0] ?? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800'}
               onPress={id => navigation.navigate('SpaceDetail', { id })}
             />
           )}
@@ -170,11 +170,11 @@ export function ExploreScreen() {
               pricePerVisit={item.price_per_visit}
               rating={item.rating}
               totalVisits={item.total_visits}
-              imageUrl={item.image_url ?? ''}
+              imageUrl={item.image_url ?? 'https://images.unsplash.com/photo-1537368910025-7028ba0a464a?w=800'}
               onPress={id => navigation.navigate('VisiterDetail', { id })}
             />
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No hay visiters disponibles.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>No hay cuidadores disponibles.</Text>}
         />
       )}
     </SafeAreaView>
