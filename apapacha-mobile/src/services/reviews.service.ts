@@ -79,8 +79,8 @@ export async function getHostReviews(hostId: string): Promise<Review[]> {
   }));
 }
 
-export async function getHostStats(hostId: string): Promise<HostStats> {
-  const reviews = await getHostReviews(hostId);
+export async function getHostStats(hostId: string, preloadedReviews?: Review[]): Promise<HostStats> {
+  const reviews = preloadedReviews ?? await getHostReviews(hostId);
   const totalReviews = reviews.length;
   const avgRating = totalReviews > 0
     ? reviews.reduce((s, r) => s + r.rating, 0) / totalReviews
@@ -156,16 +156,24 @@ export async function getMonthlyEarnings(hostId: string): Promise<MonthlyEarning
     .in('status', ['completed', 'active'])
     .order('created_at', { ascending: true });
 
-  const map = new Map<string, MonthlyEarning>();
+  const dataMap = new Map<string, MonthlyEarning>();
   for (const b of bookings ?? []) {
     const d = new Date(b.created_at);
     const key = `${d.getFullYear()}-${d.getMonth()}`;
-    if (!map.has(key)) {
-      map.set(key, { month: MONTH_NAMES[d.getMonth()], year: d.getFullYear(), earnings: 0, cares: 0 });
+    if (!dataMap.has(key)) {
+      dataMap.set(key, { month: MONTH_NAMES[d.getMonth()], year: d.getFullYear(), earnings: 0, cares: 0 });
     }
-    const entry = map.get(key)!;
+    const entry = dataMap.get(key)!;
     entry.earnings += b.total_price;
     entry.cares += 1;
   }
-  return Array.from(map.values()).slice(-6); // last 6 months
+  // Build last 6 months including gaps with $0
+  const result: MonthlyEarning[] = [];
+  const now = new Date();
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const key = `${d.getFullYear()}-${d.getMonth()}`;
+    result.push(dataMap.get(key) ?? { month: MONTH_NAMES[d.getMonth()], year: d.getFullYear(), earnings: 0, cares: 0 });
+  }
+  return result;
 }
