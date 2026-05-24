@@ -29,6 +29,7 @@ export function HomeScreen() {
   const { profile } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
   const [nextBooking, setNextBooking] = useState<Booking | null>(null);
+  const [nextServiceName, setNextServiceName] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -44,11 +45,19 @@ export function HomeScreen() {
           .limit(1),
       ]);
       setPets(petsData ?? []);
-      setNextBooking(bookingsData?.[0] ?? null);
-    } catch (_) {}
+      const booking = bookingsData?.[0] ?? null;
+      setNextBooking(booking);
+      if (booking) {
+        const table = booking.service_type === 'space' ? 'spaces' : 'visiters';
+        const field = booking.service_type === 'space' ? 'title' : 'name';
+        const { data: svc } = await supabase.from(table).select(field).eq('id', booking.service_id).single();
+        setNextServiceName(svc ? (svc as any)[field] : null);
+      } else {
+        setNextServiceName(null);
+      }
+    } catch (e) { console.error('[HomeScreen]', e); }
   }, []);
 
-  useEffect(() => { loadData(); }, []);
   useFocusEffect(useCallback(() => { loadData(); }, []));
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'amigo';
@@ -107,6 +116,7 @@ export function HomeScreen() {
         {nextBooking ? (
           <View style={[styles.visitCard, isActive && styles.visitCardActive]}>
             <Text style={styles.visitLabel}>{isActive ? 'Servicio en curso' : 'Próxima reserva'}</Text>
+            {nextServiceName && <Text style={styles.visitServiceName}>{nextServiceName}</Text>}
             <Text style={styles.visitDates}>
               {new Date(nextBooking.start_date).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
               {' — '}
@@ -186,6 +196,7 @@ const styles = StyleSheet.create({
   visitCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 24, gap: 4 },
   visitCardActive: { borderColor: colors.successBorder, backgroundColor: colors.successBg },
   visitLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  visitServiceName: { fontSize: 15, fontWeight: '700', color: colors.textMain, marginTop: 2 },
   visitDates: { fontSize: 20, fontWeight: '800', color: colors.textMain },
   visitStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
   statusDot: { width: 8, height: 8, borderRadius: 4 },
