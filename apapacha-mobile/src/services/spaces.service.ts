@@ -1,6 +1,20 @@
 import { supabase } from '../../supabase';
 import type { Space } from '../types/database';
 
+export async function uploadSpacePhoto(localUri: string): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const ext = blob.type?.includes('png') ? 'png' : 'jpg';
+  const path = `${user.id}/spaces/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from('spaces')
+    .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
+  if (error) throw error;
+  return supabase.storage.from('spaces').getPublicUrl(path).data.publicUrl;
+}
+
 export type SpaceFilters = {
   features?: string[];
 };
@@ -50,6 +64,7 @@ export async function upsertMySpace(input: {
   price_per_night: number;
   features: string[];
   active: boolean;
+  image_urls?: string[];
 }): Promise<Space> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -61,6 +76,7 @@ export async function upsertMySpace(input: {
     features: input.features,
     active: input.active,
     host_id: user.id,
+    ...(input.image_urls !== undefined && { image_urls: input.image_urls }),
   };
   if (input.id) {
     const { data, error } = await supabase
@@ -75,7 +91,7 @@ export async function upsertMySpace(input: {
   } else {
     const { data, error } = await supabase
       .from('spaces')
-      .insert({ ...base, image_urls: [] as string[], rating: 0 })
+      .insert({ ...base, image_urls: input.image_urls ?? [], rating: 0 })
       .select()
       .single();
     if (error) throw error;
