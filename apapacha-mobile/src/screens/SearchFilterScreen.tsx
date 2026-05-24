@@ -14,15 +14,15 @@ export function SearchFilterScreen() {
   const [destination, setDestination] = useState('');
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
-  const [medicalCert, setMedicalCert] = useState(true);
+  const [noChildren, setNoChildren] = useState(false);
   const [noOtherPets, setNoOtherPets] = useState(false);
-  const [certifiedNets, setCertifiedNets] = useState(true);
+  const [certifiedNets, setCertifiedNets] = useState(false);
 
   const handleClear = () => {
     setDestination('');
     setCheckIn(null);
     setCheckOut(null);
-    setMedicalCert(false);
+    setNoChildren(false);
     setNoOtherPets(false);
     setCertifiedNets(false);
   };
@@ -61,30 +61,30 @@ export function SearchFilterScreen() {
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionTitleWarning}>Filtros Médicos y de Seguridad (Zero Trust)</Text>
+        <Text style={styles.sectionTitleWarning}>Filtros de Seguridad y Comodidad</Text>
 
         <View style={styles.filterRow}>
           <View style={styles.filterTextCol}>
-            <Text style={styles.filterName}>Certificación Médica / Vet</Text>
-            <Text style={styles.filterDesc}>Solo personal entrenado para medicación.</Text>
-          </View>
-          <Switch value={medicalCert} onValueChange={setMedicalCert} trackColor={{ true: colors.primary, false: colors.border }} />
-        </View>
-
-        <View style={styles.filterRow}>
-          <View style={styles.filterTextCol}>
-            <Text style={styles.filterName}>Mallas Certificadas en Ventanas</Text>
-            <Text style={styles.filterDesc}>Espacios inspeccionados digitalmente.</Text>
+            <Text style={styles.filterName}>Mallas certificadas</Text>
+            <Text style={styles.filterDesc}>Ventanas y balcones seguros para gatos.</Text>
           </View>
           <Switch value={certifiedNets} onValueChange={setCertifiedNets} trackColor={{ true: colors.primary, false: colors.border }} />
         </View>
 
         <View style={styles.filterRow}>
           <View style={styles.filterTextCol}>
-            <Text style={styles.filterName}>Exclusividad (Sin otras mascotas)</Text>
+            <Text style={styles.filterName}>Sin otros animales</Text>
             <Text style={styles.filterDesc}>Ideal para gatos estresables o reactivos.</Text>
           </View>
           <Switch value={noOtherPets} onValueChange={setNoOtherPets} trackColor={{ true: colors.primary, false: colors.border }} />
+        </View>
+
+        <View style={styles.filterRow}>
+          <View style={styles.filterTextCol}>
+            <Text style={styles.filterName}>Sin niños</Text>
+            <Text style={styles.filterDesc}>Entorno tranquilo sin menores de edad.</Text>
+          </View>
+          <Switch value={noChildren} onValueChange={setNoChildren} trackColor={{ true: colors.primary, false: colors.border }} />
         </View>
       </ScrollView>
 
@@ -93,9 +93,9 @@ export function SearchFilterScreen() {
           style={styles.submitBtn}
           onPress={() => {
             const features: string[] = [];
-            if (medicalCert) features.push('Sitter Médico');
-            if (certifiedNets) features.push('Patio Cerrado');
-            if (noOtherPets) features.push('Sin Otros Gatos');
+            if (certifiedNets) features.push('Mallas certificadas');
+            if (noOtherPets) features.push('Sin otros animales');
+            if (noChildren) features.push('Sin niños');
             (navigation as any).navigate('MainTabs', {
               screen: 'Explore',
               params: {
