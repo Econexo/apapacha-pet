@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
@@ -25,14 +25,30 @@ const APPLICATION_STATUS_LABEL: Record<string, { icon: IoniconName; text: string
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, refreshProfile } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
   const [application, setApplication] = useState<HostApplication | null>(null);
 
-  useEffect(() => {
-    getMyPets().then(setPets).catch(console.error);
-    getMyApplication().then(setApplication).catch(console.error);
+  const [loadingProfile, setLoadingProfile] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const loadProfile = useCallback(async () => {
+    await Promise.all([
+      getMyPets().then(setPets).catch(console.error),
+      getMyApplication().then(setApplication).catch(console.error),
+    ]);
   }, []);
+
+  useFocusEffect(useCallback(() => {
+    setLoadingProfile(true);
+    loadProfile().finally(() => setLoadingProfile(false));
+  }, [loadProfile]));
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadProfile();
+    setRefreshing(false);
+  };
 
   const isHost = profile?.role === 'host';
   const statusInfo = application ? APPLICATION_STATUS_LABEL[application.status] : null;
@@ -57,6 +73,7 @@ export function ProfileScreen() {
       if (error) throw error;
       const { data: urlData } = supabase.storage.from('contracts').getPublicUrl(path);
       await supabase.from('profiles').update({ signed_contract_url: urlData.publicUrl }).eq('id', user.id);
+      await refreshProfile();
       Alert.alert('✅ Contrato enviado', 'Tu contrato firmado fue cargado exitosamente. El equipo de ApapachaPet lo revisará pronto.');
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo subir el contrato');
@@ -74,7 +91,16 @@ export function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
+      {loadingProfile && !refreshing && (
+        <View style={{ position: 'absolute', top: 80, left: 0, right: 0, alignItems: 'center', zIndex: 10 }}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      )}
+      <ScrollView
+        contentContainerStyle={styles.scrollContainer}
+        showsVerticalScrollIndicator={false}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
+      >
         <View style={styles.ownerCard}>
           {profile?.avatar_url ? (
             <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
@@ -189,7 +215,7 @@ export function ProfileScreen() {
         ) : (
           <TouchableOpacity style={styles.onboardingBtn} onPress={() => navigation.navigate('HostOnboarding')}>
             <Ionicons name="star-outline" size={18} color={colors.surface} />
-            <Text style={styles.onboardingBtnText}>Postular para ser Cuidador / Visiter</Text>
+            <Text style={styles.onboardingBtnText}>Postular para ser Cuidador</Text>
           </TouchableOpacity>
         )}
 
