@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -38,16 +38,22 @@ export function SetPasswordScreen() {
   };
 
   const handleSkip = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (user) {
-      await supabase.from('profiles').update({ onboarding_done: true }).eq('id', user.id);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase.from('profiles').update({ onboarding_done: true }).eq('id', user.id);
+        if (error) throw error;
+      }
+      await refreshProfile();
+      navigation.replace('MainTabs');
+    } catch (e: any) {
+      Alert.alert('Error', e.message ?? 'No se pudo continuar. Intenta de nuevo.');
     }
-    await refreshProfile();
-    navigation.replace('MainTabs');
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <View style={styles.content}>
         <Text style={styles.emoji}>🔐</Text>
         <Text style={styles.title}>Crea tu contraseña</Text>
@@ -94,6 +100,7 @@ export function SetPasswordScreen() {
           <Text style={styles.skipText}>Omitir por ahora</Text>
         </TouchableOpacity>
       </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
