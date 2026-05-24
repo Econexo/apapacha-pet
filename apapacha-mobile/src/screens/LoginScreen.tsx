@@ -4,7 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
-import { signIn, signUp } from '../services/auth.service';
+import { signIn, signUp, resetPassword } from '../services/auth.service';
 import type { RootStackParamList } from '../types/navigation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -16,19 +16,55 @@ export function LoginScreen() {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+
+  const localizeError = (msg: string): string => {
+    if (msg.includes('Invalid login credentials')) return 'Email o contraseña incorrectos.';
+    if (msg.includes('Email not confirmed')) return 'Debes confirmar tu email antes de ingresar. Revisa tu bandeja de entrada.';
+    if (msg.includes('User already registered')) return 'Este email ya tiene una cuenta. Ingresa con tu contraseña.';
+    if (msg.includes('Password should be at least')) return 'La contraseña debe tener al menos 6 caracteres.';
+    if (msg.includes('Unable to validate email address')) return 'El formato del email no es válido.';
+    if (msg.includes('rate limit')) return 'Demasiados intentos. Espera unos minutos e intenta nuevamente.';
+    return msg;
+  };
 
   const handleSubmit = async () => {
     if (!email.trim() || !password.trim()) return;
+    if (mode === 'signup' && password.length < 8) {
+      setErrorMsg('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
     setLoading(true);
     setErrorMsg('');
+    setSuccessMsg('');
     try {
       if (mode === 'login') {
         await signIn(email.trim().toLowerCase(), password);
       } else {
-        await signUp(email.trim().toLowerCase(), password);
+        const { needsConfirmation } = await signUp(email.trim().toLowerCase(), password);
+        if (needsConfirmation) {
+          setSuccessMsg('¡Cuenta creada! Revisa tu email para confirmar tu cuenta antes de ingresar.');
+        }
       }
     } catch (e: any) {
-      setErrorMsg(e.message ?? 'Error al autenticar');
+      setErrorMsg(localizeError(e.message ?? 'Error al autenticar'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email.trim()) {
+      setErrorMsg('Ingresa tu email primero para recibir el enlace de recuperación.');
+      return;
+    }
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      await resetPassword(email.trim().toLowerCase());
+      setSuccessMsg('¡Enlace enviado! Revisa tu email para restablecer tu contraseña.');
+    } catch (e: any) {
+      setErrorMsg(localizeError(e.message ?? 'No se pudo enviar el enlace'));
     } finally {
       setLoading(false);
     }
@@ -38,7 +74,7 @@ export function LoginScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
         <View style={styles.brandContainer}>
-          <Image source={require('../../assets/LogoSplash.png')} style={styles.logoImage} resizeMode="contain" />
+          <Image source={require('../../assets/Logo.png')} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.brandSubtitle}>Hospitalidad Felina Premium</Text>
         </View>
 
@@ -46,14 +82,14 @@ export function LoginScreen() {
           <View style={styles.modeToggle}>
             <TouchableOpacity
               style={[styles.modeBtn, mode === 'login' && styles.modeBtnActive]}
-              onPress={() => { setMode('login'); setErrorMsg(''); }}
+              onPress={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
               activeOpacity={0.8}
             >
               <Text style={[styles.modeBtnText, mode === 'login' && styles.modeBtnTextActive]}>Ingresar</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[styles.modeBtn, mode === 'signup' && styles.modeBtnActive]}
-              onPress={() => { setMode('signup'); setErrorMsg(''); }}
+              onPress={() => { setMode('signup'); setErrorMsg(''); setSuccessMsg(''); }}
               activeOpacity={0.8}
             >
               <Text style={[styles.modeBtnText, mode === 'signup' && styles.modeBtnTextActive]}>Crear cuenta</Text>
@@ -91,12 +127,15 @@ export function LoginScreen() {
             }
           </TouchableOpacity>
 
-          {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
-        </View>
+          {mode === 'login' && (
+            <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7} style={styles.forgotBtn}>
+              <Text style={styles.forgotBtnText}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+          )}
 
-        <TouchableOpacity onPress={() => navigation.navigate('MainTabs')} style={styles.demoBtn}>
-          <Text style={styles.demoBtnText}>👁 Ver Demo (sin login)</Text>
-        </TouchableOpacity>
+          {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
+          {successMsg ? <Text style={styles.successMsg}>{successMsg}</Text> : null}
+        </View>
 
         <View style={styles.trustDisclaimer}>
           <Text style={styles.trustTitle}>🔒 Política de Confianza Cero</Text>
@@ -126,9 +165,10 @@ const styles = StyleSheet.create({
   authButton: { backgroundColor: colors.surface, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 4 },
   authButtonDisabled: { opacity: 0.6 },
   authButtonText: { color: colors.primaryDark, fontSize: 16, fontWeight: '700' },
+  forgotBtn: { alignItems: 'center', paddingVertical: 4 },
+  forgotBtnText: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
   errorMsg: { color: '#ff6b6b', fontSize: 13, textAlign: 'center', fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 8 },
-  demoBtn: { alignItems: 'center', paddingVertical: 10 },
-  demoBtnText: { color: colors.surface, opacity: 0.5, fontSize: 12, fontWeight: '600' },
+  successMsg: { color: '#4ade80', fontSize: 13, textAlign: 'center', fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 8, lineHeight: 18 },
   trustDisclaimer: { backgroundColor: 'rgba(0,0,0,0.15)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
   trustTitle: { color: colors.surface, fontSize: 13, fontWeight: '800', marginBottom: 6 },
   trustText: { color: colors.surface, opacity: 0.7, fontSize: 12, lineHeight: 18 },
