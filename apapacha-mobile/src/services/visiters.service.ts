@@ -1,6 +1,20 @@
 import { supabase } from '../../supabase';
 import type { Visiter } from '../types/database';
 
+export async function uploadVisiterPhoto(localUri: string): Promise<string> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const ext = blob.type?.includes('png') ? 'png' : 'jpg';
+  const path = `${user.id}/visiters/${Date.now()}.${ext}`;
+  const { error } = await supabase.storage
+    .from('spaces')
+    .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
+  if (error) throw error;
+  return supabase.storage.from('spaces').getPublicUrl(path).data.publicUrl;
+}
+
 export async function getVisiters(): Promise<Visiter[]> {
   const { data, error } = await supabase
     .from('visiters')
@@ -39,16 +53,18 @@ export async function upsertMyVisiter(input: {
   bio: string;
   price_per_visit: number;
   active: boolean;
+  image_url?: string | null;
 }): Promise<Visiter> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
-  const base = {
+  const base: Record<string, any> = {
     name: input.name,
     profession_title: input.profession_title,
     bio: input.bio,
     price_per_visit: input.price_per_visit,
     active: input.active,
     host_id: user.id,
+    ...(input.image_url !== undefined && { image_url: input.image_url }),
   };
   if (input.id) {
     const { data, error } = await supabase
