@@ -14,6 +14,19 @@ async function uploadPetPhoto(userId: string, localUri: string): Promise<string>
   return data.publicUrl;
 }
 
+export async function getPetById(petId: string): Promise<Pet | null> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const { data, error } = await supabase
+    .from('pets')
+    .select('*')
+    .eq('id', petId)
+    .eq('owner_id', user.id)
+    .single();
+  if (error) return null;
+  return data;
+}
+
 export async function getMyPets(): Promise<Pet[]> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
