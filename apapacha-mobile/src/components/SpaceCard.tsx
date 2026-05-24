@@ -18,7 +18,7 @@ export function SpaceCard({ id, title, location, pricePerNight, rating, imageUrl
       <View style={styles.imageContainer}>
         <Image source={{ uri: imageUrl }} style={styles.image} />
         <View style={styles.ratingBadge}>
-          <Text style={styles.ratingText}>★ {rating}</Text>
+          <Text style={styles.ratingText}>{rating > 0 ? `★ ${rating}` : '✨ Nuevo'}</Text>
         </View>
       </View>
       <View style={styles.infoContainer}>
