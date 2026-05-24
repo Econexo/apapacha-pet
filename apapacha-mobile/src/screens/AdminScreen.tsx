@@ -7,7 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
-import { supabase } from '../../supabase';
+import { supabase, supabaseUrl, supabaseAnonKey } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import { confirmBookingPayment } from '../services/bookings.service';
 
@@ -21,8 +21,7 @@ const TAB_ICONS: Record<string, IoniconName> = {
   bookings:     'calendar-outline',
 };
 
-const SUPABASE_FUNCTIONS_URL = 'https://mzqvkzjxubuqpdnznigy.supabase.co/functions/v1';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im16cXZremp4dWJ1cXBkbnpuaWd5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NzY2NTAsImV4cCI6MjA5MTE1MjY1MH0.t4TBnmyyKDPqTZiFOwXbko-Qa4pdund9lr6fydeRdfQ';
+const SUPABASE_FUNCTIONS_URL = `${supabaseUrl}/functions/v1`;
 
 type Tab = 'dashboard' | 'users' | 'applications' | 'bookings' | 'payments';
 
@@ -101,7 +100,7 @@ interface PendingPayment {
 }
 
 export function AdminScreen() {
-  const navigation = useNavigation();
+  const navigation = useNavigation() as any;
   const { profile } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
@@ -118,24 +117,24 @@ export function AdminScreen() {
 
   useEffect(() => {
     if (!profile?.is_admin) {
-      navigation.goBack();
+      navigation.replace('MainTabs' as any);
       return;
     }
     loadAll();
   }, []);
 
-  const loadAll = async () => {
-    setLoading(true);
+  const loadAll = async (silent = false) => {
+    if (!silent) setLoading(true);
     await Promise.all([
       loadStats(), loadUsers(), loadSpaces(), loadVisiters(),
       loadApplications(), loadBookings(), loadPendingPayments(),
     ]);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
 
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadAll();
+    await loadAll(true);
     setRefreshing(false);
   }, []);
 
@@ -160,72 +159,82 @@ export function AdminScreen() {
 
   async function loadUsers() {
     setUsersError(null);
-    const { data: profiles, error } = await supabase
-      .from('profiles')
-      .select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, created_at')
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('[AdminScreen] loadUsers query error:', error.message);
-      setUsersError(error.message);
+    const [profilesRes, spacesRes, visitersRes, bookingsRes] = await Promise.all([
+      supabase.from('profiles').select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, created_at').order('created_at', { ascending: false }),
+      supabase.from('spaces').select('host_id'),
+      supabase.from('visiters').select('host_id'),
+      supabase.from('bookings').select('owner_id'),
+    ]);
+    if (profilesRes.error) {
+      console.error('[AdminScreen] loadUsers:', profilesRes.error.message);
+      setUsersError(profilesRes.error.message);
       return setUsers([]);
     }
-    if (!profiles || profiles.length === 0) return setUsers([]);
+    const profiles = profilesRes.data ?? [];
+    if (profiles.length === 0) return setUsers([]);
 
-    try {
-      const enriched = await Promise.all(profiles.map(async (p) => {
-        const [s, v, b] = await Promise.all([
-          supabase.from('spaces').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
-          supabase.from('visiters').select('id', { count: 'exact', head: true }).eq('host_id', p.id),
-          supabase.from('bookings').select('id', { count: 'exact', head: true }).eq('owner_id', p.id),
-        ]);
-        return { ...p, spacesCount: s.count ?? 0, visitersCount: v.count ?? 0, bookingsCount: b.count ?? 0 };
-      }));
-      setUsers(enriched);
-    } catch (e) {
-      console.error('[AdminScreen] loadUsers enrichment error:', e);
-      setUsers(profiles.map(p => ({ ...p, spacesCount: 0, visitersCount: 0, bookingsCount: 0 })));
-    }
+    const spacesCount = (spacesRes.data ?? []).reduce<Record<string, number>>((acc, r: any) => {
+      acc[r.host_id] = (acc[r.host_id] ?? 0) + 1; return acc;
+    }, {});
+    const visitersCount = (visitersRes.data ?? []).reduce<Record<string, number>>((acc, r: any) => {
+      acc[r.host_id] = (acc[r.host_id] ?? 0) + 1; return acc;
+    }, {});
+    const bookingsCount = (bookingsRes.data ?? []).reduce<Record<string, number>>((acc, r: any) => {
+      acc[r.owner_id] = (acc[r.owner_id] ?? 0) + 1; return acc;
+    }, {});
+
+    setUsers(profiles.map(p => ({
+      ...p,
+      spacesCount: spacesCount[p.id] ?? 0,
+      visitersCount: visitersCount[p.id] ?? 0,
+      bookingsCount: bookingsCount[p.id] ?? 0,
+    })));
   }
 
   async function loadSpaces() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('spaces')
       .select('id, title, location, price_per_night, active')
       .order('created_at', { ascending: false });
+    if (error) { console.error('[Admin] loadSpaces:', error.message); return; }
     setSpaces((data ?? []) as AdminSpace[]);
   }
 
   async function loadVisiters() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('visiters')
       .select('id, name, profession_title, price_per_visit, active')
       .order('created_at', { ascending: false });
+    if (error) { console.error('[Admin] loadVisiters:', error.message); return; }
     setVisiters((data ?? []) as AdminVisiter[]);
   }
 
   async function loadApplications() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('host_applications')
-      .select('id, applicant_id, service_type, status, submitted_at, profiles(full_name, last_name)')
+      .select('id, applicant_id, service_type, status, submitted_at, welcome_email_sent, profiles(full_name, last_name)')
       .order('submitted_at', { ascending: false });
+    if (error) { console.error('[Admin] loadApplications:', error.message); return; }
     setApplications((data ?? []) as unknown as Application[]);
   }
 
   async function loadBookings() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bookings')
       .select('id, service_type, start_date, end_date, status, total_price, created_at, profiles(full_name)')
       .order('created_at', { ascending: false })
       .limit(50);
+    if (error) { console.error('[Admin] loadBookings:', error.message); return; }
     setBookings((data ?? []) as unknown as AdminBooking[]);
   }
 
   async function loadPendingPayments() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('bookings')
       .select('id, total_price, payment_receipt_url, start_date, end_date, service_type, created_at, profiles(full_name)')
       .eq('payment_status', 'receipt_submitted')
       .order('created_at', { ascending: false });
+    if (error) { console.error('[Admin] loadPendingPayments:', error.message); return; }
     setPendingPayments((data ?? []) as unknown as PendingPayment[]);
   }
 
@@ -243,7 +252,8 @@ export function AdminScreen() {
   async function approveApplication(id: string, userId: string, serviceType: string) {
     const { error } = await supabase.rpc('approve_host', { target_user_id: userId });
     if (error) { Alert.alert('Error', error.message); return; }
-    await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
+    const { error: appErr } = await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
+    if (appErr) console.error('[Admin] approveApplication update:', appErr.message);
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -252,7 +262,7 @@ export function AdminScreen() {
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`,
-          apikey: SUPABASE_ANON_KEY,
+          apikey: supabaseAnonKey,
         },
         body: JSON.stringify({ applicant_id: userId, application_id: id, service_type: serviceType }),
       });
@@ -265,20 +275,23 @@ export function AdminScreen() {
   }
 
   async function rejectApplication(id: string) {
-    await supabase.from('host_applications').update({ status: 'rejected' }).eq('id', id);
+    const { error } = await supabase.from('host_applications').update({ status: 'rejected' }).eq('id', id);
+    if (error) { Alert.alert('Error', error.message); return; }
     Alert.alert('Rechazado', 'La postulación fue rechazada.');
     loadApplications();
     loadStats();
   }
 
   async function recoverApplication(id: string) {
-    await supabase.from('host_applications').update({ status: 'pending' }).eq('id', id);
+    const { error } = await supabase.from('host_applications').update({ status: 'pending' }).eq('id', id);
+    if (error) { Alert.alert('Error', error.message); return; }
     loadApplications();
     loadStats();
   }
 
   async function toggleAdmin(userId: string, current: boolean) {
-    await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId);
+    const { error } = await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId);
+    if (error) { Alert.alert('Error', error.message); return; }
     loadUsers();
   }
 
