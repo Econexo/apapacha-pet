@@ -6,7 +6,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
-import { addPet, updatePet, getMyPets } from '../services/pets.service';
+import { addPet, updatePet, getPetById } from '../services/pets.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'AddPetModal'>;
@@ -31,20 +31,19 @@ export function AddPetScreen() {
 
   useEffect(() => {
     if (!petId) return;
-    getMyPets().then(pets => {
-      const pet = pets.find(p => p.id === petId);
-      if (pet) {
-        setName(pet.name);
-        setBreed(pet.breed ?? '');
-        setAge(String(pet.age_years));
-        setWeight(String(pet.weight_kg));
-        setSterilized(pet.sterilized);
-        setExistingImageUrl(pet.image_url);
-        const alerts = pet.medical_alerts ?? [];
-        setAllergies(alerts[0] ?? '');
-        setMedication(alerts[1] ?? '');
-      }
-    }).catch(() => {}).finally(() => setLoadingPet(false));
+    getPetById(petId).then(pet => {
+      if (!pet) { Alert.alert('Error', 'No se encontró la mascota.'); navigation.goBack(); return; }
+      setName(pet.name);
+      setBreed(pet.breed ?? '');
+      setAge(String(pet.age_years));
+      setWeight(String(pet.weight_kg));
+      setSterilized(pet.sterilized);
+      setExistingImageUrl(pet.image_url);
+      const alerts = pet.medical_alerts ?? [];
+      setAllergies(alerts[0] ?? '');
+      setMedication(alerts[1] ?? '');
+    }).catch(() => { Alert.alert('Error', 'No se pudo cargar la mascota.'); navigation.goBack(); })
+      .finally(() => setLoadingPet(false));
   }, [petId]);
 
   const handleSubmit = async () => {
