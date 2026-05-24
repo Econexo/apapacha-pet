@@ -110,7 +110,7 @@ export function DateRangePicker({ checkIn, checkOut, onChangeCheckIn, onChangeCh
       {checkIn && checkOut && (
         <View style={styles.summaryRow}>
           <Text style={styles.summaryText}>
-            {Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000)} noche(s) seleccionadas
+            {Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000))} noche(s) seleccionadas
           </Text>
         </View>
       )}
