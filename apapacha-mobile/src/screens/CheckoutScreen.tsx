@@ -66,6 +66,10 @@ export function CheckoutScreen() {
   const grandTotal = basePrice + APP_FEE + INSURANCE_FEE;
 
   const handleConfirm = async () => {
+    if (checkOut <= checkIn) {
+      Alert.alert('Fechas inválidas', 'La fecha de salida debe ser posterior a la de llegada.');
+      return;
+    }
     if (!selectedPet) {
       Alert.alert('Mascota requerida', 'Añade una mascota en tu perfil antes de reservar.');
       return;
@@ -110,7 +114,7 @@ export function CheckoutScreen() {
         {service && (
           <View style={styles.serviceCard}>
             <Image
-              source={{ uri: type === 'space' ? (service as Space).image_urls[0] : ((service as Visiter).image_url ?? '') }}
+              source={{ uri: type === 'space' ? ((service as Space).image_urls?.[0] ?? 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800') : ((service as Visiter).image_url ?? 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=800') }}
               style={styles.serviceImage}
             />
             <View style={styles.serviceInfo}>
@@ -118,7 +122,7 @@ export function CheckoutScreen() {
               <Text style={styles.serviceTitle}>
                 {type === 'space' ? (service as Space).title : (service as Visiter).name}
               </Text>
-              <Text style={styles.serviceRating}>⭐ {service.rating}</Text>
+              <Text style={styles.serviceRating}>{service.rating > 0 ? `⭐ ${service.rating}` : '✨ Nuevo'}</Text>
             </View>
           </View>
         )}
@@ -131,10 +135,29 @@ export function CheckoutScreen() {
             onChangeCheckIn={setCheckIn}
             onChangeCheckOut={setCheckOut}
           />
-          <View style={[styles.row, { marginTop: 12 }]}>
-            <Text style={styles.rowTitle}>Huésped</Text>
-            <Text style={styles.rowValue}>{selectedPet ? selectedPet.name : 'Sin mascota'}</Text>
-          </View>
+
+          {/* Pet selector */}
+          <Text style={[styles.rowTitle, { marginTop: 16, marginBottom: 10 }]}>Huésped</Text>
+          {pets.length === 0 ? (
+            <View style={styles.noPetBanner}>
+              <Text style={styles.noPetText}>⚠️ No tienes mascotas registradas. Añade una en tu perfil.</Text>
+            </View>
+          ) : (
+            <View style={styles.petSelectorRow}>
+              {pets.map(p => (
+                <TouchableOpacity
+                  key={p.id}
+                  style={[styles.petChip, selectedPet?.id === p.id && styles.petChipActive]}
+                  onPress={() => setSelectedPet(p)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.petChipText, selectedPet?.id === p.id && styles.petChipTextActive]}>
+                    🐱 {p.name}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </View>
 
         <View style={styles.divider} />
@@ -231,4 +254,11 @@ const styles = StyleSheet.create({
   footer: { backgroundColor: colors.surface, padding: 20, borderTopWidth: 1, borderTopColor: colors.border },
   submitBtn: { backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   submitBtnText: { color: colors.surface, fontWeight: '800', fontSize: 16 },
+  noPetBanner: { backgroundColor: colors.dangerBg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.dangerBorder },
+  noPetText: { fontSize: 13, color: colors.dangerText, fontWeight: '600' },
+  petSelectorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  petChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
+  petChipActive: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  petChipText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
+  petChipTextActive: { color: colors.primaryDark, fontWeight: '800' },
 });
