@@ -44,3 +44,24 @@ export async function approveHostApplication(userId: string): Promise<void> {
   const { error } = await supabase.rpc('approve_host', { target_user_id: userId });
   if (error) throw error;
 }
+
+export async function completeBookingAsHost(bookingId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const [spacesRes, visitersRes] = await Promise.all([
+    supabase.from('spaces').select('id').eq('host_id', user.id),
+    supabase.from('visiters').select('id').eq('host_id', user.id),
+  ]);
+  const myServiceIds = [
+    ...(spacesRes.data ?? []).map((s: any) => s.id),
+    ...(visitersRes.data ?? []).map((v: any) => v.id),
+  ];
+
+  const { error } = await supabase
+    .from('bookings')
+    .update({ status: 'completed' })
+    .eq('id', bookingId)
+    .in('service_id', myServiceIds);
+  if (error) throw error;
+}
