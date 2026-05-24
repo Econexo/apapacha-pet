@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Dimensions,
+  ActivityIndicator, Dimensions, Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -18,6 +18,7 @@ import {
   getProgressToNextLevel,
   type HostStats, type Review, type MonthlyEarning,
 } from '../services/reviews.service';
+import { completeBookingAsHost } from '../services/host.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Tab = 'servicios' | 'resumen' | 'historial' | 'ganancias' | 'resenas';
@@ -46,14 +47,14 @@ export function HostDashboardScreen() {
     if (!hostId) { setLoading(false); return; }
     const settle = <T,>(p: Promise<T>, fallback: T): Promise<T> =>
       p.catch((e) => { console.warn('Dashboard load partial fail:', e); return fallback; });
-    const [b, s, r, e, sp, vi] = await Promise.all([
+    const [b, r, e, sp, vi] = await Promise.all([
       settle(getMyHostBookings(), []),
-      settle(getHostStats(hostId), null),
       settle(getHostReviews(hostId), []),
       settle(getMonthlyEarnings(hostId), []),
       settle(getMySpace(), null),
       settle(getMyVisiter(), null),
     ]);
+    const s = await settle(getHostStats(hostId, r), null);
     setBookings(b);
     if (s) setStats(s);
     setReviews(r);
@@ -114,7 +115,7 @@ export function HostDashboardScreen() {
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {tab === 'servicios' && <TabServicios mySpace={mySpace ?? null} myVisiter={myVisiter ?? null} navigation={navigation} onReload={reload} />}
           {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiter ?? null} navigation={navigation} />}
-          {tab === 'historial' && <TabHistorial bookings={completedBookings} />}
+          {tab === 'historial' && <TabHistorial activeBookings={activeBookings} completedBookings={completedBookings} navigation={navigation} onReload={reload} />}
           {tab === 'ganancias' && <TabGanancias earnings={earnings} />}
           {tab === 'resenas'   && <TabResenas   reviews={reviews} />}
         </ScrollView>
@@ -267,7 +268,12 @@ function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, na
   myVisiter: Visiter | null;
   navigation: Nav;
 }) {
-  if (!stats) return null;
+  if (!stats) return (
+    <View style={{ alignItems: 'center', padding: 40, gap: 12 }}>
+      <Text style={{ fontSize: 32 }}>📊</Text>
+      <Text style={{ color: colors.textMuted, fontSize: 14, textAlign: 'center' }}>No se pudieron cargar las estadísticas.</Text>
+    </View>
+  );
   const { level, avgRating, totalTips, totalPoints } = stats;
   const progress = getProgressToNextLevel(totalPoints);
 
@@ -381,32 +387,104 @@ function ServiceCard({ label, service, price, onManage }: {
 
 /* ─── TAB: HISTORIAL ───────────────────────────────────────────────────────── */
 
-function TabHistorial({ bookings }: { bookings: Booking[] }) {
-  if (bookings.length === 0) {
+function TabHistorial({ activeBookings, completedBookings, navigation, onReload }: {
+  activeBookings: Booking[];
+  completedBookings: Booking[];
+  navigation: Nav;
+  onReload: () => void;
+}) {
+  if (activeBookings.length === 0 && completedBookings.length === 0) {
     return (
       <View style={styles.emptyState}>
         <Text style={styles.emptyIcon}>📭</Text>
-        <Text style={styles.emptyTitle}>Sin cuidados completados</Text>
+        <Text style={styles.emptyTitle}>Sin cuidados aún</Text>
         <Text style={styles.emptyText}>Aquí verás el historial de todos los cuidados que hayas realizado.</Text>
       </View>
     );
   }
+
+  const STATUS_COLORS: Record<string, string> = {
+    active: colors.accent,
+    pending: colors.primary,
+    completed: colors.textMuted,
+    cancelled: colors.danger,
+  };
+  const STATUS_LABELS: Record<string, string> = {
+    active: 'En curso',
+    pending: 'Pendiente',
+    completed: 'Completada',
+    cancelled: 'Cancelada',
+  };
+
   return (
     <>
-      <Text style={styles.sectionTitle}>Historial de cuidados ({bookings.length})</Text>
-      {bookings.map(b => (
-        <View key={b.id} style={styles.histCard}>
-          <View style={styles.histHeader}>
-            <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
-            <Text style={[styles.histBadge, { color: colors.accent, backgroundColor: colors.successBg }]}>Completada</Text>
-          </View>
-          <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
-          <View style={styles.histFooter}>
-            <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
-            <Text style={styles.histPaid}>{b.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pendiente'}</Text>
-          </View>
-        </View>
-      ))}
+      {activeBookings.length > 0 && (
+        <>
+          <Text style={styles.sectionTitle}>Reservas activas ({activeBookings.length})</Text>
+          {activeBookings.map(b => (
+            <View key={b.id} style={[styles.histCard, { borderColor: colors.primary, borderWidth: 1.5 }]}>
+              <View style={styles.histHeader}>
+                <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
+                <Text style={[styles.histBadge, { color: STATUS_COLORS[b.status], backgroundColor: `${STATUS_COLORS[b.status]}15` }]}>
+                  {STATUS_LABELS[b.status]}
+                </Text>
+              </View>
+              <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
+              <View style={styles.histFooter}>
+                <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <TouchableOpacity
+                    style={styles.chatBtn}
+                    onPress={() => navigation.navigate('ChatDetail', { id: b.id })}
+                    activeOpacity={0.8}
+                  >
+                    <Text style={styles.chatBtnText}>💬 Chat</Text>
+                  </TouchableOpacity>
+                  {b.status === 'active' && (
+                    <TouchableOpacity
+                      style={styles.completeBtn}
+                      onPress={() => {
+                        Alert.alert(
+                          'Marcar completada',
+                          '¿Confirmas que el cuidado ha finalizado?',
+                          [
+                            { text: 'Cancelar', style: 'cancel' },
+                            { text: 'Confirmar', onPress: () => completeBookingAsHost(b.id).then(onReload).catch(console.error) },
+                          ]
+                        );
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.completeBtnText}>✓ Completar</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
+
+      {completedBookings.length > 0 && (
+        <>
+          <Text style={[styles.sectionTitle, activeBookings.length > 0 && { marginTop: 24 }]}>
+            Historial ({completedBookings.length})
+          </Text>
+          {completedBookings.map(b => (
+            <View key={b.id} style={styles.histCard}>
+              <View style={styles.histHeader}>
+                <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
+                <Text style={[styles.histBadge, { color: colors.accent, backgroundColor: colors.successBg }]}>Completada</Text>
+              </View>
+              <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
+              <View style={styles.histFooter}>
+                <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
+                <Text style={styles.histPaid}>{b.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pendiente'}</Text>
+              </View>
+            </View>
+          ))}
+        </>
+      )}
     </>
   );
 }
@@ -414,11 +492,13 @@ function TabHistorial({ bookings }: { bookings: Booking[] }) {
 /* ─── TAB: GANANCIAS ───────────────────────────────────────────────────────── */
 
 function TabGanancias({ earnings }: { earnings: MonthlyEarning[] }) {
-  if (earnings.length === 0) {
+  const hasData = earnings.some(e => e.earnings > 0);
+
+  if (earnings.length === 0 || !hasData) {
     return (
       <View style={styles.emptyState}>
         <Text style={styles.emptyIcon}>📊</Text>
-        <Text style={styles.emptyTitle}>Sin datos aún</Text>
+        <Text style={styles.emptyTitle}>Sin ganancias aún</Text>
         <Text style={styles.emptyText}>Aquí verás tus ganancias mensuales una vez que completes reservas.</Text>
       </View>
     );
@@ -585,6 +665,10 @@ const styles = StyleSheet.create({
   histFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   histPrice: { fontSize: 16, fontWeight: '800', color: colors.textMain },
   histPaid: { fontSize: 13, color: colors.textMuted },
+  chatBtn: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: `${colors.primary}30` },
+  chatBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
+  completeBtn: { backgroundColor: colors.successBg, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.successBorder },
+  completeBtnText: { color: colors.successText, fontWeight: '700', fontSize: 13 },
 
   // Earnings summary
   earningsSummary: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: colors.border, marginBottom: 24 },
