@@ -38,10 +38,13 @@ export async function createBooking(bookingData: {
 }
 
 export async function updateBookingStatus(id: string, status: BookingStatus): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
   const { error } = await supabase
     .from('bookings')
     .update({ status })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('owner_id', user.id);
   if (error) throw error;
 }
 
@@ -55,11 +58,11 @@ export async function submitPaymentReceipt(bookingId: string, localUri: string):
   const path = `${user.id}/receipts/${bookingId}.${ext}`;
 
   const { error: uploadError } = await supabase.storage
-    .from('avatars')
+    .from('receipts')
     .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
   if (uploadError) throw uploadError;
 
-  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  const { data } = supabase.storage.from('receipts').getPublicUrl(path);
 
   const { error } = await supabase
     .from('bookings')
@@ -81,6 +84,8 @@ export async function cancelBooking(bookingId: string): Promise<void> {
 }
 
 export async function confirmBookingPayment(bookingId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
   const { error } = await supabase
     .from('bookings')
     .update({ payment_status: 'paid', status: 'active' })
