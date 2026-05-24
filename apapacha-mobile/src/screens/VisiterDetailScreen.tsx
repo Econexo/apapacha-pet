@@ -33,10 +33,8 @@ export function VisiterDetailScreen() {
       try {
         const v = await getVisiterById(id);
         setVisiter(v);
-        const [rv, stats] = await Promise.all([
-          getHostReviews(v.host_id),
-          getHostStats(v.host_id),
-        ]);
+        const rv = await getHostReviews(v.host_id);
+        const stats = await getHostStats(v.host_id, rv);
         setReviews(rv.slice(0, 3));
         setAvgRating(stats.avgRating);
       } catch (e) {
@@ -93,7 +91,7 @@ export function VisiterDetailScreen() {
         <Text style={styles.sectionTitle}>Métricas de Servicio</Text>
         <View style={styles.metricsGrid}>
           <View style={styles.metricBox}>
-            <Text style={styles.metricVal}>⭐ {displayRating > 0 ? displayRating.toFixed(1) : '—'}</Text>
+            <Text style={styles.metricVal}>{displayRating > 0 ? `⭐ ${displayRating.toFixed(1)}` : '✨ Nuevo'}</Text>
             <Text style={styles.metricLab}>Calificación</Text>
           </View>
           <View style={styles.metricBox}>
