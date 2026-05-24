@@ -24,7 +24,7 @@ export function OnboardingScreen() {
   const [saving, setSaving] = useState(false);
 
   const isValid = fullName.trim().length >= 2 && lastName.trim().length >= 2
-    && Number(age) >= 18 && address.trim().length >= 5;
+    && Number(age) >= 18 && Number(age) <= 100 && address.trim().length >= 5;
 
   const handleSave = async () => {
     if (!isValid) return;
