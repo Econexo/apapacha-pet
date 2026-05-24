@@ -37,8 +37,9 @@ export function SpaceDetailScreen() {
       try {
         const s = await getSpaceById(id);
         setSpace(s);
-        const { data: prof } = await supabase
+        const { data: prof, error: profErr } = await supabase
           .from('profiles').select('full_name').eq('id', s.host_id).single();
+        if (profErr) console.error('[SpaceDetail] host profile:', profErr.message);
         if (prof) setHostName(prof.full_name);
         const rv = await getHostReviews(s.host_id);
         setReviews(rv.slice(0, 3));
@@ -67,7 +68,7 @@ export function SpaceDetailScreen() {
     </View>
   );
 
-  const photos = space.image_urls?.length > 0 ? space.image_urls : [PLACEHOLDER];
+  const photos = (space.image_urls && space.image_urls.length > 0) ? space.image_urls : [PLACEHOLDER];
 
   const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W));
@@ -97,7 +98,9 @@ export function SpaceDetailScreen() {
             </View>
           )}
           <View style={styles.ratingBadge}>
-            <Text style={styles.ratingText}>⭐ {space.rating.toFixed(1)}</Text>
+            <Text style={styles.ratingText}>
+              {space.rating > 0 ? `⭐ ${space.rating.toFixed(1)}` : '✨ Nuevo'}
+            </Text>
           </View>
         </View>
 
