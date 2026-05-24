@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert,
@@ -6,7 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import { createReview } from '../services/reviews.service';
+import { createReview, getMyReviewForBooking } from '../services/reviews.service';
 import type { RootStackParamList } from '../types/navigation';
 
 type Route = RouteProp<RootStackParamList, 'LeaveReview'>;
@@ -23,6 +23,14 @@ export function LeaveReviewScreen() {
   const [comment, setComment]   = useState('');
   const [tip, setTip]           = useState(0);
   const [saving, setSaving]     = useState(false);
+  const [alreadyReviewed, setAlreadyReviewed] = useState(false);
+  const [checkingReview, setCheckingReview]   = useState(true);
+
+  useEffect(() => {
+    getMyReviewForBooking(bookingId).then(existing => {
+      if (existing) setAlreadyReviewed(true);
+    }).catch(() => {}).finally(() => setCheckingReview(false));
+  }, [bookingId]);
 
   const handleSubmit = async () => {
     if (rating === 0) {
@@ -49,6 +57,36 @@ export function LeaveReviewScreen() {
       setSaving(false);
     }
   };
+
+  if (checkingReview) return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.surface }}>
+      <ActivityIndicator size="large" color={colors.primary} />
+    </View>
+  );
+
+  if (alreadyReviewed) return (
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.header}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+          <Text style={styles.backBtnText}>←</Text>
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Reseña</Text>
+        <View style={{ width: 40 }} />
+      </View>
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 32, gap: 12 }}>
+        <Text style={{ fontSize: 52 }}>✅</Text>
+        <Text style={{ fontSize: 18, fontWeight: '800', color: colors.textMain, textAlign: 'center' }}>¡Ya dejaste tu reseña!</Text>
+        <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center' }}>Solo puedes dejar una reseña por servicio.</Text>
+        <TouchableOpacity
+          style={[styles.submitBtn, { marginTop: 16 }]}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.submitBtnText}>Volver</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -78,16 +116,20 @@ export function LeaveReviewScreen() {
         </Text>
 
         {/* Comment */}
-        <Text style={styles.label}>Comentario (opcional)</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 8 }}>
+          <Text style={styles.label}>Comentario (opcional)</Text>
+          <Text style={{ fontSize: 11, color: comment.length > 400 ? colors.danger : colors.textMuted }}>{comment.length}/500</Text>
+        </View>
         <TextInput
           style={styles.textarea}
           value={comment}
-          onChangeText={setComment}
+          onChangeText={t => setComment(t.slice(0, 500))}
           placeholder="¿Cómo se portó el cuidador? ¿Tu gato estuvo bien?"
           placeholderTextColor={colors.textMuted}
           multiline
           numberOfLines={4}
           textAlignVertical="top"
+          maxLength={500}
         />
 
         {/* Tip */}
