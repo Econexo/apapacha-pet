@@ -105,7 +105,11 @@ export function TransferInstructionsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+          <Text style={styles.backBtnText}>←</Text>
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>Instrucciones de Pago</Text>
+        <View style={{ width: 36 }} />
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
@@ -174,8 +178,10 @@ export function TransferInstructionsScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  header: { padding: 20, paddingBottom: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  backBtn: { padding: 8 },
+  backBtnText: { fontSize: 24, color: colors.primary, fontWeight: '700' },
   content: { padding: 20, paddingBottom: 60 },
 
   amountCard: { backgroundColor: colors.primary, borderRadius: 16, padding: 24, alignItems: 'center', marginBottom: 24 },
