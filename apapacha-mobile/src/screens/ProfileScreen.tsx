@@ -13,6 +13,11 @@ import type { Pet, HostApplication } from '../types/database';
 import { getMyPets } from '../services/pets.service';
 import { getMyApplication } from '../services/host.service';
 import { supabase } from '../../supabase';
+import { OverlayModal } from '../components/OverlayModal';
+import { EditProfileScreen } from './EditProfileScreen';
+import { AddPetScreen } from './AddPetScreen';
+import { TrustAndSafetyScreen } from './TrustAndSafetyScreen';
+import { HostOnboardingScreen } from './HostOnboardingScreen';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -28,9 +33,14 @@ export function ProfileScreen() {
   const { profile, signOut, refreshProfile } = useAuth();
   const [pets, setPets] = useState<Pet[]>([]);
   const [application, setApplication] = useState<HostApplication | null>(null);
-
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showAddPet, setShowAddPet] = useState(false);
+  const [addPetId, setAddPetId] = useState<string | undefined>();
+  const [showTrust, setShowTrust] = useState(false);
+  const [showHostOnboarding, setShowHostOnboarding] = useState(false);
 
   const loadProfile = useCallback(async () => {
     await Promise.all([
@@ -95,7 +105,7 @@ export function ProfileScreen() {
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mi Perfil</Text>
-        <TouchableOpacity style={styles.editBtn} onPress={() => navigation.navigate('EditProfile')}>
+        <TouchableOpacity style={styles.editBtn} onPress={() => setShowEditProfile(true)}>
           <Text style={styles.editBtnText}>Editar</Text>
         </TouchableOpacity>
       </View>
@@ -151,7 +161,7 @@ export function ProfileScreen() {
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Mi Familia Felina</Text>
-          <TouchableOpacity style={styles.addPetBtn} onPress={() => navigation.navigate('AddPetModal')}>
+          <TouchableOpacity style={styles.addPetBtn} onPress={() => { setAddPetId(undefined); setShowAddPet(true); }}>
             <Text style={styles.addPetBtnText}>+ Añadir</Text>
           </TouchableOpacity>
         </View>
@@ -171,7 +181,7 @@ export function ProfileScreen() {
                 <Text style={styles.catDetails}>{pet.breed || 'Sin raza'} • {pet.age_years} años</Text>
                 <Text style={styles.catDetails}>{pet.sterilized ? 'Esterilizado' : 'No esterilizado'} • {pet.weight_kg} kg</Text>
               </View>
-              <TouchableOpacity style={styles.editPetBtn} onPress={() => navigation.navigate('AddPetModal', { petId: pet.id })} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+              <TouchableOpacity style={styles.editPetBtn} onPress={() => { setAddPetId(pet.id); setShowAddPet(true); }} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
                 <Ionicons name="create-outline" size={20} color={colors.primary} />
               </TouchableOpacity>
             </View>
@@ -222,7 +232,7 @@ export function ProfileScreen() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={styles.onboardingBtn} onPress={() => navigation.navigate('HostOnboarding')}>
+          <TouchableOpacity style={styles.onboardingBtn} onPress={() => setShowHostOnboarding(true)}>
             <Ionicons name="star-outline" size={18} color={colors.surface} />
             <Text style={styles.onboardingBtnText}>Postular para ser Cuidador</Text>
           </TouchableOpacity>
@@ -285,7 +295,7 @@ export function ProfileScreen() {
             <Text style={styles.menuItemText}>Métodos de Pago</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={() => navigation.navigate('TrustAndSafety')}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowTrust(true)}>
             <Text style={styles.menuItemText}>Políticas de Seguridad y Seguros</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
@@ -295,6 +305,22 @@ export function ProfileScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
+
+      <OverlayModal visible={showEditProfile} onClose={() => setShowEditProfile(false)}>
+        <EditProfileScreen onClose={() => { setShowEditProfile(false); loadProfile(); }} />
+      </OverlayModal>
+
+      <OverlayModal visible={showAddPet} onClose={() => setShowAddPet(false)}>
+        <AddPetScreen petId={addPetId} onClose={() => { setShowAddPet(false); loadProfile(); }} />
+      </OverlayModal>
+
+      <OverlayModal visible={showTrust} onClose={() => setShowTrust(false)}>
+        <TrustAndSafetyScreen onClose={() => setShowTrust(false)} />
+      </OverlayModal>
+
+      <OverlayModal visible={showHostOnboarding} onClose={() => setShowHostOnboarding(false)}>
+        <HostOnboardingScreen onClose={() => { setShowHostOnboarding(false); loadProfile(); }} />
+      </OverlayModal>
     </SafeAreaView>
   );
 }
