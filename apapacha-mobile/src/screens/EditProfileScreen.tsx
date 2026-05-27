@@ -24,10 +24,12 @@ export function EditProfileScreen() {
   const [saving, setSaving] = useState(false);
 
   const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
-      return;
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
+        return;
+      }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as ImagePicker.MediaType[],
@@ -63,7 +65,12 @@ export function EditProfileScreen() {
       await refreshProfile();
       navigation.goBack();
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar el perfil');
+      const msg = e.message ?? 'No se pudo guardar el perfil';
+      if (Platform.OS === 'web') {
+        (window as any).alert(`Error: ${msg}`);
+      } else {
+        Alert.alert('Error', msg);
+      }
     } finally {
       setSaving(false);
     }
