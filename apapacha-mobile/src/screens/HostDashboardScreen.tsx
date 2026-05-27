@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { radii, shadows, label } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking, Space, Visiter } from '../types/database';
 import { getMyHostBookings } from '../services/host.service';
@@ -862,7 +863,7 @@ const styles = StyleSheet.create({
   scrollContainer: { padding: 20, paddingBottom: 80 },
 
   // Level card
-  levelCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, borderWidth: 2, marginBottom: 20 },
+  levelCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 20, borderWidth: 2, marginBottom: 20, ...shadows.md },
   levelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   levelEmoji: { fontSize: 48, marginRight: 16 },
   levelInfo: { flex: 1 },
@@ -874,20 +875,20 @@ const styles = StyleSheet.create({
 
   // Stats grid
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 20 },
-  statCard: { width: (SCREEN_WIDTH - 40 - 12) / 2 - 0.5, backgroundColor: colors.surface, padding: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border, alignItems: 'center' },
+  statCard: { width: (SCREEN_WIDTH - 40 - 12) / 2 - 0.5, backgroundColor: colors.surface, padding: 18, borderRadius: radii.lg, ...shadows.sm, alignItems: 'center' },
   statNumber: { fontSize: 28, fontWeight: '800', color: colors.primary, marginBottom: 4 },
-  statLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', textAlign: 'center' },
+  statLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '700', textAlign: 'center', textTransform: 'uppercase', letterSpacing: 0.5 },
 
   // Info box
-  infoBox: { backgroundColor: colors.primaryLight, borderRadius: 12, padding: 16, gap: 6 },
-  infoTitle: { fontSize: 14, fontWeight: '800', color: colors.primaryDark, marginBottom: 4 },
+  infoBox: { backgroundColor: colors.primaryLight, borderRadius: radii.lg, padding: 16, gap: 6 },
+  infoTitle: { fontSize: 13, fontWeight: '800', color: colors.primaryDark, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.5 },
   infoText: { fontSize: 13, color: colors.primaryDark },
 
   // Section
-  sectionTitle: { fontSize: 17, fontWeight: '700', color: colors.textMain, marginBottom: 16 },
+  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textMuted, marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 },
 
   // Historial
-  histCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 12 },
+  histCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, marginBottom: 12, ...shadows.md },
   histHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   histService: { fontSize: 15, fontWeight: '700', color: colors.textMain },
   histBadge: { fontSize: 11, fontWeight: '700', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
@@ -910,14 +911,14 @@ const styles = StyleSheet.create({
   completeBtnText: { color: colors.successText, fontWeight: '700', fontSize: 13 },
 
   // Earnings summary
-  earningsSummary: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: colors.border, marginBottom: 24 },
+  earningsSummary: { flexDirection: 'row', backgroundColor: colors.surface, borderRadius: radii.lg, padding: 20, ...shadows.md, marginBottom: 24 },
   earningsSummaryItem: { flex: 1, alignItems: 'center' },
   earningsSummaryNumber: { fontSize: 22, fontWeight: '800', color: colors.primary, marginBottom: 4 },
   earningsSummaryLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
   earningsSummaryDivider: { width: 1, backgroundColor: colors.border, marginHorizontal: 8 },
 
   // Bar chart
-  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: 16, padding: 16, marginBottom: 8, borderWidth: 1, borderColor: colors.border, height: CHART_HEIGHT + 80 },
+  chart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', backgroundColor: colors.surface, borderRadius: radii.lg, padding: 16, marginBottom: 8, ...shadows.sm, height: CHART_HEIGHT + 80 },
   chartColumn: { flex: 1, alignItems: 'center' },
   chartValue: { fontSize: 9, color: colors.textMuted, textAlign: 'center', marginBottom: 2, minHeight: 12 },
   chartBarContainer: { width: '60%', height: CHART_HEIGHT, justifyContent: 'flex-end' },
@@ -926,17 +927,17 @@ const styles = StyleSheet.create({
   chartCares: { fontSize: 9, color: colors.accent, marginTop: 2, minHeight: 12 },
 
   // Monthly rows
-  monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 10, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 8 },
+  monthRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radii.md, padding: 14, ...shadows.sm, marginBottom: 8 },
   monthLabel: { fontSize: 14, fontWeight: '700', color: colors.textMain },
   monthCares: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   monthEarning: { fontSize: 16, fontWeight: '800', color: colors.primary },
 
   // Reviews
-  reviewsHeader: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: 16, padding: 20, borderWidth: 1, borderColor: colors.border, marginBottom: 20 },
+  reviewsHeader: { alignItems: 'center', backgroundColor: colors.surface, borderRadius: radii.lg, padding: 20, ...shadows.md, marginBottom: 20 },
   reviewsAvgNumber: { fontSize: 48, fontWeight: '800', color: colors.textMain },
   reviewsAvgStars: { fontSize: 24, color: '#F59E0B', marginTop: 4 },
   reviewsCount: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
-  reviewCard: { backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 12 },
+  reviewCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 16, ...shadows.sm, marginBottom: 12 },
   reviewCardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 },
   reviewerName: { fontSize: 14, fontWeight: '700', color: colors.textMain },
   reviewDate: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
@@ -948,9 +949,9 @@ const styles = StyleSheet.create({
 
   // Tab Servicios
   serviciosIntro: { marginBottom: 20 },
-  serviciosTitle: { fontSize: 22, fontWeight: '800', color: colors.textMain, marginBottom: 6 },
+  serviciosTitle: { fontSize: 22, fontWeight: '900', color: colors.textMain, marginBottom: 6, letterSpacing: -0.3 },
   serviciosSubtitle: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
-  servicioBlock: { backgroundColor: colors.surface, borderRadius: 16, padding: 18, borderWidth: 1, borderColor: colors.border, marginBottom: 16 },
+  servicioBlock: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, ...shadows.md, marginBottom: 16 },
   servicioBlockHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 14, gap: 12 },
   servicioBlockIcon: { fontSize: 28 },
   servicioBlockInfo: { flex: 1 },
@@ -975,8 +976,8 @@ const styles = StyleSheet.create({
   servicioEmpty: { backgroundColor: `${colors.warning}12`, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: `${colors.warning}30`, marginBottom: 14 },
   servicioEmptyText: { fontSize: 12, color: colors.warning, fontWeight: '600' },
   servicioBtn: { paddingVertical: 13, borderRadius: 10, alignItems: 'center' },
-  servicioBtnCreate: { backgroundColor: colors.primary },
-  servicioBtnEdit: { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.primary },
+  servicioBtnCreate: { backgroundColor: colors.primary, borderRadius: radii.lg },
+  servicioBtnEdit: { backgroundColor: colors.background, borderWidth: 1.5, borderColor: colors.primary, borderRadius: radii.lg },
   servicioBtnText: { fontWeight: '800', fontSize: 14 },
   servicioBtnTextCreate: { color: colors.surface },
   servicioBtnTextEdit: { color: colors.primaryDark },
@@ -984,7 +985,7 @@ const styles = StyleSheet.create({
   serviciosHintText: { fontSize: 12, color: colors.primaryDark, lineHeight: 18 },
 
   // Service cards
-  serviceCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.border, marginBottom: 10 },
+  serviceCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radii.lg, padding: 16, ...shadows.sm, marginBottom: 10 },
   serviceCardLeft: { flex: 1 },
   serviceCardLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600', marginBottom: 4 },
   serviceCardTitle: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
