@@ -33,6 +33,7 @@ import { TransferInstructionsScreen } from './src/screens/TransferInstructionsSc
 import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
+import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { colors } from './src/theme/colors';
 import type { RootStackParamList } from './src/types/navigation';
 
@@ -135,6 +136,7 @@ function RootNavigator() {
       <Stack.Screen name="LeaveReview" component={LeaveReviewScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Admin" component={AdminScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="ManageService" component={ManageServiceScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
 }
