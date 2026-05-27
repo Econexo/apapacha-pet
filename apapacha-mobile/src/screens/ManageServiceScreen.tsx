@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import { getMySpace, upsertMySpace, uploadSpacePhoto } from '../services/spaces.service';
-import { getMyVisiter, upsertMyVisiter, uploadVisiterPhoto } from '../services/visiters.service';
+import { getMyVisiter, getVisiterById, upsertMyVisiter, uploadVisiterPhoto } from '../services/visiters.service';
 import type { Space, Visiter } from '../types/database';
 
 type Route = RouteProp<RootStackParamList, 'ManageService'>;
@@ -22,7 +22,7 @@ const SPACE_FEATURES = [
 
 export function ManageServiceScreen() {
   const navigation = useNavigation();
-  const { type } = useRoute<Route>().params;
+  const { type, serviceId } = useRoute<Route>().params;
   const isSpace = type === 'space';
 
   const [loading, setLoading]   = useState(true);
@@ -69,7 +69,9 @@ export function ManageServiceScreen() {
             setExistingUrls(s.image_urls ?? []);
           }
         } else {
-          const v = await getMyVisiter();
+          const v = serviceId
+            ? await getVisiterById(serviceId)
+            : await getMyVisiter();
           if (v) {
             setExistingId(v.id);
             setName(v.name);
