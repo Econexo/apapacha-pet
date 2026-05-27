@@ -11,6 +11,8 @@ import type { RootStackParamList } from '../types/navigation';
 import type { Space, Visiter } from '../types/database';
 import { getSpaces } from '../services/spaces.service';
 import { getVisiters } from '../services/visiters.service';
+import { OverlayModal } from '../components/OverlayModal';
+import { SearchFilterScreen } from './SearchFilterScreen';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -22,6 +24,7 @@ export function ExploreScreen() {
   const [activeTab, setActiveTab] = useState<'SPACES' | 'VISITERS'>('SPACES');
   const [activeFilters, setActiveFilters] = useState<Set<string>>(new Set());
   const [destination, setDestination] = useState('');
+  const [showFilter, setShowFilter] = useState(false);
   const [allSpaces, setAllSpaces] = useState<Space[]>([]);
   const [visiters, setVisiters] = useState<Visiter[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,7 +94,7 @@ export function ExploreScreen() {
             <Text style={[styles.toggleText, activeTab === 'VISITERS' && styles.toggleTextActive]}>🚗 Visitas en Casa</Text>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={() => navigation.navigate('SearchModal')}>
+        <TouchableOpacity style={styles.searchBar} activeOpacity={0.8} onPress={() => setShowFilter(true)}>
           <View style={styles.searchIconPlaceholder}><Text>🔍</Text></View>
           <View style={styles.searchTexts}>
             <Text style={styles.searchTitle}>
@@ -177,6 +180,15 @@ export function ExploreScreen() {
           ListEmptyComponent={<Text style={styles.emptyText}>No hay cuidadores disponibles.</Text>}
         />
       )}
+      <OverlayModal visible={showFilter} onClose={() => setShowFilter(false)}>
+        <SearchFilterScreen
+          onClose={() => setShowFilter(false)}
+          onApplyFilters={(dest, features) => {
+            setDestination(dest);
+            setActiveFilters(new Set(features));
+          }}
+        />
+      </OverlayModal>
     </SafeAreaView>
   );
 }
