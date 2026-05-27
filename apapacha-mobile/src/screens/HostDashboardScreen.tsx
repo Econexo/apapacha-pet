@@ -90,10 +90,7 @@ export function HostDashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Panel de Cuidador</Text>
-        <TouchableOpacity style={styles.exitBtn} onPress={() => navigation.navigate('MainTabs')}>
-          <Text style={styles.exitBtnText}>Salir</Text>
-        </TouchableOpacity>
+        <Text style={styles.headerTitle}>🐾 Mi Panel</Text>
       </View>
 
       {/* Tab bar */}
