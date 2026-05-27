@@ -87,6 +87,17 @@ export interface Message {
   created_at: string;
 }
 
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  body: string;
+  data: Record<string, any> | null;
+  read: boolean;
+  created_at: string;
+}
+
 export interface HostApplication {
   id: string;
   applicant_id: string;
