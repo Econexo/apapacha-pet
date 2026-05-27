@@ -321,10 +321,17 @@ export function AdminScreen() {
     Alert.alert('Eliminar espacio', `¿Eliminar "${title}"?\nEsta acción no se puede deshacer.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        const { error } = await supabase.from('spaces').delete().eq('id', spaceId);
+        const { error, count } = await supabase
+          .from('spaces')
+          .delete({ count: 'exact' })
+          .eq('id', spaceId);
+        console.log('[Admin] deleteSpace result:', { error: error?.message, count });
         if (error) {
-          console.error('[Admin] deleteSpace:', error.message, error.code);
-          Alert.alert('Error al eliminar', `${error.message}\n\nCódigo: ${error.code ?? 'desconocido'}`);
+          Alert.alert('Error al eliminar', `${error.message}\n(${error.code ?? 'sin código'})`);
+          return;
+        }
+        if (!count || count === 0) {
+          Alert.alert('Sin permisos', 'No se pudo eliminar. La política RLS bloqueó la operación.');
           return;
         }
         await Promise.all([loadSpaces(), loadStats()]);
@@ -342,10 +349,17 @@ export function AdminScreen() {
     Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?\nEsta acción no se puede deshacer.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        const { error } = await supabase.from('visiters').delete().eq('id', visiterId);
+        const { error, count } = await supabase
+          .from('visiters')
+          .delete({ count: 'exact' })
+          .eq('id', visiterId);
+        console.log('[Admin] deleteVisiter result:', { error: error?.message, count });
         if (error) {
-          console.error('[Admin] deleteVisiter:', error.message, error.code);
-          Alert.alert('Error al eliminar', `${error.message}\n\nCódigo: ${error.code ?? 'desconocido'}`);
+          Alert.alert('Error al eliminar', `${error.message}\n(${error.code ?? 'sin código'})`);
+          return;
+        }
+        if (!count || count === 0) {
+          Alert.alert('Sin permisos', 'No se pudo eliminar. La política RLS bloqueó la operación.\n\nAplica el SQL de fix_admin_delete_rls en el dashboard de Supabase.');
           return;
         }
         await Promise.all([loadVisiters(), loadStats()]);
