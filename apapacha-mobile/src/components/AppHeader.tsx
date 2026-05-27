@@ -42,8 +42,11 @@ export function AppHeader({ onBack, rightElement }: AppHeaderProps) {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: colors.border,
+    shadowColor: '#1A0A2E',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 3,
   },
   nav: {
     height: NAV_HEIGHT,
