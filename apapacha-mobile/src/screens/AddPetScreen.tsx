@@ -2,19 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert, ActivityIndicator, Platform, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
-import type { RootStackParamList } from '../types/navigation';
 import { addPet, updatePet, getPetById } from '../services/pets.service';
 
-type Nav = NativeStackNavigationProp<RootStackParamList>;
-type Route = RouteProp<RootStackParamList, 'AddPetModal'>;
-
-export function AddPetScreen() {
-  const navigation = useNavigation<Nav>();
-  const route = useRoute<Route>();
-  const petId = route.params?.petId;
+export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () => void } = {}) {
+  const navigation = useNavigation();
+  const close = () => onClose ? onClose() : navigation.goBack();
   const isEdit = !!petId;
 
   const [localImageUri, setLocalImageUri] = useState<string | null>(null);
@@ -32,7 +26,7 @@ export function AddPetScreen() {
   useEffect(() => {
     if (!petId) return;
     getPetById(petId).then(pet => {
-      if (!pet) { Alert.alert('Error', 'No se encontró la mascota.'); navigation.goBack(); return; }
+      if (!pet) { Alert.alert('Error', 'No se encontró la mascota.'); close(); return; }
       setName(pet.name);
       setBreed(pet.breed ?? '');
       setAge(String(pet.age_years));
@@ -42,7 +36,7 @@ export function AddPetScreen() {
       const alerts = pet.medical_alerts ?? [];
       setAllergies(alerts[0] ?? '');
       setMedication(alerts[1] ?? '');
-    }).catch(() => { Alert.alert('Error', 'No se pudo cargar la mascota.'); navigation.goBack(); })
+    }).catch(() => { Alert.alert('Error', 'No se pudo cargar la mascota.'); close(); })
       .finally(() => setLoadingPet(false));
   }, [petId]);
 
@@ -64,7 +58,7 @@ export function AddPetScreen() {
       } else {
         await addPet(payload);
       }
-      navigation.goBack();
+      close();
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo guardar');
     } finally {
@@ -115,7 +109,7 @@ export function AddPetScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>Cancelar</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Michi Ficha</Text>
