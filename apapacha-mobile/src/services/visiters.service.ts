@@ -38,11 +38,14 @@ export async function getVisiterById(id: string): Promise<Visiter> {
 export async function getMyVisiter(): Promise<Visiter | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('visiters')
     .select('*')
     .eq('host_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
+  if (error) { console.error('[getMyVisiter]', error.message); return null; }
   return data ?? null;
 }
 
