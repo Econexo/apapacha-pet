@@ -95,25 +95,29 @@ export function HostDashboardScreen() {
       </View>
 
       {/* Tab bar */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabBarContent}>
-        {TABS.map(t => (
-          <TouchableOpacity
-            key={t.key}
-            style={[styles.tabItem, tab === t.key && styles.tabItemActive]}
-            onPress={() => setTab(t.key)}
-            activeOpacity={0.7}
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-              <Text style={[styles.tabLabel, tab === t.key && styles.tabLabelActive]}>{t.label}</Text>
-              {!!t.badge && t.badge > 0 && (
-                <View style={styles.tabBadge}>
-                  <Text style={styles.tabBadgeText}>{t.badge}</Text>
-                </View>
-              )}
-            </View>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <View style={styles.tabBarWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBarContent}>
+          {TABS.map(t => (
+            <TouchableOpacity
+              key={t.key}
+              style={styles.tabItem}
+              onPress={() => setTab(t.key)}
+              activeOpacity={0.7}
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Text style={[styles.tabLabel, tab === t.key && styles.tabLabelActive]}>{t.label}</Text>
+                {!!t.badge && t.badge > 0 && (
+                  <View style={styles.tabBadge}>
+                    <Text style={styles.tabBadgeText}>{t.badge}</Text>
+                  </View>
+                )}
+              </View>
+              {tab === t.key && <View style={styles.tabActiveBar} />}
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <View style={styles.tabDivider} />
+      </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -844,12 +848,13 @@ const styles = StyleSheet.create({
   exitBtnText: { color: colors.danger, fontWeight: '700', fontSize: 13 },
 
   // Tabs
-  tabBar: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  tabBarContent: { flexDirection: 'row', paddingHorizontal: 4 },
-  tabItem: { paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center' },
-  tabItemActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
+  tabBarWrapper: { backgroundColor: colors.surface },
+  tabBarContent: { flexGrow: 1, flexDirection: 'row' },
+  tabItem: { flex: 1, minWidth: 80, paddingTop: 12, paddingBottom: 8, paddingHorizontal: 10, alignItems: 'center' },
+  tabLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted, marginBottom: 6 },
   tabLabelActive: { color: colors.primary, fontWeight: '800' },
+  tabActiveBar: { position: 'absolute', bottom: 0, left: 6, right: 6, height: 2.5, backgroundColor: colors.primary, borderRadius: 2 },
+  tabDivider: { height: 1, backgroundColor: colors.border },
   tabBadge: { backgroundColor: colors.primary, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
