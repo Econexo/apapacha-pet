@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator,
+  TextInput, Alert, ActivityIndicator, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -20,8 +20,9 @@ const INCIDENT_OPTIONS: { type: IncidentType; label: string; icon: string }[] = 
   { type: 'other',           label: 'Otro',                    icon: '📝' },
 ];
 
-export function InsuranceClaimScreen() {
+export function InsuranceClaimScreen({ onClose }: { onClose?: () => void } = {}) {
   const navigation = useNavigation<Nav>();
+  const close = () => onClose ? onClose() : navigation.goBack();
   const [selectedType, setSelectedType] = useState<IncidentType | null>(null);
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -33,13 +34,22 @@ export function InsuranceClaimScreen() {
     setSubmitting(true);
     try {
       await submitClaim({ incident_type: selectedType!, description: description.trim() });
-      Alert.alert(
-        'Siniestro Reportado',
-        'Recibimos tu reporte. Un agente revisará tu caso en 1-2 días hábiles y te contactará por email.',
-        [{ text: 'Entendido', onPress: () => navigation.goBack() }],
-      );
+      if (Platform.OS === 'web') {
+        (window as any).alert('Siniestro Reportado\n\nRecibimos tu reporte. Un agente revisará tu caso en 1-2 días hábiles y te contactará por email.');
+        close();
+      } else {
+        Alert.alert(
+          'Siniestro Reportado',
+          'Recibimos tu reporte. Un agente revisará tu caso en 1-2 días hábiles y te contactará por email.',
+          [{ text: 'Entendido', onPress: close }],
+        );
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo enviar el reporte');
+      if (Platform.OS === 'web') {
+        (window as any).alert(`Error: ${e.message ?? 'No se pudo enviar el reporte'}`);
+      } else {
+        Alert.alert('Error', e.message ?? 'No se pudo enviar el reporte');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -48,7 +58,7 @@ export function InsuranceClaimScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reportar Siniestro</Text>
