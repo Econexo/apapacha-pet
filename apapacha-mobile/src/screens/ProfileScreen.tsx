@@ -208,13 +208,10 @@ export function ProfileScreen() {
         <Text style={styles.sectionTitle}>Modo Negocio</Text>
 
         {isHost ? (
-          <TouchableOpacity
-            style={styles.hostDashboardBtn}
-            onPress={() => navigation.navigate('HostDashboard')}
-          >
-            <Ionicons name="home-outline" size={18} color={colors.surface} />
-            <Text style={styles.hostDashboardBtnText}>Ir a mi Panel de Cuidador</Text>
-          </TouchableOpacity>
+          <View style={styles.hostTabHint}>
+            <Ionicons name="paw-outline" size={16} color={colors.primary} />
+            <Text style={styles.hostTabHintText}>Accede a tu panel desde el tab <Text style={{ fontWeight: '800' }}>Cuidador</Text> en la barra inferior</Text>
+          </View>
         ) : statusInfo ? (
           <View style={[styles.applicationStatus, { borderColor: statusInfo.color }]}>
             <Ionicons name={statusInfo.icon} size={28} color={statusInfo.color} />
@@ -363,8 +360,8 @@ const styles = StyleSheet.create({
   emptyPetsText: { color: colors.textMuted, fontSize: 14 },
   onboardingBtn: { backgroundColor: colors.warning, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8, flexDirection: 'row', justifyContent: 'center', gap: 8 },
   onboardingBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
-  hostDashboardBtn: { backgroundColor: colors.primary, padding: 16, borderRadius: 12, alignItems: 'center', marginTop: 16, marginBottom: 8, flexDirection: 'row', justifyContent: 'center', gap: 8 },
-  hostDashboardBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },
+  hostTabHint: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.primaryLight, borderRadius: 10, padding: 14, marginTop: 12, borderWidth: 1, borderColor: `${colors.primary}25` },
+  hostTabHintText: { fontSize: 13, color: colors.primaryDark, flex: 1 },
   applicationStatus: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: colors.surface, borderRadius: 12, padding: 16, borderWidth: 2, marginTop: 16, marginBottom: 8, gap: 12 },
   applicationStatusText: { flex: 1 },
   applicationStatusTitle: { fontSize: 15, fontWeight: '700', marginBottom: 4 },
