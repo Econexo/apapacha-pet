@@ -190,6 +190,19 @@ export function BookingsScreen() {
                 {/* Price */}
                 <Text style={styles.priceLabel}>${item.total_price.toLocaleString('es-CL')} CLP</Text>
 
+                {/* Service phase pill — only for active bookings */}
+                {item.status === 'active' && (
+                  <View style={[
+                    styles.phasePill,
+                    item.service_phase === 'in_progress' ? styles.phasePillActive : styles.phasePillWaiting,
+                  ]}>
+                    <View style={[styles.phaseDot, item.service_phase === 'in_progress' ? styles.phaseDotActive : styles.phaseDotWaiting]} />
+                    <Text style={[styles.phaseText, item.service_phase === 'in_progress' ? styles.phaseTextActive : styles.phaseTextWaiting]}>
+                      {item.service_phase === 'in_progress' ? 'Servicio en curso' : 'Esperando inicio del servicio'}
+                    </Text>
+                  </View>
+                )}
+
                 {/* Payment status for active/pending */}
                 {isActive && payStatus && (
                   <View style={[styles.paymentRow, { backgroundColor: `${payStatus.color}12` }]}>
@@ -335,4 +348,14 @@ const styles = StyleSheet.create({
   emptyBtnText: { color: colors.surface, fontWeight: '800', fontSize: 14 },
   emptyActiveCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: 12, padding: 14, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
   emptyActiveText: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
+
+  phasePill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, marginBottom: 8 },
+  phasePillActive: { backgroundColor: colors.successBg, borderWidth: 1, borderColor: colors.successBorder },
+  phasePillWaiting: { backgroundColor: `${colors.primary}08`, borderWidth: 1, borderColor: `${colors.primary}25` },
+  phaseDot: { width: 7, height: 7, borderRadius: 4 },
+  phaseDotActive: { backgroundColor: colors.successText },
+  phaseDotWaiting: { backgroundColor: colors.primary },
+  phaseText: { fontSize: 12, fontWeight: '700' },
+  phaseTextActive: { color: colors.successText },
+  phaseTextWaiting: { color: colors.primaryDark },
 });
