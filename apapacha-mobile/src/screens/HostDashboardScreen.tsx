@@ -23,7 +23,7 @@ import { OverlayModal } from '../components/OverlayModal';
 import { ManageServiceScreen } from './ManageServiceScreen';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-type Tab = 'servicios' | 'resumen' | 'historial' | 'ganancias' | 'resenas';
+type Tab = 'servicios' | 'resumen' | 'solicitudes' | 'historial' | 'ganancias' | 'resenas';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_HEIGHT = 140;
@@ -79,12 +79,13 @@ export function HostDashboardScreen() {
   const completedBookings = bookings.filter(b => b.status === 'completed');
   const activeBookings    = bookings.filter(b => b.status === 'active' || b.status === 'pending');
 
-  const TABS: { key: Tab; label: string }[] = [
-    { key: 'servicios', label: 'Servicios' },
-    { key: 'resumen',   label: 'Resumen' },
-    { key: 'historial', label: 'Historial' },
-    { key: 'ganancias', label: 'Ganancias' },
-    { key: 'resenas',   label: 'Reseñas' },
+  const TABS: { key: Tab; label: string; badge?: number }[] = [
+    { key: 'servicios',   label: 'Servicios' },
+    { key: 'resumen',     label: 'Resumen' },
+    { key: 'solicitudes', label: 'Solicitudes', badge: activeBookings.length },
+    { key: 'historial',   label: 'Historial' },
+    { key: 'ganancias',   label: 'Ganancias' },
+    { key: 'resenas',     label: 'Reseñas' },
   ];
 
   return (
@@ -94,7 +95,7 @@ export function HostDashboardScreen() {
       </View>
 
       {/* Tab bar */}
-      <View style={styles.tabBar}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.tabBar} contentContainerStyle={styles.tabBarContent}>
         {TABS.map(t => (
           <TouchableOpacity
             key={t.key}
@@ -102,10 +103,17 @@ export function HostDashboardScreen() {
             onPress={() => setTab(t.key)}
             activeOpacity={0.7}
           >
-            <Text style={[styles.tabLabel, tab === t.key && styles.tabLabelActive]}>{t.label}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+              <Text style={[styles.tabLabel, tab === t.key && styles.tabLabelActive]}>{t.label}</Text>
+              {!!t.badge && t.badge > 0 && (
+                <View style={styles.tabBadge}>
+                  <Text style={styles.tabBadgeText}>{t.badge}</Text>
+                </View>
+              )}
+            </View>
           </TouchableOpacity>
         ))}
-      </View>
+      </ScrollView>
 
       {loading ? (
         <View style={styles.loadingContainer}>
@@ -113,11 +121,12 @@ export function HostDashboardScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {tab === 'servicios' && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} onManageService={setManageModal} />}
-          {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} onManageService={setManageModal} />}
-          {tab === 'historial' && <TabHistorial activeBookings={activeBookings} completedBookings={completedBookings} navigation={navigation} onReload={reload} />}
-          {tab === 'ganancias' && <TabGanancias earnings={earnings} />}
-          {tab === 'resenas'   && <TabResenas   reviews={reviews} />}
+          {tab === 'servicios'   && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} onManageService={setManageModal} />}
+          {tab === 'resumen'     && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} onManageService={setManageModal} />}
+          {tab === 'solicitudes' && <TabSolicitudes bookings={activeBookings} navigation={navigation} onReload={reload} />}
+          {tab === 'historial'   && <TabHistorial completedBookings={completedBookings} />}
+          {tab === 'ganancias'   && <TabGanancias earnings={earnings} />}
+          {tab === 'resenas'     && <TabResenas   reviews={reviews} />}
         </ScrollView>
       )}
       {manageModal && (
@@ -433,6 +442,16 @@ function ServiceCard({ label, service, price, onManage }: {
   );
 }
 
+/* ─── HELPERS ───────────────────────────────────────────────────────────────── */
+
+function daysBetween(a: string, b: string) {
+  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000);
+}
+
+function daysFromToday(date: string) {
+  return daysBetween(new Date().toISOString().slice(0, 10), date);
+}
+
 /* ─── SERVICE FLOW STEPPER ──────────────────────────────────────────────────── */
 
 type FlowStep = { label: string; sublabel?: string; done: boolean; active: boolean };
@@ -541,105 +560,153 @@ function FlowStepper({ booking, onStart, onComplete }: {
   );
 }
 
-/* ─── TAB: HISTORIAL ───────────────────────────────────────────────────────── */
+/* ─── TAB: SOLICITUDES (activas / pendientes) ──────────────────────────────── */
 
-function TabHistorial({ activeBookings, completedBookings, navigation, onReload }: {
-  activeBookings: Booking[];
-  completedBookings: Booking[];
+function TabSolicitudes({ bookings, navigation, onReload }: {
+  bookings: Booking[];
   navigation: Nav;
   onReload: () => void;
 }) {
-  if (activeBookings.length === 0 && completedBookings.length === 0) {
+  if (bookings.length === 0) {
     return (
       <View style={styles.emptyState}>
         <Text style={styles.emptyIcon}>📭</Text>
-        <Text style={styles.emptyTitle}>Sin cuidados aún</Text>
-        <Text style={styles.emptyText}>Aquí verás el historial de todos los cuidados que hayas realizado.</Text>
+        <Text style={styles.emptyTitle}>Sin solicitudes activas</Text>
+        <Text style={styles.emptyText}>Cuando un dueño reserve tu servicio aparecerá aquí para que puedas gestionarlo.</Text>
       </View>
     );
   }
 
   return (
     <>
-      {activeBookings.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>Reservas activas ({activeBookings.length})</Text>
-          {activeBookings.map(b => {
-            const doStart = () => startService(b.id).then(onReload).catch(console.error);
-            const doComplete = () => completeBookingAsHost(b.id).then(onReload).catch(console.error);
-            const confirmStart = () => {
-              if (Platform.OS === 'web') {
-                if ((window as any).confirm('¿Confirmas que el servicio ha comenzado?')) doStart();
-              } else {
-                Alert.alert('Iniciar servicio', '¿Confirmas que el servicio ha comenzado?', [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Iniciar', onPress: doStart },
-                ]);
-              }
-            };
-            const confirmComplete = () => {
-              if (Platform.OS === 'web') {
-                if ((window as any).confirm('¿Confirmas que el cuidado ha finalizado?')) doComplete();
-              } else {
-                Alert.alert('Finalizar servicio', '¿Confirmas que el cuidado ha finalizado?', [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Finalizar', onPress: doComplete },
-                ]);
-              }
-            };
-            return (
-              <View key={b.id} style={[styles.histCard, {
-                borderColor: b.service_phase === 'in_progress' ? colors.accent : colors.primary,
-                borderWidth: 1.5,
-              }]}>
-                <View style={styles.histHeader}>
-                  <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
-                  <Text style={[styles.histBadge, {
-                    color: b.service_phase === 'in_progress' ? colors.successText : colors.primaryDark,
-                    backgroundColor: b.service_phase === 'in_progress' ? colors.successBg : colors.primaryLight,
-                  }]}>
-                    {b.service_phase === 'in_progress' ? '🟢 En curso' : '⏳ Por iniciar'}
-                  </Text>
-                </View>
-                <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
-                <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
-                <View style={styles.histFooter}>
-                  <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
-                  <TouchableOpacity
-                    style={styles.chatBtn}
-                    onPress={() => navigation.navigate('ChatDetail', { id: b.id })}
-                    activeOpacity={0.8}
-                  >
-                    <Text style={styles.chatBtnText}>💬 Chat</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          })}
-        </>
-      )}
+      <Text style={styles.sectionTitle}>Solicitudes activas ({bookings.length})</Text>
+      {bookings.map(b => {
+        const totalDays    = daysBetween(b.start_date, b.end_date);
+        const isMultiDay   = totalDays > 1;
+        const daysLeft     = daysFromToday(b.end_date);
+        const daysPassed   = totalDays - daysLeft;
+        const isPending    = b.status === 'pending';
+        const isInProgress = b.service_phase === 'in_progress';
 
-      {completedBookings.length > 0 && (
-        <>
-          <Text style={[styles.sectionTitle, activeBookings.length > 0 && { marginTop: 24 }]}>
-            Historial ({completedBookings.length})
-          </Text>
-          {completedBookings.map(b => (
-            <View key={b.id} style={styles.histCard}>
-              <View style={styles.histHeader}>
-                <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
-                <Text style={[styles.histBadge, { color: colors.successText, backgroundColor: colors.successBg }]}>✅ Finalizada</Text>
-              </View>
-              <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
-              <FlowStepper booking={b} />
-              <View style={styles.histFooter}>
-                <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
-                <Text style={styles.histPaid}>{b.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pago pendiente'}</Text>
-              </View>
+        const doStart = () => startService(b.id).then(onReload).catch(console.error);
+        const doComplete = () => completeBookingAsHost(b.id).then(onReload).catch(console.error);
+        const confirmStart = () => {
+          if (Platform.OS === 'web') {
+            if ((window as any).confirm('¿Confirmas que el servicio ha comenzado?')) doStart();
+          } else {
+            Alert.alert('Iniciar servicio', '¿Confirmas que el servicio ha comenzado?', [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Iniciar', onPress: doStart },
+            ]);
+          }
+        };
+        const confirmComplete = () => {
+          if (Platform.OS === 'web') {
+            if ((window as any).confirm('¿Confirmas que el cuidado ha finalizado?')) doComplete();
+          } else {
+            Alert.alert('Finalizar servicio', '¿Confirmas que el cuidado ha finalizado?', [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Finalizar', onPress: doComplete },
+            ]);
+          }
+        };
+
+        const borderColor = isPending ? colors.warning
+          : isInProgress  ? colors.accent
+          : colors.primary;
+
+        return (
+          <View key={b.id} style={[styles.histCard, { borderColor, borderWidth: 1.5 }]}>
+            {/* Header */}
+            <View style={styles.histHeader}>
+              <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita'}</Text>
+              <Text style={[styles.histBadge, {
+                color: isPending ? colors.warning : isInProgress ? colors.successText : colors.primaryDark,
+                backgroundColor: isPending ? `${colors.warning}18` : isInProgress ? colors.successBg : colors.primaryLight,
+              }]}>
+                {isPending ? '🕐 Pendiente' : isInProgress ? '🟢 En curso' : '⏳ Por iniciar'}
+              </Text>
             </View>
-          ))}
-        </>
-      )}
+
+            {/* Fechas + duración */}
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+              <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
+              {isMultiDay && (
+                <View style={styles.durationPill}>
+                  <Text style={styles.durationPillText}>{totalDays} noches</Text>
+                </View>
+              )}
+            </View>
+
+            {/* Progreso multi-día en curso */}
+            {isMultiDay && isInProgress && daysLeft >= 0 && (
+              <View style={styles.multiDayBar}>
+                <View style={styles.multiDayBarBg}>
+                  <View style={[styles.multiDayBarFill, { width: `${Math.min(100, Math.round((daysPassed / totalDays) * 100))}%` as any }]} />
+                </View>
+                <Text style={styles.multiDayBarLabel}>
+                  {daysLeft === 0 ? '¡Último día! Puedes finalizar.' : `Día ${Math.max(1, daysPassed + 1)} de ${totalDays} · Quedan ${daysLeft} día${daysLeft !== 1 ? 's' : ''}`}
+                </Text>
+              </View>
+            )}
+
+            {/* Stepper de flujo */}
+            <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
+
+            {/* Footer */}
+            <View style={styles.histFooter}>
+              <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
+              <TouchableOpacity
+                style={styles.chatBtn}
+                onPress={() => navigation.navigate('ChatDetail', { id: b.id })}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.chatBtnText}>💬 Chat</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        );
+      })}
+    </>
+  );
+}
+
+/* ─── TAB: HISTORIAL (solo completadas) ────────────────────────────────────── */
+
+function TabHistorial({ completedBookings }: { completedBookings: Booking[] }) {
+  if (completedBookings.length === 0) {
+    return (
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyIcon}>📋</Text>
+        <Text style={styles.emptyTitle}>Sin servicios completados</Text>
+        <Text style={styles.emptyText}>Aquí aparecerán los servicios que hayas finalizado.</Text>
+      </View>
+    );
+  }
+
+  return (
+    <>
+      <Text style={styles.sectionTitle}>Servicios realizados ({completedBookings.length})</Text>
+      {completedBookings.map(b => {
+        const totalDays  = daysBetween(b.start_date, b.end_date);
+        const isMultiDay = totalDays > 1;
+        return (
+          <View key={b.id} style={styles.histCard}>
+            <View style={styles.histHeader}>
+              <View>
+                <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita'}</Text>
+                {isMultiDay && <Text style={styles.histDuracion}>{totalDays} noches</Text>}
+              </View>
+              <Text style={[styles.histBadge, { color: colors.successText, backgroundColor: colors.successBg }]}>✅ Finalizado</Text>
+            </View>
+            <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
+            <View style={styles.histFooter}>
+              <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
+              <Text style={styles.histPaid}>{b.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pago pendiente'}</Text>
+            </View>
+          </View>
+        );
+      })}
     </>
   );
 }
@@ -777,11 +844,14 @@ const styles = StyleSheet.create({
   exitBtnText: { color: colors.danger, fontWeight: '700', fontSize: 13 },
 
   // Tabs
-  tabBar: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  tabItem: { flex: 1, paddingVertical: 12, alignItems: 'center' },
+  tabBar: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  tabBarContent: { flexDirection: 'row', paddingHorizontal: 4 },
+  tabItem: { paddingVertical: 12, paddingHorizontal: 14, alignItems: 'center' },
   tabItemActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
   tabLabel: { fontSize: 11, fontWeight: '600', color: colors.textMuted },
   tabLabelActive: { color: colors.primary, fontWeight: '800' },
+  tabBadge: { backgroundColor: colors.primary, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tabBadgeText: { color: '#fff', fontSize: 9, fontWeight: '800' },
 
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollContainer: { padding: 20, paddingBottom: 80 },
@@ -820,6 +890,13 @@ const styles = StyleSheet.create({
   histFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   histPrice: { fontSize: 16, fontWeight: '800', color: colors.textMain },
   histPaid: { fontSize: 13, color: colors.textMuted },
+  histDuracion: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
+  durationPill: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
+  durationPillText: { fontSize: 11, color: colors.primaryDark, fontWeight: '700' },
+  multiDayBar: { marginBottom: 8 },
+  multiDayBarBg: { height: 6, backgroundColor: colors.border, borderRadius: 4, overflow: 'hidden', marginBottom: 4 },
+  multiDayBarFill: { height: 6, backgroundColor: colors.accent, borderRadius: 4 },
+  multiDayBarLabel: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
   chatBtn: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: `${colors.primary}30` },
   chatBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
   startBtn: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: `${colors.primary}40` },
