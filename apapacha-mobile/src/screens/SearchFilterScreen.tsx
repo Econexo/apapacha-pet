@@ -9,8 +9,14 @@ import type { RootStackParamList } from '../types/navigation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-export function SearchFilterScreen() {
+interface Props {
+  onClose?: () => void;
+  onApplyFilters?: (destination: string, features: string[]) => void;
+}
+
+export function SearchFilterScreen({ onClose, onApplyFilters }: Props = {}) {
   const navigation = useNavigation<Nav>();
+  const close = () => onClose ? onClose() : navigation.goBack();
   const [destination, setDestination] = useState('');
   const [checkIn, setCheckIn] = useState<Date | null>(null);
   const [checkOut, setCheckOut] = useState<Date | null>(null);
@@ -30,7 +36,7 @@ export function SearchFilterScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.closeBtn} onPress={close}>
           <Text style={styles.closeBtnText}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Búsqueda y Filtros</Text>
@@ -96,13 +102,15 @@ export function SearchFilterScreen() {
             if (certifiedNets) features.push('Mallas certificadas');
             if (noOtherPets) features.push('Sin otros animales');
             if (noChildren) features.push('Sin niños');
-            (navigation as any).navigate('MainTabs', {
-              screen: 'Explore',
-              params: {
-                filterDestination: destination.trim(),
-                filterFeatures: features,
-              },
-            });
+            if (onApplyFilters) {
+              onApplyFilters(destination.trim(), features);
+              close();
+            } else {
+              (navigation as any).navigate('MainTabs', {
+                screen: 'Explore',
+                params: { filterDestination: destination.trim(), filterFeatures: features },
+              });
+            }
           }}
           activeOpacity={0.8}
         >
