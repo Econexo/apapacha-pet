@@ -351,7 +351,8 @@ export function AdminScreen() {
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
         try {
           const { data: { session } } = await supabase.auth.getSession();
-          const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/admin-delete-record`, {
+          const url = `${SUPABASE_FUNCTIONS_URL}/admin-delete-record`;
+          const res = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -360,9 +361,11 @@ export function AdminScreen() {
             },
             body: JSON.stringify({ table: 'visiters', id: visiterId }),
           });
-          const json = await res.json();
+          const text = await res.text();
+          let json: any = {};
+          try { json = JSON.parse(text); } catch {}
           if (!res.ok) {
-            Alert.alert('Error al eliminar', json.error ?? 'Error desconocido');
+            Alert.alert('Error al eliminar', `HTTP ${res.status}\nURL: ${url}\n${json.error ?? text}`);
             return;
           }
           await Promise.all([loadVisiters(), loadStats()]);
