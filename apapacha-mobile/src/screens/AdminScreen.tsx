@@ -318,12 +318,16 @@ export function AdminScreen() {
   }
 
   async function deleteSpace(spaceId: string, title: string) {
-    Alert.alert('Eliminar espacio', `¿Eliminar "${title}"?`, [
+    Alert.alert('Eliminar espacio', `¿Eliminar "${title}"?\nEsta acción no se puede deshacer.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
         const { error } = await supabase.from('spaces').delete().eq('id', spaceId);
-        if (error) { Alert.alert('Error', error.message); return; }
-        loadSpaces(); loadStats();
+        if (error) {
+          console.error('[Admin] deleteSpace:', error.message, error.code);
+          Alert.alert('Error al eliminar', `${error.message}\n\nCódigo: ${error.code ?? 'desconocido'}`);
+          return;
+        }
+        await Promise.all([loadSpaces(), loadStats()]);
       }},
     ]);
   }
@@ -335,12 +339,16 @@ export function AdminScreen() {
   }
 
   async function deleteVisiter(visiterId: string, name: string) {
-    Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?`, [
+    Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?\nEsta acción no se puede deshacer.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
         const { error } = await supabase.from('visiters').delete().eq('id', visiterId);
-        if (error) { Alert.alert('Error', error.message); return; }
-        loadVisiters(); loadStats();
+        if (error) {
+          console.error('[Admin] deleteVisiter:', error.message, error.code);
+          Alert.alert('Error al eliminar', `${error.message}\n\nCódigo: ${error.code ?? 'desconocido'}`);
+          return;
+        }
+        await Promise.all([loadVisiters(), loadStats()]);
       }},
     ]);
   }
