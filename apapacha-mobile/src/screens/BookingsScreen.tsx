@@ -9,6 +9,8 @@ import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings, cancelBooking } from '../services/bookings.service';
 import { supabase } from '../../supabase';
+import { OverlayModal } from '../components/OverlayModal';
+import { LeaveReviewScreen } from './LeaveReviewScreen';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -35,6 +37,7 @@ export function BookingsScreen() {
   const [hostMap, setHostMap] = useState<Record<string, { id: string; name: string; serviceId: string; serviceType: string; serviceName: string }>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [reviewModal, setReviewModal] = useState<{ bookingId: string; hostId: string; hostName: string } | null>(null);
 
   useFocusEffect(useCallback(() => {
     let cancelled = false;
@@ -235,7 +238,7 @@ export function BookingsScreen() {
                       {!hasReview ? (
                         <TouchableOpacity
                           style={styles.actionBtn}
-                          onPress={() => host && navigation.navigate('LeaveReview', { bookingId: item.id, hostId: host.id, hostName: host.name })}
+                          onPress={() => host && setReviewModal({ bookingId: item.id, hostId: host.id, hostName: host.name })}
                           disabled={!host}
                           activeOpacity={0.8}
                         >
@@ -282,6 +285,16 @@ export function BookingsScreen() {
           ) : null
         }
       />
+      {reviewModal && (
+        <OverlayModal visible={!!reviewModal} onClose={() => setReviewModal(null)}>
+          <LeaveReviewScreen
+            bookingId={reviewModal.bookingId}
+            hostId={reviewModal.hostId}
+            hostName={reviewModal.hostName}
+            onClose={() => { setReviewModal(null); loadAll(); }}
+          />
+        </OverlayModal>
+      )}
     </SafeAreaView>
   );
 }
