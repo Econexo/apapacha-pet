@@ -4,15 +4,12 @@ import {
   TouchableOpacity, ActivityIndicator, Alert, Switch, Image, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
-import type { RootStackParamList } from '../types/navigation';
 import { getMySpace, upsertMySpace, uploadSpacePhoto } from '../services/spaces.service';
 import { getMyVisiter, getVisiterById, upsertMyVisiter, uploadVisiterPhoto } from '../services/visiters.service';
 import type { Space, Visiter } from '../types/database';
-
-type Route = RouteProp<RootStackParamList, 'ManageService'>;
 
 const SPACE_FEATURES = [
   'Mallas certificadas', 'Sin otros animales', 'Rascadores', 'Comederos inclinados',
@@ -20,9 +17,15 @@ const SPACE_FEATURES = [
   'Cámara de vigilancia', 'Aire acondicionado', 'Repisa aérea',
 ];
 
-export function ManageServiceScreen() {
+interface Props {
+  type?: 'space' | 'visiter';
+  serviceId?: string;
+  onClose?: () => void;
+}
+
+export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Props = {}) {
   const navigation = useNavigation();
-  const { type, serviceId } = useRoute<Route>().params;
+  const close = () => onClose ? onClose() : navigation.goBack();
   const isSpace = type === 'space';
 
   const [loading, setLoading]   = useState(true);
@@ -152,13 +155,20 @@ export function ManageServiceScreen() {
           image_url: finalImageUrl,
         });
       }
-      Alert.alert(
-        existingId ? '¡Actualizado!' : '¡Publicación creada!',
-        existingId ? 'Tu servicio fue actualizado.' : 'Tu servicio ya está visible en Explorar.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      const alertMsg = existingId ? 'Tu servicio fue actualizado.' : 'Tu servicio ya está visible en Explorar.';
+      const alertTitle = existingId ? '¡Actualizado!' : '¡Publicación creada!';
+      if (Platform.OS === 'web') {
+        (window as any).alert(`${alertTitle}\n\n${alertMsg}`);
+        close();
+      } else {
+        Alert.alert(alertTitle, alertMsg, [{ text: 'OK', onPress: close }]);
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar');
+      if (Platform.OS === 'web') {
+        (window as any).alert(`Error: ${e.message ?? 'No se pudo guardar'}`);
+      } else {
+        Alert.alert('Error', e.message ?? 'No se pudo guardar');
+      }
     } finally {
       setSaving(false);
     }
@@ -167,7 +177,7 @@ export function ManageServiceScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>
