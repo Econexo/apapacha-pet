@@ -473,30 +473,73 @@ function getFlowSteps(b: Booking): FlowStep[] {
   ];
 }
 
-function FlowStepper({ booking }: { booking: Booking }) {
+function FlowStepper({ booking, onStart, onComplete }: {
+  booking: Booking;
+  onStart?: () => void;
+  onComplete?: () => void;
+}) {
   const steps = getFlowSteps(booking);
+
+  const canStart    = booking.status === 'active' && booking.service_phase === 'not_started';
+  const canComplete = booking.status === 'active' && booking.service_phase === 'in_progress';
+
   return (
-    <View style={styles.flowWrapper}>
-      {steps.map((s, i) => (
-        <React.Fragment key={i}>
-          <View style={styles.flowStepCol}>
-            <View style={[
-              styles.flowDot,
-              s.done  && styles.flowDotDone,
-              s.active && styles.flowDotActive,
-            ]}>
-              {s.done && <Text style={styles.flowDotCheck}>✓</Text>}
+    <View style={styles.flowContainer}>
+      {/* Dots + lines */}
+      <View style={styles.flowWrapper}>
+        {steps.map((s, i) => (
+          <React.Fragment key={i}>
+            <View style={styles.flowStepCol}>
+              <View style={[
+                styles.flowDot,
+                s.done   && styles.flowDotDone,
+                s.active && styles.flowDotActive,
+              ]}>
+                {s.done
+                  ? <Text style={styles.flowDotCheck}>✓</Text>
+                  : <Text style={styles.flowDotNum}>{i + 1}</Text>
+                }
+              </View>
+              <Text style={[
+                styles.flowLabel,
+                s.active && styles.flowLabelActive,
+                s.done && !s.active && styles.flowLabelDone,
+              ]}>
+                {s.label}
+              </Text>
+              {s.sublabel
+                ? <Text style={styles.flowSublabel}>{s.sublabel}</Text>
+                : <Text style={styles.flowSublabel}> </Text>
+              }
             </View>
-            <Text style={[styles.flowLabel, s.active && styles.flowLabelActive, s.done && !s.active && styles.flowLabelDone]}>
-              {s.label}
-            </Text>
-            {s.sublabel ? <Text style={styles.flowSublabel}>{s.sublabel}</Text> : <Text style={styles.flowSublabel}> </Text>}
+            {i < steps.length - 1 && (
+              <View style={[styles.flowLine, steps[i + 1].done && styles.flowLineDone]} />
+            )}
+          </React.Fragment>
+        ))}
+      </View>
+
+      {/* Next-step action */}
+      {canStart && (
+        <TouchableOpacity style={styles.flowActionBtn} onPress={onStart} activeOpacity={0.8}>
+          <Text style={styles.flowActionIcon}>🚀</Text>
+          <View style={styles.flowActionText}>
+            <Text style={styles.flowActionTitle}>Iniciar servicio</Text>
+            <Text style={styles.flowActionSub}>Toca para marcar que el cuidado ha comenzado</Text>
           </View>
-          {i < steps.length - 1 && (
-            <View style={[styles.flowLine, steps[i + 1].done && styles.flowLineDone]} />
-          )}
-        </React.Fragment>
-      ))}
+          <Text style={styles.flowActionArrow}>›</Text>
+        </TouchableOpacity>
+      )}
+      {canComplete && (
+        <TouchableOpacity style={[styles.flowActionBtn, styles.flowActionBtnGreen]} onPress={onComplete} activeOpacity={0.8}>
+          <Text style={styles.flowActionIcon}>✅</Text>
+          <View style={styles.flowActionText}>
+            <Text style={[styles.flowActionTitle, { color: colors.successText }]}>Finalizar servicio</Text>
+            <Text style={[styles.flowActionSub, { color: colors.successText }]}>Toca para marcar que el cuidado ha terminado</Text>
+          </View>
+          <Text style={[styles.flowActionArrow, { color: colors.successText }]}>›</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }
@@ -524,31 +567,47 @@ function TabHistorial({ activeBookings, completedBookings, navigation, onReload 
       {activeBookings.length > 0 && (
         <>
           <Text style={styles.sectionTitle}>Reservas activas ({activeBookings.length})</Text>
-          {activeBookings.map(b => (
-            <View key={b.id} style={[styles.histCard, {
-              borderColor: b.service_phase === 'in_progress' ? colors.accent : colors.primary,
-              borderWidth: 1.5,
-            }]}>
-              {/* Header */}
-              <View style={styles.histHeader}>
-                <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
-                <Text style={[styles.histBadge, {
-                  color: b.service_phase === 'in_progress' ? colors.successText : colors.primaryDark,
-                  backgroundColor: b.service_phase === 'in_progress' ? colors.successBg : colors.primaryLight,
-                }]}>
-                  {b.service_phase === 'in_progress' ? '🟢 En curso' : '⏳ Por iniciar'}
-                </Text>
-              </View>
-
-              <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
-
-              {/* Flow stepper */}
-              <FlowStepper booking={b} />
-
-              {/* Footer */}
-              <View style={styles.histFooter}>
-                <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
-                <View style={{ flexDirection: 'row', gap: 8 }}>
+          {activeBookings.map(b => {
+            const doStart = () => startService(b.id).then(onReload).catch(console.error);
+            const doComplete = () => completeBookingAsHost(b.id).then(onReload).catch(console.error);
+            const confirmStart = () => {
+              if (Platform.OS === 'web') {
+                if ((window as any).confirm('¿Confirmas que el servicio ha comenzado?')) doStart();
+              } else {
+                Alert.alert('Iniciar servicio', '¿Confirmas que el servicio ha comenzado?', [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Iniciar', onPress: doStart },
+                ]);
+              }
+            };
+            const confirmComplete = () => {
+              if (Platform.OS === 'web') {
+                if ((window as any).confirm('¿Confirmas que el cuidado ha finalizado?')) doComplete();
+              } else {
+                Alert.alert('Finalizar servicio', '¿Confirmas que el cuidado ha finalizado?', [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Finalizar', onPress: doComplete },
+                ]);
+              }
+            };
+            return (
+              <View key={b.id} style={[styles.histCard, {
+                borderColor: b.service_phase === 'in_progress' ? colors.accent : colors.primary,
+                borderWidth: 1.5,
+              }]}>
+                <View style={styles.histHeader}>
+                  <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
+                  <Text style={[styles.histBadge, {
+                    color: b.service_phase === 'in_progress' ? colors.successText : colors.primaryDark,
+                    backgroundColor: b.service_phase === 'in_progress' ? colors.successBg : colors.primaryLight,
+                  }]}>
+                    {b.service_phase === 'in_progress' ? '🟢 En curso' : '⏳ Por iniciar'}
+                  </Text>
+                </View>
+                <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
+                <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
+                <View style={styles.histFooter}>
+                  <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
                   <TouchableOpacity
                     style={styles.chatBtn}
                     onPress={() => navigation.navigate('ChatDetail', { id: b.id })}
@@ -556,48 +615,10 @@ function TabHistorial({ activeBookings, completedBookings, navigation, onReload 
                   >
                     <Text style={styles.chatBtnText}>💬 Chat</Text>
                   </TouchableOpacity>
-                  {b.status === 'active' && b.service_phase === 'not_started' && (
-                    <TouchableOpacity
-                      style={styles.startBtn}
-                      onPress={() => {
-                        const doStart = () => startService(b.id).then(onReload).catch(console.error);
-                        if (Platform.OS === 'web') {
-                          if ((window as any).confirm('¿Confirmas que el servicio ha comenzado?')) doStart();
-                        } else {
-                          Alert.alert('Iniciar servicio', '¿Confirmas que el servicio ha comenzado?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { text: 'Iniciar', onPress: doStart },
-                          ]);
-                        }
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.startBtnText}>🚀 Iniciar</Text>
-                    </TouchableOpacity>
-                  )}
-                  {b.status === 'active' && b.service_phase === 'in_progress' && (
-                    <TouchableOpacity
-                      style={styles.completeBtn}
-                      onPress={() => {
-                        const doComplete = () => completeBookingAsHost(b.id).then(onReload).catch(console.error);
-                        if (Platform.OS === 'web') {
-                          if ((window as any).confirm('¿Confirmas que el cuidado ha finalizado?')) doComplete();
-                        } else {
-                          Alert.alert('Finalizar servicio', '¿Confirmas que el cuidado ha finalizado?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { text: 'Finalizar', onPress: doComplete },
-                          ]);
-                        }
-                      }}
-                      activeOpacity={0.8}
-                    >
-                      <Text style={styles.completeBtnText}>✅ Finalizar</Text>
-                    </TouchableOpacity>
-                  )}
                 </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </>
       )}
 
@@ -896,18 +917,27 @@ const styles = StyleSheet.create({
   serviceManageBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
 
   // Flow stepper
-  flowWrapper: { flexDirection: 'row', alignItems: 'flex-start', marginVertical: 14 },
+  flowContainer: { marginVertical: 12 },
+  flowWrapper: { flexDirection: 'row', alignItems: 'flex-start' },
   flowStepCol: { alignItems: 'center', width: 64 },
-  flowDot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  flowDot: { width: 26, height: 26, borderRadius: 13, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
   flowDotDone: { backgroundColor: colors.primary, borderColor: colors.primary },
   flowDotActive: { borderColor: colors.accent, backgroundColor: colors.accent },
   flowDotCheck: { color: '#fff', fontSize: 12, fontWeight: '900', lineHeight: 14 },
-  flowLine: { flex: 1, height: 2, backgroundColor: colors.border, marginTop: 11 },
+  flowDotNum: { color: colors.textMuted, fontSize: 11, fontWeight: '700' },
+  flowLine: { flex: 1, height: 2, backgroundColor: colors.border, marginTop: 12 },
   flowLineDone: { backgroundColor: colors.primary },
   flowLabel: { fontSize: 10, fontWeight: '600', color: colors.textMuted, textAlign: 'center', marginTop: 5 },
   flowLabelActive: { color: colors.accent, fontWeight: '800' },
   flowLabelDone: { color: colors.primary, fontWeight: '700' },
   flowSublabel: { fontSize: 9, color: colors.textMuted, textAlign: 'center', marginTop: 2 },
+  flowActionBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.primaryLight, borderRadius: 10, padding: 12, marginTop: 10, gap: 10, borderWidth: 1, borderColor: `${colors.primary}30` },
+  flowActionBtnGreen: { backgroundColor: colors.successBg, borderColor: colors.successBorder },
+  flowActionIcon: { fontSize: 22 },
+  flowActionText: { flex: 1 },
+  flowActionTitle: { fontSize: 13, fontWeight: '800', color: colors.primaryDark },
+  flowActionSub: { fontSize: 11, color: colors.primaryDark, marginTop: 2, opacity: 0.7 },
+  flowActionArrow: { fontSize: 22, color: colors.primaryDark, fontWeight: '300' },
 
   // Empty
   emptyState: { alignItems: 'center', paddingVertical: 60 },
