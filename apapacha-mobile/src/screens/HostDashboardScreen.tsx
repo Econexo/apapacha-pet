@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Dimensions, Alert,
+  ActivityIndicator, Dimensions, Alert, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -12,7 +12,7 @@ import type { Booking, Space, Visiter } from '../types/database';
 import { getMyHostBookings } from '../services/host.service';
 import { useAuth } from '../context/AuthContext';
 import { getMySpace } from '../services/spaces.service';
-import { getMyVisiter } from '../services/visiters.service';
+import { getMyVisiters, deleteMyVisiter } from '../services/visiters.service';
 import {
   getHostStats, getHostReviews, getMonthlyEarnings,
   getProgressToNextLevel,
@@ -39,8 +39,8 @@ export function HostDashboardScreen() {
   const [stats, setStats]       = useState<HostStats | null>(null);
   const [reviews, setReviews]   = useState<Review[]>([]);
   const [earnings, setEarnings] = useState<MonthlyEarning[]>([]);
-  const [mySpace, setMySpace]   = useState<Space | null | undefined>(undefined);
-  const [myVisiter, setMyVisiter] = useState<Visiter | null | undefined>(undefined);
+  const [mySpace, setMySpace]     = useState<Space | null | undefined>(undefined);
+  const [myVisiters, setMyVisiters] = useState<Visiter[]>([]);
   const [loading, setLoading]   = useState(true);
 
   const reload = async () => {
@@ -52,7 +52,7 @@ export function HostDashboardScreen() {
       settle(getHostReviews(hostId), []),
       settle(getMonthlyEarnings(hostId), []),
       settle(getMySpace(), null),
-      settle(getMyVisiter(), null),
+      settle(getMyVisiters(), []),
     ]);
     const s = await settle(getHostStats(hostId, r), null);
     setBookings(b);
@@ -60,7 +60,7 @@ export function HostDashboardScreen() {
     setReviews(r);
     setEarnings(e);
     setMySpace(sp);
-    setMyVisiter(vi);
+    setMyVisiters(vi);
     setLoading(false);
   };
 
@@ -70,7 +70,7 @@ export function HostDashboardScreen() {
   useFocusEffect(useCallback(() => {
     if (!hostId) return;
     getMySpace().then(setMySpace).catch(e => console.error('[HostDashboard] getMySpace:', e));
-    getMyVisiter().then(setMyVisiter).catch(e => console.error('[HostDashboard] getMyVisiter:', e));
+    getMyVisiters().then(setMyVisiters).catch(e => console.error('[HostDashboard] getMyVisiters:', e));
   }, [hostId]));
 
   const completedBookings = bookings.filter(b => b.status === 'completed');
@@ -113,8 +113,8 @@ export function HostDashboardScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {tab === 'servicios' && <TabServicios mySpace={mySpace ?? null} myVisiter={myVisiter ?? null} navigation={navigation} onReload={reload} />}
-          {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiter ?? null} navigation={navigation} />}
+          {tab === 'servicios' && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} />}
+          {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} />}
           {tab === 'historial' && <TabHistorial activeBookings={activeBookings} completedBookings={completedBookings} navigation={navigation} onReload={reload} />}
           {tab === 'ganancias' && <TabGanancias earnings={earnings} />}
           {tab === 'resenas'   && <TabResenas   reviews={reviews} />}
@@ -126,19 +126,38 @@ export function HostDashboardScreen() {
 
 /* ─── TAB: SERVICIOS ─────────────────────────────────────────────────────── */
 
-function TabServicios({ mySpace, myVisiter, navigation, onReload }: {
+function TabServicios({ mySpace, myVisiters, navigation, onReload }: {
   mySpace: Space | null;
-  myVisiter: Visiter | null;
+  myVisiters: Visiter[];
   navigation: Nav;
   onReload: () => void;
 }) {
+  const handleDeleteVisiter = (v: Visiter) => {
+    const doDelete = async () => {
+      try {
+        await deleteMyVisiter(v.id);
+        onReload();
+      } catch (e: any) {
+        Alert.alert('Error', e.message ?? 'No se pudo eliminar');
+      }
+    };
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(`¿Eliminar "${v.name}"? Esta acción no se puede deshacer.`)) doDelete();
+    } else {
+      Alert.alert('Eliminar publicación', `¿Eliminar "${v.name}"?\nEsta acción no se puede deshacer.`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: doDelete },
+      ]);
+    }
+  };
+
   return (
     <>
       <View style={styles.serviciosIntro}>
         <Text style={styles.serviciosTitle}>Mis publicaciones</Text>
         <Text style={styles.serviciosSubtitle}>
           Aquí gestionas los servicios que los dueños pueden reservar.
-          Puedes tener un Alojamiento y una Visita activos al mismo tiempo.
+          Puedes tener un Alojamiento y varias Visitas activas al mismo tiempo.
         </Text>
       </View>
 
@@ -200,51 +219,66 @@ function TabServicios({ mySpace, myVisiter, navigation, onReload }: {
         </TouchableOpacity>
       </View>
 
-      {/* Visita domiciliaria */}
+      {/* Visitas domiciliarias */}
       <View style={styles.servicioBlock}>
         <View style={styles.servicioBlockHeader}>
           <Text style={styles.servicioBlockIcon}>🚗</Text>
           <View style={styles.servicioBlockInfo}>
-            <Text style={styles.servicioBlockType}>Visita Domiciliaria</Text>
+            <Text style={styles.servicioBlockType}>Visitas Domiciliarias</Text>
             <Text style={styles.servicioBlockDesc}>Visitas en el hogar del dueño</Text>
           </View>
-          {myVisiter && (
-            <View style={[styles.statusPill, myVisiter.active ? styles.statusPillActive : styles.statusPillPaused]}>
-              <Text style={[styles.statusPillText, myVisiter.active ? styles.statusPillTextActive : styles.statusPillTextPaused]}>
-                {myVisiter.active ? 'Activo' : 'Pausado'}
-              </Text>
-            </View>
-          )}
         </View>
 
-        {myVisiter ? (
-          <View style={styles.servicioDetail}>
-            <Text style={styles.servicioDetailTitle}>{myVisiter.name}</Text>
-            <View style={styles.servicioDetailRow}>
-              <Text style={styles.servicioDetailLabel}>🎓 Título</Text>
-              <Text style={styles.servicioDetailValue}>{myVisiter.profession_title}</Text>
-            </View>
-            <View style={styles.servicioDetailRow}>
-              <Text style={styles.servicioDetailLabel}>💰 Tarifa</Text>
-              <Text style={styles.servicioDetailValue}>${myVisiter.price_per_visit.toLocaleString('es-CL')} / visita</Text>
-            </View>
-            {myVisiter.bio ? (
-              <Text style={styles.servicioBio} numberOfLines={2}>{myVisiter.bio}</Text>
-            ) : null}
+        {myVisiters.length === 0 ? (
+          <View style={styles.servicioEmpty}>
+            <Text style={styles.servicioEmptyText}>Sin publicaciones · Los dueños no te pueden encontrar aún</Text>
           </View>
         ) : (
-          <View style={styles.servicioEmpty}>
-            <Text style={styles.servicioEmptyText}>Sin publicación · Los dueños no te pueden encontrar aún</Text>
-          </View>
+          myVisiters.map(v => (
+            <View key={v.id} style={styles.servicioDetail}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[styles.servicioDetailTitle, { flex: 1 }]} numberOfLines={1}>{v.name}</Text>
+                <View style={[styles.statusPill, v.active ? styles.statusPillActive : styles.statusPillPaused]}>
+                  <Text style={[styles.statusPillText, v.active ? styles.statusPillTextActive : styles.statusPillTextPaused]}>
+                    {v.active ? 'Activo' : 'Pausado'}
+                  </Text>
+                </View>
+              </View>
+              <View style={styles.servicioDetailRow}>
+                <Text style={styles.servicioDetailLabel}>🎓 Título</Text>
+                <Text style={styles.servicioDetailValue}>{v.profession_title}</Text>
+              </View>
+              <View style={styles.servicioDetailRow}>
+                <Text style={styles.servicioDetailLabel}>💰 Tarifa</Text>
+                <Text style={styles.servicioDetailValue}>${v.price_per_visit.toLocaleString('es-CL')} / visita</Text>
+              </View>
+              <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
+                <TouchableOpacity
+                  style={[styles.servicioBtn, styles.servicioBtnEdit, { flex: 1, paddingVertical: 9 }]}
+                  onPress={() => navigation.navigate('ManageService', { type: 'visiter', serviceId: v.id })}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.servicioBtnText, styles.servicioBtnTextEdit]}>✏️  Editar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.servicioBtn, { flex: 1, paddingVertical: 9, backgroundColor: '#FEF2F2', borderWidth: 1, borderColor: '#FCA5A5' }]}
+                  onPress={() => handleDeleteVisiter(v)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[styles.servicioBtnText, { color: '#DC2626' }]}>🗑  Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))
         )}
 
         <TouchableOpacity
-          style={[styles.servicioBtn, myVisiter ? styles.servicioBtnEdit : styles.servicioBtnCreate]}
+          style={[styles.servicioBtn, styles.servicioBtnCreate, { marginTop: myVisiters.length > 0 ? 8 : 0 }]}
           onPress={() => navigation.navigate('ManageService', { type: 'visiter' })}
           activeOpacity={0.8}
         >
-          <Text style={[styles.servicioBtnText, myVisiter ? styles.servicioBtnTextEdit : styles.servicioBtnTextCreate]}>
-            {myVisiter ? '✏️  Editar publicación' : '＋  Crear publicación de Visita'}
+          <Text style={[styles.servicioBtnText, styles.servicioBtnTextCreate]}>
+            ＋  Nueva publicación de Visita
           </Text>
         </TouchableOpacity>
       </View>
