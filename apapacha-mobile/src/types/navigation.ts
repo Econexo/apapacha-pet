@@ -20,5 +20,5 @@ export type RootStackParamList = {
   InsuranceClaim: undefined;
   EditProfile: undefined;
   LeaveReview: { bookingId: string; hostId: string; hostName: string };
-  ManageService: { type: 'space' | 'visiter' };
+  ManageService: { type: 'space' | 'visiter'; serviceId?: string };
 };
