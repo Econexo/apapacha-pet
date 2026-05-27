@@ -40,6 +40,8 @@ export function BookingsScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [reviewModal, setReviewModal] = useState<{ bookingId: string; hostId: string; hostName: string } | null>(null);
 
+  const autoPromptedRef = React.useRef(false);
+
   useFocusEffect(useCallback(() => {
     let cancelled = false;
     loadAll(cancelled).finally(() => { if (!cancelled) setLoading(false); });
@@ -94,6 +96,19 @@ export function BookingsScreen() {
 
       setHostMap(hosts);
       setReviewedIds(reviewed);
+
+      // Auto-prompt: find most recent completed booking without review
+      if (!autoPromptedRef.current) {
+        const pending = data
+          .filter(b => b.status === 'completed' && !reviewed.has(b.id))
+          .sort((a, b) => new Date(b.end_date).getTime() - new Date(a.end_date).getTime());
+        const toReview = pending[0];
+        if (toReview && hosts[toReview.id]) {
+          autoPromptedRef.current = true;
+          const h = hosts[toReview.id];
+          setReviewModal({ bookingId: toReview.id, hostId: h.id, hostName: h.name });
+        }
+      }
     } catch (e) {
       console.error(e);
     }
