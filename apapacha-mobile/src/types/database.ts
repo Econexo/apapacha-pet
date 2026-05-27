@@ -2,6 +2,7 @@ export type UserRole = 'owner' | 'host';
 export type KycStatus = 'pending' | 'under_review' | 'verified' | 'rejected';
 export type ServiceType = 'space' | 'visiter';
 export type BookingStatus = 'pending' | 'active' | 'completed' | 'cancelled';
+export type ServicePhase = 'not_started' | 'in_progress';
 export type ApplicationStatus = 'pending' | 'approved' | 'rejected';
 export type PaymentStatus = 'pending' | 'receipt_submitted' | 'paid' | 'refunded';
 
@@ -72,6 +73,7 @@ export interface Booking {
   start_date: string;
   end_date: string;
   status: BookingStatus;
+  service_phase: ServicePhase;
   total_price: number;
   insurance_included: boolean;
   payment_receipt_url: string | null;
