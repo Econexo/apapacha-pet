@@ -6,9 +6,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
-import {
-  getMyNotifications, markAsRead, markAllAsRead,
-} from '../services/notifications.service';
+import { getMyNotifications, markAsRead, markAllAsRead } from '../services/notifications.service';
 import type { Notification } from '../types/database';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -82,64 +80,61 @@ export function NotificationsModal({ visible, onClose, onUnreadChange }: Props) 
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
       statusBarTranslucent
     >
+      {/* Backdrop invisible — cierra al tocar fuera */}
       <TouchableWithoutFeedback onPress={onClose}>
         <View style={styles.backdrop}>
+          {/* Dropdown card — bloquea el toque para no cerrar */}
           <TouchableWithoutFeedback>
-            <View style={styles.sheet}>
-              {/* Handle */}
-              <View style={styles.handle} />
-
+            <View style={styles.card}>
               {/* Header */}
               <View style={styles.header}>
                 <Text style={styles.title}>Notificaciones</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-                  {unreadCount > 0 && (
-                    <TouchableOpacity onPress={handleMarkAll} activeOpacity={0.7}>
-                      <Text style={styles.markAllText}>Leer todo</Text>
-                    </TouchableOpacity>
-                  )}
-                  <TouchableOpacity onPress={onClose} activeOpacity={0.7} style={styles.closeBtn}>
-                    <Ionicons name="close" size={20} color={colors.textMuted} />
+                {unreadCount > 0 && (
+                  <TouchableOpacity onPress={handleMarkAll} activeOpacity={0.7}>
+                    <Text style={styles.markAllText}>Leer todo</Text>
                   </TouchableOpacity>
-                </View>
+                )}
               </View>
 
               {/* Content */}
               {loading ? (
-                <ActivityIndicator color={colors.primary} style={{ marginVertical: 40 }} />
+                <ActivityIndicator color={colors.primary} style={{ marginVertical: 32 }} />
               ) : (
                 <FlatList
                   data={notifications}
                   keyExtractor={n => n.id}
+                  style={{ maxHeight: 420 }}
                   contentContainerStyle={styles.list}
                   showsVerticalScrollIndicator={false}
                   ListEmptyComponent={
                     <View style={styles.emptyState}>
-                      <Ionicons name="notifications-off-outline" size={40} color={colors.textMuted} style={{ marginBottom: 10 }} />
-                      <Text style={styles.emptyText}>Sin notificaciones por ahora</Text>
+                      <Ionicons name="notifications-off-outline" size={36} color={colors.textMuted} style={{ marginBottom: 8 }} />
+                      <Text style={styles.emptyText}>Sin notificaciones</Text>
                     </View>
                   }
                   renderItem={({ item: n }) => {
                     const meta = TYPE_ICON[n.type] ?? { icon: 'notifications-outline' as IoniconName, color: colors.primary };
                     return (
                       <TouchableOpacity
-                        style={[styles.notifCard, !n.read && styles.notifCardUnread]}
+                        style={[styles.notifRow, !n.read && styles.notifRowUnread]}
                         onPress={() => handleTap(n)}
                         activeOpacity={0.75}
                       >
                         <View style={[styles.iconWrap, { backgroundColor: `${meta.color}15` }]}>
-                          <Ionicons name={meta.icon} size={20} color={meta.color} />
+                          <Ionicons name={meta.icon} size={18} color={meta.color} />
                         </View>
                         <View style={{ flex: 1 }}>
-                          <Text style={[styles.notifTitle, !n.read && styles.notifTitleUnread]}>{n.title}</Text>
-                          <Text style={styles.notifBody}>{n.body}</Text>
+                          <Text style={[styles.notifTitle, !n.read && styles.notifTitleBold]} numberOfLines={1}>
+                            {n.title}
+                          </Text>
+                          <Text style={styles.notifBody} numberOfLines={2}>{n.body}</Text>
                           <Text style={styles.notifTime}>{timeAgo(n.created_at)}</Text>
                         </View>
-                        {!n.read && <View style={styles.unreadDot} />}
+                        {!n.read && <View style={styles.dot} />}
                       </TouchableOpacity>
                     );
                   }}
@@ -156,57 +151,64 @@ export function NotificationsModal({ visible, onClose, onUnreadChange }: Props) 
 const styles = StyleSheet.create({
   backdrop: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    justifyContent: 'flex-end',
+    // Sin color de fondo — el toque fuera cierra pero no oscurece la pantalla
   },
-  sheet: {
-    backgroundColor: colors.background,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    maxHeight: '80%',
-    paddingBottom: 32,
-  },
-  handle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: colors.border,
-    alignSelf: 'center',
-    marginTop: 12, marginBottom: 4,
+  card: {
+    position: 'absolute',
+    top: 100,       // justo debajo del header (~56px header + safe area)
+    right: 12,
+    width: 320,
+    backgroundColor: colors.surface,
+    borderRadius: 18,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.14,
+    shadowRadius: 24,
+    elevation: 16,
+    borderWidth: 1,
+    borderColor: colors.border,
+    overflow: 'hidden',
   },
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingVertical: 14,
-    borderBottomWidth: 1, borderBottomColor: colors.border,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  title: { fontSize: 17, fontWeight: '800', color: colors.textMain },
-  markAllText: { fontSize: 13, color: colors.primary, fontWeight: '700' },
-  closeBtn: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: `${colors.textMuted}15`,
-    alignItems: 'center', justifyContent: 'center',
+  title: { fontSize: 15, fontWeight: '800', color: colors.textMain },
+  markAllText: { fontSize: 12, color: colors.primary, fontWeight: '700' },
+  list: { paddingVertical: 6 },
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 11,
+    borderBottomWidth: 1,
+    borderBottomColor: `${colors.border}80`,
   },
-  list: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 20 },
-  notifCard: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
-    backgroundColor: colors.surface, borderRadius: 14, padding: 14,
-    marginBottom: 8, borderWidth: 1, borderColor: colors.border,
-  },
-  notifCardUnread: {
-    borderColor: `${colors.primary}40`,
+  notifRowUnread: {
     backgroundColor: `${colors.primary}06`,
   },
   iconWrap: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center', flexShrink: 0,
   },
-  notifTitle: { fontSize: 14, fontWeight: '600', color: colors.textMain, marginBottom: 3 },
-  notifTitleUnread: { fontWeight: '800' },
-  notifBody: { fontSize: 13, color: colors.textMuted, lineHeight: 18, marginBottom: 4 },
-  notifTime: { fontSize: 11, color: colors.textMuted, fontWeight: '600' },
-  unreadDot: {
-    width: 8, height: 8, borderRadius: 4,
+  notifTitle: { fontSize: 13, fontWeight: '600', color: colors.textMain, marginBottom: 2 },
+  notifTitleBold: { fontWeight: '800' },
+  notifBody: { fontSize: 12, color: colors.textMuted, lineHeight: 16, marginBottom: 3 },
+  notifTime: { fontSize: 10, color: colors.textMuted, fontWeight: '600' },
+  dot: {
+    width: 7, height: 7, borderRadius: 4,
     backgroundColor: colors.primary,
     marginTop: 4, flexShrink: 0,
   },
-  emptyState: { alignItems: 'center', paddingTop: 40, paddingBottom: 20 },
-  emptyText: { fontSize: 14, color: colors.textMuted },
+  emptyState: {
+    alignItems: 'center',
+    paddingVertical: 32,
+  },
+  emptyText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
 });
