@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert,
+  ScrollView, ActivityIndicator, Alert, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
+import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
 import { createReview, getMyReviewForBooking } from '../services/reviews.service';
-import type { RootStackParamList } from '../types/navigation';
-
-type Route = RouteProp<RootStackParamList, 'LeaveReview'>;
 
 const TIP_OPTIONS = [0, 1000, 2000, 5000, 10000];
 const fmt = (n: number) => n === 0 ? 'Sin propina' : `$${n.toLocaleString('es-CL')}`;
 
-export function LeaveReviewScreen() {
+interface Props {
+  bookingId: string;
+  hostId: string;
+  hostName: string;
+  onClose?: () => void;
+}
+
+export function LeaveReviewScreen({ bookingId, hostId, hostName, onClose }: Props) {
   const navigation = useNavigation();
-  const route = useRoute<Route>();
-  const { bookingId, hostId, hostName } = route.params;
+  const close = () => onClose ? onClose() : navigation.goBack();
 
   const [rating, setRating]     = useState(0);
   const [comment, setComment]   = useState('');
@@ -46,13 +49,19 @@ export function LeaveReviewScreen() {
         comment: comment.trim() || undefined,
         tip_amount: tip,
       });
-      Alert.alert(
-        '¡Gracias por tu reseña! 🐾',
-        tip > 0 ? `Tu propina de ${fmt(tip)} fue enviada al cuidador.` : 'Tu opinión ayuda a otros dueños de gatos.',
-        [{ text: 'OK', onPress: () => navigation.goBack() }]
-      );
+      const msg = tip > 0 ? `Tu propina de ${fmt(tip)} fue enviada al cuidador.` : 'Tu opinión ayuda a otros dueños de gatos.';
+      if (Platform.OS === 'web') {
+        (window as any).alert(`¡Gracias por tu reseña! 🐾\n\n${msg}`);
+        close();
+      } else {
+        Alert.alert('¡Gracias por tu reseña! 🐾', msg, [{ text: 'OK', onPress: close }]);
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar la reseña');
+      if (Platform.OS === 'web') {
+        (window as any).alert(`Error: ${e.message ?? 'No se pudo guardar la reseña'}`);
+      } else {
+        Alert.alert('Error', e.message ?? 'No se pudo guardar la reseña');
+      }
     } finally {
       setSaving(false);
     }
@@ -67,7 +76,7 @@ export function LeaveReviewScreen() {
   if (alreadyReviewed) return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Reseña</Text>
@@ -79,7 +88,7 @@ export function LeaveReviewScreen() {
         <Text style={{ fontSize: 14, color: colors.textMuted, textAlign: 'center' }}>Solo puedes dejar una reseña por servicio.</Text>
         <TouchableOpacity
           style={[styles.submitBtn, { marginTop: 16 }]}
-          onPress={() => navigation.goBack()}
+          onPress={close}
           activeOpacity={0.8}
         >
           <Text style={styles.submitBtnText}>Volver</Text>
@@ -91,7 +100,7 @@ export function LeaveReviewScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Dejar Reseña</Text>
