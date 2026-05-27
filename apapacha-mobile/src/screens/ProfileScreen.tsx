@@ -41,8 +41,8 @@ export function ProfileScreen() {
 
   useFocusEffect(useCallback(() => {
     setLoadingProfile(true);
-    loadProfile().finally(() => setLoadingProfile(false));
-  }, [loadProfile]));
+    Promise.all([loadProfile(), refreshProfile()]).finally(() => setLoadingProfile(false));
+  }, [loadProfile, refreshProfile]));
 
   const handleRefresh = async () => {
     setRefreshing(true);
