@@ -1,9 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Image } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
+import { NotificationsModal } from '../components/NotificationsModal';
 import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../../supabase';
@@ -32,6 +33,7 @@ export function HomeScreen() {
   const [nextBooking, setNextBooking] = useState<Booking | null>(null);
   const [nextServiceName, setNextServiceName] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showNotifications, setShowNotifications] = useState(false);
 
   const loadData = useCallback(async () => {
     try {
@@ -82,7 +84,7 @@ export function HomeScreen() {
 
   const bellIcon = (
     <TouchableOpacity
-      onPress={() => navigation.navigate('Notifications')}
+      onPress={() => setShowNotifications(true)}
       style={{ padding: 6, position: 'relative' }}
       activeOpacity={0.7}
     >
@@ -104,6 +106,11 @@ export function HomeScreen() {
   return (
     <View style={styles.root}>
       <AppHeader rightElement={bellIcon} />
+      <NotificationsModal
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        onUnreadChange={setUnreadCount}
+      />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.greeting}>Hola, {firstName} 🐾</Text>
         <Text style={styles.subGreeting}>¿Cómo están tus compañeros felinos hoy?</Text>
@@ -188,7 +195,11 @@ export function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionCard, styles.actionCardDanger]}
-            onPress={() => Alert.alert('Emergencia Veterinaria', 'Contacta a tu veterinario de confianza o escríbenos a apapachapet.app@gmail.com', [{ text: 'Entendido' }])}
+            onPress={() => {
+              const msg = 'Contacta a tu veterinario de confianza o escríbenos a apapachapet.app@gmail.com';
+              if (Platform.OS === 'web') { (window as any).alert(`Emergencia Veterinaria\n\n${msg}`); }
+              else { Alert.alert('Emergencia Veterinaria', msg, [{ text: 'Entendido' }]); }
+            }}
             activeOpacity={0.8}
           >
             <Ionicons name="warning-outline" size={28} color={colors.dangerText} />
