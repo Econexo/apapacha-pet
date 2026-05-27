@@ -5,6 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
+import { InsuranceClaimScreen } from './InsuranceClaimScreen';
+import { OverlayModal } from '../components/OverlayModal';
 
 if (Platform.OS === 'android') {
   UIManager.setLayoutAnimationEnabledExperimental?.(true);
@@ -80,13 +82,20 @@ function AccordionItem({ policy }: { policy: PolicySection }) {
   );
 }
 
-export function TrustAndSafetyScreen() {
+export function TrustAndSafetyScreen({ onClose }: { onClose?: () => void } = {}) {
   const navigation = useNavigation<Nav>();
+  const close = () => onClose ? onClose() : navigation.goBack();
+  const [showClaim, setShowClaim] = useState(false);
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      {onClose && (
+        <OverlayModal visible={showClaim} onClose={() => setShowClaim(false)}>
+          <InsuranceClaimScreen onClose={() => setShowClaim(false)} />
+        </OverlayModal>
+      )}
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Trust & Safety Center</Text>
@@ -113,7 +122,7 @@ export function TrustAndSafetyScreen() {
           </Text>
           <TouchableOpacity
             style={styles.claimBtn}
-            onPress={() => navigation.navigate('InsuranceClaim')}
+            onPress={() => onClose ? setShowClaim(true) : navigation.navigate('InsuranceClaim')}
             activeOpacity={0.8}
           >
             <Text style={styles.claimBtnText}>🚨 Reportar Siniestro</Text>
