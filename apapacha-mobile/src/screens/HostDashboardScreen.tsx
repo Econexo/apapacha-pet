@@ -69,8 +69,8 @@ export function HostDashboardScreen() {
   // Refresh services when returning from ManageService modal
   useFocusEffect(useCallback(() => {
     if (!hostId) return;
-    getMySpace().then(setMySpace).catch(() => {});
-    getMyVisiter().then(setMyVisiter).catch(() => {});
+    getMySpace().then(setMySpace).catch(e => console.error('[HostDashboard] getMySpace:', e));
+    getMyVisiter().then(setMyVisiter).catch(e => console.error('[HostDashboard] getMyVisiter:', e));
   }, [hostId]));
 
   const completedBookings = bookings.filter(b => b.status === 'completed');
