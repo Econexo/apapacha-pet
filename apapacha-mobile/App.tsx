@@ -1,5 +1,5 @@
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useRoute, RouteProp } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -39,6 +39,21 @@ import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
+
+function AddPetWrapper() {
+  const route = useRoute<RouteProp<RootStackParamList, 'AddPetModal'>>();
+  return <AddPetScreen petId={route.params?.petId} />;
+}
+
+function LeaveReviewWrapper() {
+  const route = useRoute<RouteProp<RootStackParamList, 'LeaveReview'>>();
+  return <LeaveReviewScreen {...route.params} />;
+}
+
+function ManageServiceWrapper() {
+  const route = useRoute<RouteProp<RootStackParamList, 'ManageService'>>();
+  return <ManageServiceScreen type={route.params?.type} serviceId={route.params?.serviceId} />;
+}
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -127,15 +142,15 @@ function RootNavigator() {
       <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="CheckIn" component={CheckInScreen} />
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
-      <Stack.Screen name="AddPetModal" component={AddPetScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="AddPetModal" component={AddPetWrapper} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostOnboarding" component={HostOnboardingScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="TrustAndSafety" component={TrustAndSafetyScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="InsuranceClaim" component={InsuranceClaimScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostDashboard" component={HostDashboardScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="EditProfile" component={EditProfileScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
-      <Stack.Screen name="LeaveReview" component={LeaveReviewScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="LeaveReview" component={LeaveReviewWrapper} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Admin" component={AdminScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="ManageService" component={ManageServiceScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+      <Stack.Screen name="ManageService" component={ManageServiceWrapper} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="Notifications" component={NotificationsScreen} options={{ animation: 'slide_from_right' }} />
     </Stack.Navigator>
   );
