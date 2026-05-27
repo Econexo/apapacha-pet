@@ -32,7 +32,7 @@ export async function uploadAvatar(uri: string): Promise<string> {
 
   const { error } = await supabase.storage
     .from('avatars')
-    .upload(path, blob, { upsert: true, contentType: blob.type });
+    .upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
   if (error) throw error;
 
   const { data } = supabase.storage.from('avatars').getPublicUrl(path);
