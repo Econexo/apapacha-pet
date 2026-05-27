@@ -9,10 +9,10 @@ export async function uploadVisiterPhoto(localUri: string): Promise<string> {
   const ext = blob.type?.includes('png') ? 'png' : 'jpg';
   const path = `${user.id}/visiters/${Date.now()}.${ext}`;
   const { error } = await supabase.storage
-    .from('spaces')
+    .from('avatars')
     .upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
   if (error) throw error;
-  return supabase.storage.from('spaces').getPublicUrl(path).data.publicUrl;
+  return `${supabase.storage.from('avatars').getPublicUrl(path).data.publicUrl}?t=${Date.now()}`;
 }
 
 export async function getVisiters(): Promise<Visiter[]> {
@@ -47,6 +47,29 @@ export async function getMyVisiter(): Promise<Visiter | null> {
     .maybeSingle();
   if (error) { console.error('[getMyVisiter]', error.message); return null; }
   return data ?? null;
+}
+
+export async function getMyVisiters(): Promise<Visiter[]> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+  const { data, error } = await supabase
+    .from('visiters')
+    .select('*')
+    .eq('host_id', user.id)
+    .order('created_at', { ascending: false });
+  if (error) { console.error('[getMyVisiters]', error.message); return []; }
+  return data ?? [];
+}
+
+export async function deleteMyVisiter(id: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const { error } = await supabase
+    .from('visiters')
+    .delete()
+    .eq('id', id)
+    .eq('host_id', user.id);
+  if (error) throw error;
 }
 
 export async function upsertMyVisiter(input: {
