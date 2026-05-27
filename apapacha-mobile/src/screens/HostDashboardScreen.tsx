@@ -19,6 +19,8 @@ import {
   type HostStats, type Review, type MonthlyEarning,
 } from '../services/reviews.service';
 import { completeBookingAsHost } from '../services/host.service';
+import { OverlayModal } from '../components/OverlayModal';
+import { ManageServiceScreen } from './ManageServiceScreen';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Tab = 'servicios' | 'resumen' | 'historial' | 'ganancias' | 'resenas';
@@ -42,6 +44,7 @@ export function HostDashboardScreen() {
   const [mySpace, setMySpace]     = useState<Space | null | undefined>(undefined);
   const [myVisiters, setMyVisiters] = useState<Visiter[]>([]);
   const [loading, setLoading]   = useState(true);
+  const [manageModal, setManageModal] = useState<{ type: 'space' | 'visiter'; serviceId?: string } | null>(null);
 
   const reload = async () => {
     if (!hostId) { setLoading(false); return; }
@@ -113,12 +116,24 @@ export function HostDashboardScreen() {
         </View>
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
-          {tab === 'servicios' && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} />}
-          {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} />}
+          {tab === 'servicios' && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} onManageService={setManageModal} />}
+          {tab === 'resumen'   && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} onManageService={setManageModal} />}
           {tab === 'historial' && <TabHistorial activeBookings={activeBookings} completedBookings={completedBookings} navigation={navigation} onReload={reload} />}
           {tab === 'ganancias' && <TabGanancias earnings={earnings} />}
           {tab === 'resenas'   && <TabResenas   reviews={reviews} />}
         </ScrollView>
+      )}
+      {manageModal && (
+        <OverlayModal visible={!!manageModal} onClose={() => setManageModal(null)}>
+          <ManageServiceScreen
+            type={manageModal.type}
+            serviceId={manageModal.serviceId}
+            onClose={() => {
+              setManageModal(null);
+              reload();
+            }}
+          />
+        </OverlayModal>
       )}
     </SafeAreaView>
   );
@@ -126,11 +141,12 @@ export function HostDashboardScreen() {
 
 /* ─── TAB: SERVICIOS ─────────────────────────────────────────────────────── */
 
-function TabServicios({ mySpace, myVisiters, navigation, onReload }: {
+function TabServicios({ mySpace, myVisiters, navigation, onReload, onManageService }: {
   mySpace: Space | null;
   myVisiters: Visiter[];
   navigation: Nav;
   onReload: () => void;
+  onManageService: (params: { type: 'space' | 'visiter'; serviceId?: string }) => void;
 }) {
   const handleDeleteVisiter = (v: Visiter) => {
     const doDelete = async () => {
@@ -210,7 +226,7 @@ function TabServicios({ mySpace, myVisiters, navigation, onReload }: {
 
         <TouchableOpacity
           style={[styles.servicioBtn, mySpace ? styles.servicioBtnEdit : styles.servicioBtnCreate]}
-          onPress={() => navigation.navigate('ManageService', { type: 'space' })}
+          onPress={() => onManageService({ type: 'space' })}
           activeOpacity={0.8}
         >
           <Text style={[styles.servicioBtnText, mySpace ? styles.servicioBtnTextEdit : styles.servicioBtnTextCreate]}>
@@ -255,7 +271,7 @@ function TabServicios({ mySpace, myVisiters, navigation, onReload }: {
               <View style={{ flexDirection: 'row', gap: 8, marginTop: 10 }}>
                 <TouchableOpacity
                   style={[styles.servicioBtn, styles.servicioBtnEdit, { flex: 1, paddingVertical: 9 }]}
-                  onPress={() => navigation.navigate('ManageService', { type: 'visiter', serviceId: v.id })}
+                  onPress={() => onManageService({ type: 'visiter', serviceId: v.id })}
                   activeOpacity={0.8}
                 >
                   <Text style={[styles.servicioBtnText, styles.servicioBtnTextEdit]}>✏️  Editar</Text>
@@ -274,7 +290,7 @@ function TabServicios({ mySpace, myVisiters, navigation, onReload }: {
 
         <TouchableOpacity
           style={[styles.servicioBtn, styles.servicioBtnCreate, { marginTop: myVisiters.length > 0 ? 8 : 0 }]}
-          onPress={() => navigation.navigate('ManageService', { type: 'visiter' })}
+          onPress={() => onManageService({ type: 'visiter' })}
           activeOpacity={0.8}
         >
           <Text style={[styles.servicioBtnText, styles.servicioBtnTextCreate]}>
@@ -294,13 +310,14 @@ function TabServicios({ mySpace, myVisiters, navigation, onReload }: {
 
 /* ─── TAB: RESUMEN ─────────────────────────────────────────────────────────── */
 
-function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, navigation }: {
+function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, navigation, onManageService }: {
   stats: HostStats | null;
   activeCount: number;
   completedCount: number;
   mySpace: Space | null;
   myVisiter: Visiter | null;
   navigation: Nav;
+  onManageService: (params: { type: 'space' | 'visiter'; serviceId?: string }) => void;
 }) {
   if (!stats) return (
     <View style={{ alignItems: 'center', padding: 40, gap: 12 }}>
@@ -375,13 +392,13 @@ function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, na
         label="🏠 Alojamiento"
         service={mySpace}
         price={mySpace ? `$${mySpace.price_per_night.toLocaleString('es-CL')}/noche` : null}
-        onManage={() => navigation.navigate('ManageService', { type: 'space' })}
+        onManage={() => onManageService({ type: 'space' })}
       />
       <ServiceCard
         label="🚗 Visita domiciliaria"
         service={myVisiter}
         price={myVisiter ? `$${myVisiter.price_per_visit.toLocaleString('es-CL')}/visita` : null}
-        onManage={() => navigation.navigate('ManageService', { type: 'visiter' })}
+        onManage={() => onManageService({ type: 'visiter' })}
       />
     </>
   );
