@@ -10,6 +10,7 @@ import { colors } from '../theme/colors';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import { confirmBookingPayment } from '../services/bookings.service';
+import { insertNotification } from '../services/notifications.service';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -90,6 +91,7 @@ interface AdminBooking {
 
 interface PendingPayment {
   id: string;
+  owner_id: string;
   total_price: number;
   payment_receipt_url: string | null;
   start_date: string;
@@ -231,21 +233,30 @@ export function AdminScreen() {
   async function loadPendingPayments() {
     const { data, error } = await supabase
       .from('bookings')
-      .select('id, total_price, payment_receipt_url, start_date, end_date, service_type, created_at, profiles(full_name)')
+      .select('id, owner_id, total_price, payment_receipt_url, start_date, end_date, service_type, created_at, profiles(full_name)')
       .eq('payment_status', 'receipt_submitted')
       .order('created_at', { ascending: false });
     if (error) { console.error('[Admin] loadPendingPayments:', error.message); return; }
     setPendingPayments((data ?? []) as unknown as PendingPayment[]);
   }
 
-  async function handleConfirmPayment(bookingId: string) {
+  async function handleConfirmPayment(bookingId: string, ownerId?: string) {
     try {
       await confirmBookingPayment(bookingId);
-      Alert.alert('✅ Pago confirmado', 'La reserva está ahora activa.');
+      if (Platform.OS === 'web') {
+        (window as any).alert('✅ Pago confirmado. La reserva está ahora activa.');
+      } else {
+        Alert.alert('✅ Pago confirmado', 'La reserva está ahora activa.');
+      }
       loadPendingPayments();
+      loadBookings();
       loadStats();
     } catch (e: any) {
-      Alert.alert('Error', e.message);
+      if (Platform.OS === 'web') {
+        (window as any).alert(`Error: ${e.message}`);
+      } else {
+        Alert.alert('Error', e.message);
+      }
     }
   }
 
@@ -266,18 +277,39 @@ export function AdminScreen() {
         },
         body: JSON.stringify({ applicant_id: userId, application_id: id, service_type: serviceType }),
       });
-      Alert.alert('✅ Aprobado', 'El cuidador fue aprobado y se envió el correo de bienvenida con el contrato.');
+      if (Platform.OS === 'web') {
+        (window as any).alert('✅ El cuidador fue aprobado y se envió el correo de bienvenida con el contrato.');
+      } else {
+        Alert.alert('✅ Aprobado', 'El cuidador fue aprobado y se envió el correo de bienvenida con el contrato.');
+      }
     } catch {
-      Alert.alert('✅ Aprobado', 'El cuidador fue aprobado. No se pudo enviar el correo automáticamente.');
+      if (Platform.OS === 'web') {
+        (window as any).alert('✅ El cuidador fue aprobado. No se pudo enviar el correo automáticamente.');
+      } else {
+        Alert.alert('✅ Aprobado', 'El cuidador fue aprobado. No se pudo enviar el correo automáticamente.');
+      }
     }
+    // Notify the approved applicant
+    try {
+      await insertNotification(
+        userId,
+        'application_approved',
+        '¡Tu postulación fue aprobada! 🎉',
+        'Felicitaciones, ya puedes publicar tus servicios como cuidador en ApapachaPet.',
+        { application_id: id },
+      );
+    } catch (e) { console.error('[Admin] notify applicant:', e); }
     loadApplications();
     loadStats();
   }
 
   async function rejectApplication(id: string) {
     const { error } = await supabase.from('host_applications').update({ status: 'rejected' }).eq('id', id);
-    if (error) { Alert.alert('Error', error.message); return; }
-    Alert.alert('Rechazado', 'La postulación fue rechazada.');
+    if (error) {
+      if (Platform.OS === 'web') { (window as any).alert(`Error: ${error.message}`); } else { Alert.alert('Error', error.message); }
+      return;
+    }
+    if (Platform.OS === 'web') { (window as any).alert('La postulación fue rechazada.'); } else { Alert.alert('Rechazado', 'La postulación fue rechazada.'); }
     loadApplications();
     loadStats();
   }
@@ -301,14 +333,22 @@ export function AdminScreen() {
   }
 
   async function deleteProfileUser(userId: string, name: string) {
-    Alert.alert('Eliminar perfil', `Eliminar el perfil de ${name}. Su cuenta de login seguirá activa.`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        const { error } = await supabase.from('profiles').delete().eq('id', userId);
-        if (error) { Alert.alert('Error', error.message); return; }
-        loadUsers(); loadStats();
-      }},
-    ]);
+    const doDelete = async () => {
+      const { error } = await supabase.from('profiles').delete().eq('id', userId);
+      if (error) {
+        if (Platform.OS === 'web') { (window as any).alert(`Error: ${error.message}`); } else { Alert.alert('Error', error.message); }
+        return;
+      }
+      loadUsers(); loadStats();
+    };
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(`¿Eliminar el perfil de ${name}? Su cuenta de login seguirá activa.`)) await doDelete();
+    } else {
+      Alert.alert('Eliminar perfil', `Eliminar el perfil de ${name}. Su cuenta de login seguirá activa.`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: doDelete },
+      ]);
+    }
   }
 
   async function toggleSpaceActive(spaceId: string, current: boolean) {
@@ -318,25 +358,26 @@ export function AdminScreen() {
   }
 
   async function deleteSpace(spaceId: string, title: string) {
-    Alert.alert('Eliminar espacio', `¿Eliminar "${title}"?\nEsta acción no se puede deshacer.`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        const { error, count } = await supabase
-          .from('spaces')
-          .delete({ count: 'exact' })
-          .eq('id', spaceId);
-        console.log('[Admin] deleteSpace result:', { error: error?.message, count });
-        if (error) {
-          Alert.alert('Error al eliminar', `${error.message}\n(${error.code ?? 'sin código'})`);
-          return;
-        }
-        if (!count || count === 0) {
-          Alert.alert('Sin permisos', 'No se pudo eliminar. La política RLS bloqueó la operación.');
-          return;
-        }
-        await Promise.all([loadSpaces(), loadStats()]);
-      }},
-    ]);
+    const doDelete = async () => {
+      const { error, count } = await supabase.from('spaces').delete({ count: 'exact' }).eq('id', spaceId);
+      if (error) {
+        if (Platform.OS === 'web') { (window as any).alert(`Error: ${error.message}`); } else { Alert.alert('Error al eliminar', error.message); }
+        return;
+      }
+      if (!count || count === 0) {
+        if (Platform.OS === 'web') { (window as any).alert('No se pudo eliminar. RLS bloqueó la operación.'); } else { Alert.alert('Sin permisos', 'No se pudo eliminar.'); }
+        return;
+      }
+      await Promise.all([loadSpaces(), loadStats()]);
+    };
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(`¿Eliminar "${title}"? Esta acción no se puede deshacer.`)) await doDelete();
+    } else {
+      Alert.alert('Eliminar espacio', `¿Eliminar "${title}"?\nEsta acción no se puede deshacer.`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: doDelete },
+      ]);
+    }
   }
 
   async function toggleVisiterActive(visiterId: string, current: boolean) {
@@ -481,7 +522,7 @@ export function AdminScreen() {
         {activeTab === 'payments' && (
           <PaymentsTab payments={pendingPayments} onConfirm={handleConfirmPayment} />
         )}
-        {activeTab === 'bookings' && <BookingsTab bookings={bookings} onUpdateStatus={updateBookingStatus} />}
+        {activeTab === 'bookings' && <BookingsTab bookings={bookings} onUpdateStatus={updateBookingStatus} onConfirmPayment={handleConfirmPayment} />}
       </ScrollView>
     </SafeAreaView>
   );
@@ -703,6 +744,13 @@ const STATUS_COLOR: Record<string, string> = {
 
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 
+interface UserDetail {
+  spaces: Array<{ id: string; title: string; active: boolean; price_per_night: number }>;
+  visiters: Array<{ id: string; name: string; active: boolean; price_per_visit: number }>;
+  bookings: Array<{ id: string; status: string; total_price: number; start_date: string; service_type: string }>;
+  loading: boolean;
+}
+
 function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDeleteProfile, dbError }: {
   users: AdminUser[]; search: string;
   onSearch: (v: string) => void;
@@ -711,6 +759,30 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
   onDeleteProfile: (id: string, name: string) => void;
   dbError?: string | null;
 }) {
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [expandedData, setExpandedData] = useState<Record<string, UserDetail>>({});
+
+  const toggleUser = async (userId: string) => {
+    if (expandedUserId === userId) { setExpandedUserId(null); return; }
+    setExpandedUserId(userId);
+    if (expandedData[userId] && !expandedData[userId].loading) return;
+    setExpandedData(prev => ({ ...prev, [userId]: { spaces: [], visiters: [], bookings: [], loading: true } }));
+    const [spacesRes, visitersRes, bookingsRes] = await Promise.all([
+      supabase.from('spaces').select('id, title, active, price_per_night').eq('host_id', userId),
+      supabase.from('visiters').select('id, name, active, price_per_visit').eq('host_id', userId),
+      supabase.from('bookings').select('id, status, total_price, start_date, service_type').eq('owner_id', userId).order('created_at', { ascending: false }).limit(5),
+    ]);
+    setExpandedData(prev => ({
+      ...prev,
+      [userId]: {
+        spaces: (spacesRes.data ?? []) as UserDetail['spaces'],
+        visiters: (visitersRes.data ?? []) as UserDetail['visiters'],
+        bookings: (bookingsRes.data ?? []) as UserDetail['bookings'],
+        loading: false,
+      },
+    }));
+  };
+
   return (
     <View>
       <Text style={styles.sectionTitle}>Usuarios Registrados ({users.length})</Text>
@@ -733,108 +805,176 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
           <Text style={styles.emptyText}>Sin usuarios registrados</Text>
         </View>
       )}
-      {users.map(u => (
-        <View key={u.id} style={styles.card}>
-          <View style={styles.cardRow}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>{(u.full_name?.[0] ?? u.id?.[0] ?? '?').toUpperCase()}</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.cardName}>{u.full_name ?? '(sin nombre)'} {u.last_name ?? ''}</Text>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
-                <View style={[styles.tag, { backgroundColor: u.role === 'host' ? `${colors.accent}20` : `${colors.primary}15`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                  <Ionicons
-                    name={u.role === 'host' ? 'home-outline' : u.is_admin ? 'settings-outline' : 'paw-outline'}
-                    size={11}
-                    color={u.role === 'host' ? colors.accent : colors.primary}
-                  />
-                  <Text style={[styles.tagText, { color: u.role === 'host' ? colors.accent : colors.primary }]}>
-                    {u.role === 'host' ? 'Cuidador' : u.is_admin ? 'Admin' : 'Cliente'}
-                  </Text>
+      {users.map(u => {
+        const isExpanded = expandedUserId === u.id;
+        const detail = expandedData[u.id];
+        return (
+          <View key={u.id} style={styles.card}>
+            {/* Header row — tap to expand */}
+            <TouchableOpacity onPress={() => toggleUser(u.id)} activeOpacity={0.75}>
+              <View style={styles.cardRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{(u.full_name?.[0] ?? u.id?.[0] ?? '?').toUpperCase()}</Text>
                 </View>
-                <View style={[styles.tag, { backgroundColor: u.kyc_status === 'verified' ? `${colors.success}20` : `${colors.warning}20`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                  <Ionicons
-                    name={u.kyc_status === 'verified' ? 'shield-checkmark-outline' : 'time-outline'}
-                    size={11}
-                    color={u.kyc_status === 'verified' ? colors.success : colors.warning}
-                  />
-                  <Text style={[styles.tagText, { color: u.kyc_status === 'verified' ? colors.success : colors.warning }]}>
-                    {u.kyc_status === 'verified' ? 'Verificado' : 'Pendiente'}
-                  </Text>
-                </View>
-                {u.signed_contract_url && (
-                  <View style={[styles.tag, { backgroundColor: `${colors.success}20`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
-                    <Ionicons name="document-text-outline" size={11} color={colors.success} />
-                    <Text style={[styles.tagText, { color: colors.success }]}>Contrato</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.cardName}>{u.full_name ?? '(sin nombre)'} {u.last_name ?? ''}</Text>
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 4, marginBottom: 4 }}>
+                    <View style={[styles.tag, { backgroundColor: u.role === 'host' ? `${colors.accent}20` : `${colors.primary}15`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                      <Ionicons
+                        name={u.role === 'host' ? 'home-outline' : u.is_admin ? 'settings-outline' : 'paw-outline'}
+                        size={11}
+                        color={u.role === 'host' ? colors.accent : colors.primary}
+                      />
+                      <Text style={[styles.tagText, { color: u.role === 'host' ? colors.accent : colors.primary }]}>
+                        {u.role === 'host' ? 'Cuidador' : u.is_admin ? 'Admin' : 'Cliente'}
+                      </Text>
+                    </View>
+                    <View style={[styles.tag, { backgroundColor: u.kyc_status === 'verified' ? `${colors.success}20` : `${colors.warning}20`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                      <Ionicons
+                        name={u.kyc_status === 'verified' ? 'shield-checkmark-outline' : 'time-outline'}
+                        size={11}
+                        color={u.kyc_status === 'verified' ? colors.success : colors.warning}
+                      />
+                      <Text style={[styles.tagText, { color: u.kyc_status === 'verified' ? colors.success : colors.warning }]}>
+                        {u.kyc_status === 'verified' ? 'Verificado' : 'Pendiente'}
+                      </Text>
+                    </View>
+                    {u.signed_contract_url && (
+                      <View style={[styles.tag, { backgroundColor: `${colors.success}20`, flexDirection: 'row', alignItems: 'center', gap: 4 }]}>
+                        <Ionicons name="document-text-outline" size={11} color={colors.success} />
+                        <Text style={[styles.tagText, { color: colors.success }]}>Contrato</Text>
+                      </View>
+                    )}
                   </View>
-                )}
-              </View>
-              {u.age ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
-                  <Text style={styles.cardMeta}>{u.age} años</Text>
-                  {u.address ? (
-                    <>
-                      <Ionicons name="location-outline" size={11} color={colors.textMuted} />
-                      <Text style={styles.cardMeta}>{u.address}</Text>
-                    </>
+                  {u.age ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 2 }}>
+                      <Text style={styles.cardMeta}>{u.age} años</Text>
+                      {u.address ? (
+                        <>
+                          <Ionicons name="location-outline" size={11} color={colors.textMuted} />
+                          <Text style={styles.cardMeta}>{u.address}</Text>
+                        </>
+                      ) : null}
+                    </View>
                   ) : null}
+                  {u.bio ? <Text style={styles.cardBio} numberOfLines={2}>{u.bio}</Text> : null}
+                  <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
+                    {!!u.spacesCount && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Ionicons name="home-outline" size={11} color={colors.textMuted} />
+                        <Text style={styles.cardMeta}>{u.spacesCount} espacio(s)</Text>
+                      </View>
+                    )}
+                    {!!u.visitersCount && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Ionicons name="paw-outline" size={11} color={colors.textMuted} />
+                        <Text style={styles.cardMeta}>{u.visitersCount} visiter(s)</Text>
+                      </View>
+                    )}
+                    {!!u.bookingsCount && (
+                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
+                        <Ionicons name="calendar-outline" size={11} color={colors.textMuted} />
+                        <Text style={styles.cardMeta}>{u.bookingsCount} reserva(s)</Text>
+                      </View>
+                    )}
+                  </View>
                 </View>
-              ) : null}
-              {u.bio ? <Text style={styles.cardBio} numberOfLines={2}>{u.bio}</Text> : null}
-              <View style={{ flexDirection: 'row', gap: 10, flexWrap: 'wrap', marginTop: 2 }}>
-                {!!u.spacesCount && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Ionicons name="home-outline" size={11} color={colors.textMuted} />
-                    <Text style={styles.cardMeta}>{u.spacesCount} espacio(s)</Text>
-                  </View>
-                )}
-                {!!u.visitersCount && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Ionicons name="paw-outline" size={11} color={colors.textMuted} />
-                    <Text style={styles.cardMeta}>{u.visitersCount} visiter(s)</Text>
-                  </View>
-                )}
-                {!!u.bookingsCount && (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 3 }}>
-                    <Ionicons name="calendar-outline" size={11} color={colors.textMuted} />
-                    <Text style={styles.cardMeta}>{u.bookingsCount} reserva(s)</Text>
-                  </View>
+                <Ionicons
+                  name={isExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={16}
+                  color={colors.textMuted}
+                  style={{ marginTop: 2, flexShrink: 0 }}
+                />
+              </View>
+            </TouchableOpacity>
+
+            {/* Expandable detail section */}
+            {isExpanded && (
+              <View style={styles.userDetailSection}>
+                {detail?.loading ? (
+                  <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />
+                ) : (
+                  <>
+                    {/* Spaces */}
+                    <Text style={styles.userDetailLabel}>
+                      <Ionicons name="home-outline" size={12} color={colors.accent} /> Espacios ({detail?.spaces.length ?? 0})
+                    </Text>
+                    {(detail?.spaces ?? []).length === 0
+                      ? <Text style={styles.userDetailEmpty}>Sin espacios</Text>
+                      : detail!.spaces.map(s => (
+                        <View key={s.id} style={styles.userDetailRow}>
+                          <View style={[styles.statusDot, { backgroundColor: s.active ? colors.success : colors.textMuted }]} />
+                          <Text style={styles.userDetailText}>{s.title}</Text>
+                          <Text style={styles.userDetailMeta}>${s.price_per_night.toLocaleString('es-CL')}/noche</Text>
+                        </View>
+                      ))
+                    }
+                    {/* Visiters */}
+                    <Text style={[styles.userDetailLabel, { marginTop: 10 }]}>
+                      <Ionicons name="paw-outline" size={12} color={colors.lilac} /> Visiters ({detail?.visiters.length ?? 0})
+                    </Text>
+                    {(detail?.visiters ?? []).length === 0
+                      ? <Text style={styles.userDetailEmpty}>Sin visiters</Text>
+                      : detail!.visiters.map(v => (
+                        <View key={v.id} style={styles.userDetailRow}>
+                          <View style={[styles.statusDot, { backgroundColor: v.active ? colors.success : colors.textMuted }]} />
+                          <Text style={styles.userDetailText}>{v.name}</Text>
+                          <Text style={styles.userDetailMeta}>${v.price_per_visit.toLocaleString('es-CL')}/visita</Text>
+                        </View>
+                      ))
+                    }
+                    {/* Bookings */}
+                    <Text style={[styles.userDetailLabel, { marginTop: 10 }]}>
+                      <Ionicons name="calendar-outline" size={12} color={colors.info} /> Últimas reservas ({detail?.bookings.length ?? 0})
+                    </Text>
+                    {(detail?.bookings ?? []).length === 0
+                      ? <Text style={styles.userDetailEmpty}>Sin reservas</Text>
+                      : detail!.bookings.map(b => (
+                        <View key={b.id} style={styles.userDetailRow}>
+                          <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[b.status] ?? colors.textMuted }]} />
+                          <Text style={styles.userDetailText}>{b.service_type} · {b.start_date}</Text>
+                          <Text style={styles.userDetailMeta}>${b.total_price.toLocaleString('es-CL')}</Text>
+                        </View>
+                      ))
+                    }
+                  </>
                 )}
               </View>
+            )}
+
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={[styles.actionBtn, u.is_admin ? styles.actionBtnDanger : styles.actionBtnSecondary]}
+                onPress={() => onToggleAdmin(u.id, u.is_admin)}
+              >
+                <Text style={styles.actionBtnText}>{u.is_admin ? 'Quitar Admin' : 'Hacer Admin'}</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, u.kyc_status === 'verified' ? styles.actionBtnDanger : styles.actionBtnSuccess]}
+                onPress={() => Alert.alert(
+                  'Gestionar KYC',
+                  `${u.full_name} — estado: ${u.kyc_status}`,
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    ...(u.kyc_status !== 'verified' ? [{ text: '✓ Verificar', onPress: () => onUpdateKyc(u.id, 'verified') }] : []),
+                    ...(u.kyc_status !== 'rejected' ? [{ text: '✗ Rechazar', style: 'destructive' as const, onPress: () => onUpdateKyc(u.id, 'rejected') }] : []),
+                    ...(u.kyc_status !== 'pending'  ? [{ text: 'Resetear', onPress: () => onUpdateKyc(u.id, 'pending') }] : []),
+                  ]
+                )}
+              >
+                <Ionicons name={u.kyc_status === 'verified' ? 'shield-checkmark-outline' : 'shield-outline'} size={13} color={u.kyc_status === 'verified' ? colors.accent : colors.warning} />
+                <Text style={styles.actionBtnText}>KYC</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, { flex: 0, paddingHorizontal: 10, borderColor: `${colors.danger}40`, backgroundColor: `${colors.danger}08` }]}
+                onPress={() => onDeleteProfile(u.id, u.full_name ?? 'usuario')}
+              >
+                <Ionicons name="trash-outline" size={14} color={colors.danger} />
+              </TouchableOpacity>
             </View>
           </View>
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={[styles.actionBtn, u.is_admin ? styles.actionBtnDanger : styles.actionBtnSecondary]}
-              onPress={() => onToggleAdmin(u.id, u.is_admin)}
-            >
-              <Text style={styles.actionBtnText}>{u.is_admin ? 'Quitar Admin' : 'Hacer Admin'}</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, u.kyc_status === 'verified' ? styles.actionBtnDanger : styles.actionBtnSuccess]}
-              onPress={() => Alert.alert(
-                'Gestionar KYC',
-                `${u.full_name} — estado: ${u.kyc_status}`,
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  ...(u.kyc_status !== 'verified' ? [{ text: '✓ Verificar', onPress: () => onUpdateKyc(u.id, 'verified') }] : []),
-                  ...(u.kyc_status !== 'rejected' ? [{ text: '✗ Rechazar', style: 'destructive' as const, onPress: () => onUpdateKyc(u.id, 'rejected') }] : []),
-                  ...(u.kyc_status !== 'pending'  ? [{ text: 'Resetear', onPress: () => onUpdateKyc(u.id, 'pending') }] : []),
-                ]
-              )}
-            >
-              <Ionicons name={u.kyc_status === 'verified' ? 'shield-checkmark-outline' : 'shield-outline'} size={13} color={u.kyc_status === 'verified' ? colors.accent : colors.warning} />
-              <Text style={styles.actionBtnText}>KYC</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, { flex: 0, paddingHorizontal: 10, borderColor: `${colors.danger}40`, backgroundColor: `${colors.danger}08` }]}
-              onPress={() => onDeleteProfile(u.id, u.full_name ?? 'usuario')}
-            >
-              <Ionicons name="trash-outline" size={14} color={colors.danger} />
-            </TouchableOpacity>
-          </View>
-        </View>
-      ))}
+        );
+      })}
     </View>
   );
 }
@@ -964,14 +1104,17 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
           <View style={styles.cardActions}>
             <TouchableOpacity
               style={[styles.actionBtn, styles.actionBtnSuccess]}
-              onPress={() => Alert.alert(
-                'Confirmar pago',
-                `¿Confirmar la transferencia de ${fmt(p.total_price)} de ${p.profiles?.full_name ?? 'este usuario'}?`,
-                [
-                  { text: 'Cancelar', style: 'cancel' },
-                  { text: 'Confirmar', onPress: () => onConfirm(p.id) },
-                ]
-              )}
+              onPress={() => {
+                const msg = `¿Confirmar la transferencia de ${fmt(p.total_price)} de ${p.profiles?.full_name ?? 'este usuario'}?`;
+                if (Platform.OS === 'web') {
+                  if ((window as any).confirm(msg)) onConfirm(p.id);
+                } else {
+                  Alert.alert('Confirmar pago', msg, [
+                    { text: 'Cancelar', style: 'cancel' },
+                    { text: 'Confirmar', onPress: () => onConfirm(p.id) },
+                  ]);
+                }
+              }}
             >
               <Ionicons name="checkmark-outline" size={14} color={colors.accent} />
               <Text style={styles.actionBtnText}>Confirmar pago</Text>
@@ -985,7 +1128,11 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
 
 // ─── Bookings Tab ─────────────────────────────────────────────────────────────
 
-function BookingsTab({ bookings, onUpdateStatus }: { bookings: AdminBooking[]; onUpdateStatus: (id: string, status: string) => void }) {
+function BookingsTab({ bookings, onUpdateStatus, onConfirmPayment }: {
+  bookings: AdminBooking[];
+  onUpdateStatus: (id: string, status: string) => void;
+  onConfirmPayment: (id: string) => void;
+}) {
   return (
     <View>
       <Text style={styles.sectionTitle}>Reservas Recientes ({bookings.length})</Text>
@@ -1013,13 +1160,37 @@ function BookingsTab({ bookings, onUpdateStatus }: { bookings: AdminBooking[]; o
           </View>
           {(b.status === 'pending' || b.status === 'active') && (
             <View style={[styles.cardActions, { marginTop: 10 }]}>
+              {b.status === 'pending' && (
+                <TouchableOpacity
+                  style={[styles.actionBtn, styles.actionBtnSuccess]}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      if ((window as any).confirm('¿Activar esta reserva y marcar el pago como confirmado?')) onConfirmPayment(b.id);
+                    } else {
+                      Alert.alert('Confirmar reserva', '¿Activar esta reserva y marcar el pago como confirmado?', [
+                        { text: 'Cancelar', style: 'cancel' },
+                        { text: 'Confirmar', onPress: () => onConfirmPayment(b.id) },
+                      ]);
+                    }
+                  }}
+                >
+                  <Ionicons name="checkmark-outline" size={14} color={colors.accent} />
+                  <Text style={styles.actionBtnText}>Confirmar pago</Text>
+                </TouchableOpacity>
+              )}
               {b.status === 'active' && (
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.actionBtnSuccess]}
-                  onPress={() => Alert.alert('Completar reserva', '¿Marcar como completada?', [
-                    { text: 'Cancelar', style: 'cancel' },
-                    { text: 'Completar', onPress: () => onUpdateStatus(b.id, 'completed') },
-                  ])}
+                  onPress={() => {
+                    if (Platform.OS === 'web') {
+                      if ((window as any).confirm('¿Marcar esta reserva como completada?')) onUpdateStatus(b.id, 'completed');
+                    } else {
+                      Alert.alert('Completar reserva', '¿Marcar como completada?', [
+                        { text: 'Cancelar', style: 'cancel' },
+                        { text: 'Completar', onPress: () => onUpdateStatus(b.id, 'completed') },
+                      ]);
+                    }
+                  }}
                 >
                   <Ionicons name="checkmark-circle-outline" size={14} color={colors.accent} />
                   <Text style={styles.actionBtnText}>Completar</Text>
@@ -1027,10 +1198,16 @@ function BookingsTab({ bookings, onUpdateStatus }: { bookings: AdminBooking[]; o
               )}
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnDanger]}
-                onPress={() => Alert.alert('Cancelar reserva', '¿Confirmar cancelación?', [
-                  { text: 'Volver', style: 'cancel' },
-                  { text: 'Cancelar', style: 'destructive', onPress: () => onUpdateStatus(b.id, 'cancelled') },
-                ])}
+                onPress={() => {
+                  if (Platform.OS === 'web') {
+                    if ((window as any).confirm('¿Confirmar la cancelación de esta reserva?')) onUpdateStatus(b.id, 'cancelled');
+                  } else {
+                    Alert.alert('Cancelar reserva', '¿Confirmar cancelación?', [
+                      { text: 'Volver', style: 'cancel' },
+                      { text: 'Cancelar', style: 'destructive', onPress: () => onUpdateStatus(b.id, 'cancelled') },
+                    ]);
+                  }
+                }}
               >
                 <Ionicons name="close-circle-outline" size={14} color={colors.danger} />
                 <Text style={styles.actionBtnText}>Cancelar</Text>
@@ -1101,4 +1278,10 @@ const styles = StyleSheet.create({
   emptyText: { color: colors.textMuted, fontSize: 14 },
   tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   tagText: { fontSize: 11, fontWeight: '700' },
+  userDetailSection: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 10, paddingTop: 10 },
+  userDetailLabel: { fontSize: 12, fontWeight: '700', color: colors.textMuted, marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.3 },
+  userDetailEmpty: { fontSize: 12, color: colors.textMuted, paddingBottom: 4, fontStyle: 'italic' },
+  userDetailRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 5 },
+  userDetailText: { flex: 1, fontSize: 13, color: colors.textMain, fontWeight: '600' },
+  userDetailMeta: { fontSize: 12, color: colors.textMuted },
 });
