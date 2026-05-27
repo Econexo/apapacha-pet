@@ -436,6 +436,71 @@ function ServiceCard({ label, service, price, onManage }: {
   );
 }
 
+/* ─── SERVICE FLOW STEPPER ──────────────────────────────────────────────────── */
+
+type FlowStep = { label: string; sublabel?: string; done: boolean; active: boolean };
+
+function getFlowSteps(b: Booking): FlowStep[] {
+  const isPending   = b.status === 'pending';
+  const isActive    = b.status === 'active';
+  const isInProgress = b.service_phase === 'in_progress';
+  const isDone      = b.status === 'completed';
+
+  return [
+    {
+      label: 'Reservada',
+      sublabel: fmtDate(b.created_at),
+      done: true,
+      active: isPending,
+    },
+    {
+      label: 'Confirmada',
+      sublabel: isActive || isDone ? fmtDate(b.start_date) : undefined,
+      done: isActive || isDone,
+      active: isActive && !isInProgress && !isDone,
+    },
+    {
+      label: 'En curso',
+      done: isInProgress || isDone,
+      active: isInProgress,
+    },
+    {
+      label: 'Finalizada',
+      sublabel: isDone ? fmtDate(b.end_date) : undefined,
+      done: isDone,
+      active: isDone,
+    },
+  ];
+}
+
+function FlowStepper({ booking }: { booking: Booking }) {
+  const steps = getFlowSteps(booking);
+  return (
+    <View style={styles.flowWrapper}>
+      {steps.map((s, i) => (
+        <React.Fragment key={i}>
+          <View style={styles.flowStepCol}>
+            <View style={[
+              styles.flowDot,
+              s.done  && styles.flowDotDone,
+              s.active && styles.flowDotActive,
+            ]}>
+              {s.done && <Text style={styles.flowDotCheck}>✓</Text>}
+            </View>
+            <Text style={[styles.flowLabel, s.active && styles.flowLabelActive, s.done && !s.active && styles.flowLabelDone]}>
+              {s.label}
+            </Text>
+            {s.sublabel ? <Text style={styles.flowSublabel}>{s.sublabel}</Text> : <Text style={styles.flowSublabel}> </Text>}
+          </View>
+          {i < steps.length - 1 && (
+            <View style={[styles.flowLine, steps[i + 1].done && styles.flowLineDone]} />
+          )}
+        </React.Fragment>
+      ))}
+    </View>
+  );
+}
+
 /* ─── TAB: HISTORIAL ───────────────────────────────────────────────────────── */
 
 function TabHistorial({ activeBookings, completedBookings, navigation, onReload }: {
@@ -454,36 +519,33 @@ function TabHistorial({ activeBookings, completedBookings, navigation, onReload 
     );
   }
 
-  const STATUS_COLORS: Record<string, string> = {
-    active: colors.accent,
-    pending: colors.primary,
-    completed: colors.textMuted,
-    cancelled: colors.danger,
-  };
-  const STATUS_LABELS: Record<string, string> = {
-    active: 'En curso',
-    pending: 'Pendiente',
-    completed: 'Completada',
-    cancelled: 'Cancelada',
-  };
-
   return (
     <>
       {activeBookings.length > 0 && (
         <>
           <Text style={styles.sectionTitle}>Reservas activas ({activeBookings.length})</Text>
           {activeBookings.map(b => (
-            <View key={b.id} style={[styles.histCard, { borderColor: b.service_phase === 'in_progress' ? colors.accent : colors.primary, borderWidth: 1.5 }]}>
+            <View key={b.id} style={[styles.histCard, {
+              borderColor: b.service_phase === 'in_progress' ? colors.accent : colors.primary,
+              borderWidth: 1.5,
+            }]}>
+              {/* Header */}
               <View style={styles.histHeader}>
                 <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
                 <Text style={[styles.histBadge, {
-                  color: b.service_phase === 'in_progress' ? colors.accent : STATUS_COLORS[b.status],
-                  backgroundColor: b.service_phase === 'in_progress' ? colors.successBg : `${STATUS_COLORS[b.status]}15`,
+                  color: b.service_phase === 'in_progress' ? colors.successText : colors.primaryDark,
+                  backgroundColor: b.service_phase === 'in_progress' ? colors.successBg : colors.primaryLight,
                 }]}>
-                  {b.service_phase === 'in_progress' ? '🟢 En curso' : b.status === 'active' ? '⏳ Por iniciar' : STATUS_LABELS[b.status]}
+                  {b.service_phase === 'in_progress' ? '🟢 En curso' : '⏳ Por iniciar'}
                 </Text>
               </View>
+
               <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
+
+              {/* Flow stepper */}
+              <FlowStepper booking={b} />
+
+              {/* Footer */}
               <View style={styles.histFooter}>
                 <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
                 <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -548,12 +610,13 @@ function TabHistorial({ activeBookings, completedBookings, navigation, onReload 
             <View key={b.id} style={styles.histCard}>
               <View style={styles.histHeader}>
                 <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
-                <Text style={[styles.histBadge, { color: colors.accent, backgroundColor: colors.successBg }]}>Completada</Text>
+                <Text style={[styles.histBadge, { color: colors.successText, backgroundColor: colors.successBg }]}>✅ Finalizada</Text>
               </View>
               <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
+              <FlowStepper booking={b} />
               <View style={styles.histFooter}>
                 <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
-                <Text style={styles.histPaid}>{b.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pendiente'}</Text>
+                <Text style={styles.histPaid}>{b.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pago pendiente'}</Text>
               </View>
             </View>
           ))}
@@ -831,6 +894,20 @@ const styles = StyleSheet.create({
   serviceCardEmpty: { fontSize: 13, color: colors.textMuted, fontStyle: 'italic' },
   serviceManageBtn: { backgroundColor: colors.primaryLight, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   serviceManageBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
+
+  // Flow stepper
+  flowWrapper: { flexDirection: 'row', alignItems: 'flex-start', marginVertical: 14 },
+  flowStepCol: { alignItems: 'center', width: 64 },
+  flowDot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
+  flowDotDone: { backgroundColor: colors.primary, borderColor: colors.primary },
+  flowDotActive: { borderColor: colors.accent, backgroundColor: colors.accent },
+  flowDotCheck: { color: '#fff', fontSize: 12, fontWeight: '900', lineHeight: 14 },
+  flowLine: { flex: 1, height: 2, backgroundColor: colors.border, marginTop: 11 },
+  flowLineDone: { backgroundColor: colors.primary },
+  flowLabel: { fontSize: 10, fontWeight: '600', color: colors.textMuted, textAlign: 'center', marginTop: 5 },
+  flowLabelActive: { color: colors.accent, fontWeight: '800' },
+  flowLabelDone: { color: colors.primary, fontWeight: '700' },
+  flowSublabel: { fontSize: 9, color: colors.textMuted, textAlign: 'center', marginTop: 2 },
 
   // Empty
   emptyState: { alignItems: 'center', paddingVertical: 60 },
