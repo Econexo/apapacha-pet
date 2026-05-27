@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, TextInput, RefreshControl,
+  ActivityIndicator, Alert, TextInput, RefreshControl, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -346,34 +346,42 @@ export function AdminScreen() {
   }
 
   async function deleteVisiter(visiterId: string, name: string) {
-    Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?\nEsta acción no se puede deshacer.`, [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          const url = `${SUPABASE_FUNCTIONS_URL}/admin-delete-record`;
-          const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${session?.access_token}`,
-              apikey: supabaseAnonKey,
-            },
-            body: JSON.stringify({ table: 'visiters', id: visiterId }),
-          });
-          const text = await res.text();
-          let json: any = {};
-          try { json = JSON.parse(text); } catch {}
-          if (!res.ok) {
-            Alert.alert('Error al eliminar', `HTTP ${res.status}\nURL: ${url}\n${json.error ?? text}`);
-            return;
-          }
-          await Promise.all([loadVisiters(), loadStats()]);
-        } catch (e: any) {
-          Alert.alert('Error al eliminar', e.message ?? 'Error de red');
+    const doDelete = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        const url = `${SUPABASE_FUNCTIONS_URL}/admin-delete-record`;
+        const res = await fetch(url, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: supabaseAnonKey,
+          },
+          body: JSON.stringify({ table: 'visiters', id: visiterId }),
+        });
+        const text = await res.text();
+        let json: any = {};
+        try { json = JSON.parse(text); } catch {}
+        if (!res.ok) {
+          Alert.alert('Error al eliminar', `HTTP ${res.status}: ${json.error ?? text}`);
+          return;
         }
-      }},
-    ]);
+        await Promise.all([loadVisiters(), loadStats()]);
+      } catch (e: any) {
+        Alert.alert('Error al eliminar', e.message ?? 'Error de red');
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(`¿Eliminar "${name}"? Esta acción no se puede deshacer.`)) {
+        await doDelete();
+      }
+    } else {
+      Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?\nEsta acción no se puede deshacer.`, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar', style: 'destructive', onPress: doDelete },
+      ]);
+    }
   }
 
   async function updateBookingStatus(bookingId: string, status: string) {
