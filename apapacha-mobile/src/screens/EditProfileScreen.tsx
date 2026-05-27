@@ -10,8 +10,9 @@ import { colors } from '../theme/colors';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile, uploadAvatar } from '../services/profile.service';
 
-export function EditProfileScreen() {
+export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
   const navigation = useNavigation();
+  const close = () => onClose ? onClose() : navigation.goBack();
   const { profile, refreshProfile } = useAuth();
 
   const [fullName, setFullName]   = useState(profile?.full_name ?? '');
@@ -63,7 +64,7 @@ export function EditProfileScreen() {
         avatar_url,
       });
       await refreshProfile();
-      navigation.goBack();
+      close();
     } catch (e: any) {
       const msg = e.message ?? 'No se pudo guardar el perfil';
       if (Platform.OS === 'web') {
@@ -83,7 +84,7 @@ export function EditProfileScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Editar Perfil</Text>
