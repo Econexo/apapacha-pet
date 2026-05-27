@@ -11,6 +11,8 @@ import { supabase } from '../../supabase';
 import type { RootStackParamList } from '../types/navigation';
 import type { Pet, Booking } from '../types/database';
 import { getUnreadCount } from '../services/notifications.service';
+import { OverlayModal } from '../components/OverlayModal';
+import { AddPetScreen } from './AddPetScreen';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -34,6 +36,8 @@ export function HomeScreen() {
   const [nextServiceName, setNextServiceName] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
+  const [showAddPet, setShowAddPet] = useState(false);
+  const [addPetId, setAddPetId] = useState<string | undefined>();
 
   const loadData = useCallback(async () => {
     try {
@@ -111,6 +115,9 @@ export function HomeScreen() {
         onClose={() => setShowNotifications(false)}
         onUnreadChange={setUnreadCount}
       />
+      <OverlayModal visible={showAddPet} onClose={() => setShowAddPet(false)}>
+        <AddPetScreen petId={addPetId} onClose={() => { setShowAddPet(false); loadData(); }} />
+      </OverlayModal>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.greeting}>Hola, {firstName} 🐾</Text>
         <Text style={styles.subGreeting}>¿Cómo están tus compañeros felinos hoy?</Text>
@@ -149,7 +156,7 @@ export function HomeScreen() {
             </View>
           </View>
         ) : (
-          <TouchableOpacity style={styles.addPetCard} onPress={() => navigation.navigate('AddPetModal')} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.addPetCard} onPress={() => { setAddPetId(undefined); setShowAddPet(true); }} activeOpacity={0.8}>
             <Text style={styles.addPetEmoji}>🐱</Text>
             <Text style={styles.addPetText}>Agrega tu primer gato</Text>
             <Text style={styles.addPetArrow}>→</Text>
@@ -189,7 +196,7 @@ export function HomeScreen() {
             <Ionicons name="calendar-outline" size={28} color={colors.primary} />
             <Text style={styles.actionLabel}>Historial</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.actionCard} onPress={() => firstPet ? navigation.navigate('AddPetModal', { petId: firstPet.id }) : navigation.navigate('AddPetModal')} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.actionCard} onPress={() => { setAddPetId(firstPet?.id); setShowAddPet(true); }} activeOpacity={0.8}>
             <Ionicons name="paw-outline" size={28} color={colors.primary} />
             <Text style={styles.actionLabel}>{firstPet ? firstPet.name : 'Mi gato'}</Text>
           </TouchableOpacity>
