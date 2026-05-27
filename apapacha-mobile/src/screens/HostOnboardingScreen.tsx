@@ -12,8 +12,9 @@ import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-export function HostOnboardingScreen() {
+export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {}) {
   const navigation = useNavigation<Nav>();
+  const close = () => onClose ? onClose() : navigation.goBack();
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<'Alojamiento' | 'Visita'>('Alojamiento');
   const [submitting, setSubmitting] = useState(false);
@@ -115,9 +116,14 @@ export function HostOnboardingScreen() {
         evidence_url_1: evidenceUrl1,
         evidence_url_2: evidenceUrl2,
       });
-      Alert.alert('¡Solicitud enviada!', 'Revisaremos tu solicitud y te notificaremos en 24-48 horas.', [
-        { text: 'OK', onPress: () => navigation.navigate('MainTabs') },
-      ]);
+      if (Platform.OS === 'web') {
+        (window as any).alert('¡Solicitud enviada!\n\nRevisaremos tu solicitud y te notificaremos en 24-48 horas.');
+        close();
+      } else {
+        Alert.alert('¡Solicitud enviada!', 'Revisaremos tu solicitud y te notificaremos en 24-48 horas.', [
+          { text: 'OK', onPress: close },
+        ]);
+      }
     } catch (e: any) {
       Alert.alert('Error', e.message ?? 'No se pudo enviar la solicitud');
     } finally {
@@ -251,7 +257,7 @@ export function HostOnboardingScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.closeBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.closeBtn} onPress={close}>
           <Text style={styles.closeBtnText}>✕ Cancelar</Text>
         </TouchableOpacity>
       </View>
