@@ -9,6 +9,7 @@ import { useAuth } from '../context/AuthContext';
 import { supabase } from '../../supabase';
 import type { RootStackParamList } from '../types/navigation';
 import type { Pet, Booking } from '../types/database';
+import { getUnreadCount } from '../services/notifications.service';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -30,6 +31,7 @@ export function HomeScreen() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [nextBooking, setNextBooking] = useState<Booking | null>(null);
   const [nextServiceName, setNextServiceName] = useState<string | null>(null);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
@@ -58,16 +60,50 @@ export function HomeScreen() {
     } catch (e) { console.error('[HomeScreen]', e); }
   }, []);
 
-  useFocusEffect(useCallback(() => { loadData(); }, []));
+  useFocusEffect(useCallback(() => {
+    loadData();
+    getUnreadCount().then(setUnreadCount);
+  }, []));
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('home_notifications')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'notifications' }, () => {
+        getUnreadCount().then(setUnreadCount);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, []);
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'amigo';
   const firstPet = pets[0];
   const isActive = nextBooking?.status === 'active';
   const mood = firstPet ? getMoodForPet(firstPet) : null;
 
+  const bellIcon = (
+    <TouchableOpacity
+      onPress={() => navigation.navigate('Notifications')}
+      style={{ padding: 6, position: 'relative' }}
+      activeOpacity={0.7}
+    >
+      <Ionicons name="notifications-outline" size={24} color={colors.primary} />
+      {unreadCount > 0 && (
+        <View style={{
+          position: 'absolute', top: 2, right: 2,
+          backgroundColor: colors.danger, borderRadius: 8,
+          minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 3,
+        }}>
+          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </Text>
+        </View>
+      )}
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.root}>
-      <AppHeader />
+      <AppHeader rightElement={bellIcon} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.greeting}>Hola, {firstName} 🐾</Text>
         <Text style={styles.subGreeting}>¿Cómo están tus compañeros felinos hoy?</Text>
