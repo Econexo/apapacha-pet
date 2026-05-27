@@ -48,11 +48,14 @@ export async function getSpaceById(id: string): Promise<Space> {
 export async function getMySpace(): Promise<Space | null> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return null;
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('spaces')
     .select('*')
     .eq('host_id', user.id)
+    .order('created_at', { ascending: false })
+    .limit(1)
     .maybeSingle();
+  if (error) { console.error('[getMySpace]', error.message); return null; }
   return data ?? null;
 }
 
