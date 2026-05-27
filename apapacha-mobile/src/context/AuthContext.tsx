@@ -60,7 +60,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function refreshProfile() {
-    if (session?.user.id) await fetchProfile(session.user.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.id) await fetchProfile(user.id);
   }
 
   async function signOut() {
