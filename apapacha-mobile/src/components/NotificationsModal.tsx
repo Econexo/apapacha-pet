@@ -16,6 +16,8 @@ const TYPE_ICON: Record<string, { icon: IoniconName; color: string }> = {
   receipt_submitted:    { icon: 'card-outline',             color: colors.warning },
   booking_confirmed:    { icon: 'checkmark-circle-outline', color: colors.success },
   application_approved: { icon: 'ribbon-outline',           color: colors.accent  },
+  service_started:      { icon: 'play-circle-outline',      color: colors.primary },
+  service_completed:    { icon: 'checkmark-done-outline',   color: colors.success },
 };
 
 function timeAgo(dateStr: string): string {
