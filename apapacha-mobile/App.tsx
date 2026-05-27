@@ -58,14 +58,18 @@ function ManageServiceWrapper() {
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> = {
-  Home:     { active: 'home',           inactive: 'home-outline'           },
-  Explore:  { active: 'compass',        inactive: 'compass-outline'        },
-  Inbox:    { active: 'chatbubbles',    inactive: 'chatbubbles-outline'    },
-  Bookings: { active: 'calendar',       inactive: 'calendar-outline'       },
-  Profile:  { active: 'person-circle',  inactive: 'person-circle-outline'  },
+  Home:          { active: 'home',           inactive: 'home-outline'           },
+  Explore:       { active: 'compass',        inactive: 'compass-outline'        },
+  Inbox:         { active: 'chatbubbles',    inactive: 'chatbubbles-outline'    },
+  Bookings:      { active: 'calendar',       inactive: 'calendar-outline'       },
+  HostDashboard: { active: 'paw',            inactive: 'paw-outline'            },
+  Profile:       { active: 'person-circle',  inactive: 'person-circle-outline'  },
 };
 
 function MainTabs() {
+  const { profile } = useAuth();
+  const isHost = profile?.role === 'host';
+
   return (
     <Tab.Navigator
       screenOptions={({ route }) => ({
@@ -82,15 +86,23 @@ function MainTabs() {
         },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
+          if (!icons) return null;
           return <Ionicons name={focused ? icons.active : icons.inactive} size={size ?? 24} color={color} />;
         },
         tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
       })}
     >
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Inicio' }} />
-      <Tab.Screen name="Explore" component={ExploreScreen} options={{ title: 'Explorar' }} />
-      <Tab.Screen name="Inbox" component={InboxScreen} options={{ title: 'Mensajes' }} />
+      <Tab.Screen name="Home"     component={HomeScreen}     options={{ title: 'Inicio' }} />
+      <Tab.Screen name="Explore"  component={ExploreScreen}  options={{ title: 'Explorar' }} />
+      <Tab.Screen name="Inbox"    component={InboxScreen}    options={{ title: 'Mensajes' }} />
       <Tab.Screen name="Bookings" component={BookingsScreen} options={{ title: 'Reservas' }} />
+      {isHost && (
+        <Tab.Screen
+          name="HostDashboard"
+          component={HostDashboardScreen}
+          options={{ title: 'Cuidador' }}
+        />
+      )}
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
     </Tab.Navigator>
   );
