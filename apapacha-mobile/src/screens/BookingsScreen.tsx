@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -96,24 +96,29 @@ export function BookingsScreen() {
   }
 
   async function handleCancel(bookingId: string) {
-    Alert.alert(
-      'Cancelar reserva',
-      'El seguro Zero Trust no es reembolsable. ¿Confirmas la cancelación?',
-      [
+    const doCancel = async () => {
+      try {
+        await cancelBooking(bookingId);
+        loadAll();
+      } catch (e: any) {
+        if (Platform.OS === 'web') {
+          (window as any).alert(`Error: ${e.message}`);
+        } else {
+          Alert.alert('Error', e.message);
+        }
+      }
+    };
+
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm('El seguro Zero Trust no es reembolsable. ¿Confirmas la cancelación?')) {
+        await doCancel();
+      }
+    } else {
+      Alert.alert('Cancelar reserva', 'El seguro Zero Trust no es reembolsable. ¿Confirmas la cancelación?', [
         { text: 'Volver', style: 'cancel' },
-        {
-          text: 'Cancelar reserva', style: 'destructive',
-          onPress: async () => {
-            try {
-              await cancelBooking(bookingId);
-              loadAll();
-            } catch (e: any) {
-              Alert.alert('Error', e.message);
-            }
-          },
-        },
-      ]
-    );
+        { text: 'Cancelar reserva', style: 'destructive', onPress: doCancel },
+      ]);
+    }
   }
 
   const active  = bookings.filter(b => b.status === 'active' || b.status === 'pending');
