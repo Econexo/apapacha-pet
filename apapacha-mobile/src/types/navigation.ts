@@ -21,4 +21,5 @@ export type RootStackParamList = {
   EditProfile: undefined;
   LeaveReview: { bookingId: string; hostId: string; hostName: string };
   ManageService: { type: 'space' | 'visiter'; serviceId?: string };
+  Notifications: undefined;
 };
