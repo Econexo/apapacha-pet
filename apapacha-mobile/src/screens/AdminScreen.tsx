@@ -84,6 +84,7 @@ interface AdminBooking {
   start_date: string;
   end_date: string;
   status: string;
+  service_phase: 'not_started' | 'in_progress';
   total_price: number;
   created_at: string;
   profiles: { full_name: string } | null;
@@ -223,7 +224,7 @@ export function AdminScreen() {
   async function loadBookings() {
     const { data, error } = await supabase
       .from('bookings')
-      .select('id, service_type, start_date, end_date, status, total_price, created_at, profiles(full_name)')
+      .select('id, service_type, start_date, end_date, status, service_phase, total_price, created_at, profiles(full_name)')
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) { console.error('[Admin] loadBookings:', error.message); return; }
@@ -1154,8 +1155,17 @@ function BookingsTab({ bookings, onUpdateStatus, onConfirmPayment }: {
                 ${b.total_price.toLocaleString('es-CL')} CLP
               </Text>
             </View>
-            <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLOR[b.status] ?? colors.textMuted}20`, borderColor: STATUS_COLOR[b.status] ?? colors.textMuted }]}>
-              <Text style={[styles.statusText, { color: STATUS_COLOR[b.status] ?? colors.textMuted }]}>{b.status}</Text>
+            <View style={{ alignItems: 'flex-end', gap: 4 }}>
+              <View style={[styles.statusBadge, { backgroundColor: `${STATUS_COLOR[b.status] ?? colors.textMuted}20`, borderColor: STATUS_COLOR[b.status] ?? colors.textMuted }]}>
+                <Text style={[styles.statusText, { color: STATUS_COLOR[b.status] ?? colors.textMuted }]}>{b.status}</Text>
+              </View>
+              {b.status === 'active' && (
+                <View style={{ backgroundColor: b.service_phase === 'in_progress' ? colors.successBg : `${colors.primary}10`, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2, borderWidth: 1, borderColor: b.service_phase === 'in_progress' ? colors.successBorder : `${colors.primary}30` }}>
+                  <Text style={{ fontSize: 9, fontWeight: '800', color: b.service_phase === 'in_progress' ? colors.successText : colors.primaryDark }}>
+                    {b.service_phase === 'in_progress' ? '🟢 EN CURSO' : '⏳ POR INICIAR'}
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
           {(b.status === 'pending' || b.status === 'active') && (
