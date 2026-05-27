@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { AppHeader } from '../components/AppHeader';
 import { NotificationsModal } from '../components/NotificationsModal';
 import { colors } from '../theme/colors';
+import { radii, shadows, label } from '../theme/design';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../../supabase';
 import type { RootStackParamList } from '../types/navigation';
@@ -225,31 +226,31 @@ const styles = StyleSheet.create({
   subGreeting: { fontSize: 14, color: colors.textMuted, marginBottom: 20 },
 
   // Pet card
-  petCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'flex-start', borderWidth: 1, borderColor: colors.border, marginBottom: 12, gap: 14 },
+  petCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, flexDirection: 'row', alignItems: 'flex-start', ...shadows.md, marginBottom: 12, gap: 14 },
   petPhoto: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.background },
   petPhotoPlaceholder: { width: 72, height: 72, borderRadius: 36, backgroundColor: `${colors.primary}15`, alignItems: 'center', justifyContent: 'center' },
   petPhotoEmoji: { fontSize: 36 },
   petCardBody: { flex: 1, gap: 4 },
   petName: { fontSize: 18, fontWeight: '800', color: colors.textMain },
   petBreed: { fontSize: 13, color: colors.textMuted },
-  moodBadge: { backgroundColor: `${colors.primary}10`, borderRadius: 10, padding: 10, marginTop: 6, borderWidth: 1, borderColor: `${colors.primary}25` },
-  moodLabel: { fontSize: 10, fontWeight: '700', color: colors.primaryDark, textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 5 },
+  moodBadge: { backgroundColor: `${colors.primary}10`, borderRadius: radii.md, padding: 10, marginTop: 6 },
+  moodLabel: { ...label, color: colors.primaryDark, marginBottom: 5 },
   moodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   moodEmoji: { fontSize: 26 },
   moodMain: { fontSize: 14, fontWeight: '800', color: colors.textMain },
   moodSub: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
-  alertBadge: { backgroundColor: colors.dangerBg, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', borderWidth: 1, borderColor: colors.dangerBorder, marginTop: 4 },
+  alertBadge: { backgroundColor: colors.dangerBg, borderRadius: radii.sm, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 4 },
   alertText: { fontSize: 11, color: colors.dangerText, fontWeight: '700' },
 
-  addPetCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed', marginBottom: 12, gap: 12 },
+  addPetCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 20, flexDirection: 'row', alignItems: 'center', borderWidth: 2, borderColor: colors.primary, borderStyle: 'dashed', marginBottom: 12, gap: 12 },
   addPetEmoji: { fontSize: 28 },
   addPetText: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.primaryDark },
   addPetArrow: { fontSize: 18, color: colors.primary },
 
   // Visit card
-  visitCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 24, gap: 4 },
-  visitCardActive: { borderColor: colors.successBorder, backgroundColor: colors.successBg },
-  visitLabel: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
+  visitCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, ...shadows.md, marginBottom: 24, gap: 4 },
+  visitCardActive: { backgroundColor: colors.successBg },
+  visitLabel: { ...label, color: colors.textMuted },
   visitServiceName: { fontSize: 15, fontWeight: '700', color: colors.textMain, marginTop: 2 },
   visitDates: { fontSize: 20, fontWeight: '800', color: colors.textMain },
   visitStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
@@ -257,14 +258,14 @@ const styles = StyleSheet.create({
   statusDotActive: { backgroundColor: colors.successText },
   statusDotPending: { backgroundColor: colors.primary },
   visitStatus: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
-  noVisitCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 24, alignItems: 'center', gap: 8 },
+  noVisitCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, ...shadows.sm, marginBottom: 24, alignItems: 'center', gap: 8 },
   noVisitText: { fontSize: 14, color: colors.textMuted },
   noVisitLink: { fontSize: 14, color: colors.primary, fontWeight: '700' },
 
-  actionsTitle: { fontSize: 16, fontWeight: '800', color: colors.textMain, marginBottom: 12 },
+  actionsTitle: { ...label, color: colors.textMuted, marginBottom: 12 },
   actionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
-  actionCard: { flex: 1, minWidth: '44%', backgroundColor: colors.surface, borderRadius: 16, padding: 20, alignItems: 'center', gap: 8, borderWidth: 1, borderColor: colors.border },
-  actionCardDanger: { borderColor: colors.dangerBorder, backgroundColor: colors.dangerBg },
+  actionCard: { flex: 1, minWidth: '44%', backgroundColor: colors.surface, borderRadius: radii.lg, padding: 20, alignItems: 'center', gap: 8, ...shadows.sm },
+  actionCardDanger: { backgroundColor: colors.dangerBg },
   actionEmoji: { fontSize: 28 },
   actionLabel: { fontSize: 13, fontWeight: '700', color: colors.textMain },
   actionLabelDanger: { color: colors.dangerText },
