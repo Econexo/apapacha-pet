@@ -18,7 +18,7 @@ import {
   getProgressToNextLevel,
   type HostStats, type Review, type MonthlyEarning,
 } from '../services/reviews.service';
-import { completeBookingAsHost } from '../services/host.service';
+import { completeBookingAsHost, startService } from '../services/host.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { ManageServiceScreen } from './ManageServiceScreen';
 
@@ -473,11 +473,14 @@ function TabHistorial({ activeBookings, completedBookings, navigation, onReload 
         <>
           <Text style={styles.sectionTitle}>Reservas activas ({activeBookings.length})</Text>
           {activeBookings.map(b => (
-            <View key={b.id} style={[styles.histCard, { borderColor: colors.primary, borderWidth: 1.5 }]}>
+            <View key={b.id} style={[styles.histCard, { borderColor: b.service_phase === 'in_progress' ? colors.accent : colors.primary, borderWidth: 1.5 }]}>
               <View style={styles.histHeader}>
                 <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita domiciliaria'}</Text>
-                <Text style={[styles.histBadge, { color: STATUS_COLORS[b.status], backgroundColor: `${STATUS_COLORS[b.status]}15` }]}>
-                  {STATUS_LABELS[b.status]}
+                <Text style={[styles.histBadge, {
+                  color: b.service_phase === 'in_progress' ? colors.accent : STATUS_COLORS[b.status],
+                  backgroundColor: b.service_phase === 'in_progress' ? colors.successBg : `${STATUS_COLORS[b.status]}15`,
+                }]}>
+                  {b.service_phase === 'in_progress' ? '🟢 En curso' : b.status === 'active' ? '⏳ Por iniciar' : STATUS_LABELS[b.status]}
                 </Text>
               </View>
               <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
@@ -491,22 +494,42 @@ function TabHistorial({ activeBookings, completedBookings, navigation, onReload 
                   >
                     <Text style={styles.chatBtnText}>💬 Chat</Text>
                   </TouchableOpacity>
-                  {b.status === 'active' && (
+                  {b.status === 'active' && b.service_phase === 'not_started' && (
                     <TouchableOpacity
-                      style={styles.completeBtn}
+                      style={styles.startBtn}
                       onPress={() => {
-                        Alert.alert(
-                          'Marcar completada',
-                          '¿Confirmas que el cuidado ha finalizado?',
-                          [
+                        const doStart = () => startService(b.id).then(onReload).catch(console.error);
+                        if (Platform.OS === 'web') {
+                          if ((window as any).confirm('¿Confirmas que el servicio ha comenzado?')) doStart();
+                        } else {
+                          Alert.alert('Iniciar servicio', '¿Confirmas que el servicio ha comenzado?', [
                             { text: 'Cancelar', style: 'cancel' },
-                            { text: 'Confirmar', onPress: () => completeBookingAsHost(b.id).then(onReload).catch(console.error) },
-                          ]
-                        );
+                            { text: 'Iniciar', onPress: doStart },
+                          ]);
+                        }
                       }}
                       activeOpacity={0.8}
                     >
-                      <Text style={styles.completeBtnText}>✓ Completar</Text>
+                      <Text style={styles.startBtnText}>🚀 Iniciar</Text>
+                    </TouchableOpacity>
+                  )}
+                  {b.status === 'active' && b.service_phase === 'in_progress' && (
+                    <TouchableOpacity
+                      style={styles.completeBtn}
+                      onPress={() => {
+                        const doComplete = () => completeBookingAsHost(b.id).then(onReload).catch(console.error);
+                        if (Platform.OS === 'web') {
+                          if ((window as any).confirm('¿Confirmas que el cuidado ha finalizado?')) doComplete();
+                        } else {
+                          Alert.alert('Finalizar servicio', '¿Confirmas que el cuidado ha finalizado?', [
+                            { text: 'Cancelar', style: 'cancel' },
+                            { text: 'Finalizar', onPress: doComplete },
+                          ]);
+                        }
+                      }}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={styles.completeBtnText}>✅ Finalizar</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -718,6 +741,8 @@ const styles = StyleSheet.create({
   histPaid: { fontSize: 13, color: colors.textMuted },
   chatBtn: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 14, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: `${colors.primary}30` },
   chatBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
+  startBtn: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: `${colors.primary}40` },
+  startBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 13 },
   completeBtn: { backgroundColor: colors.successBg, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 8, borderWidth: 1, borderColor: colors.successBorder },
   completeBtnText: { color: colors.successText, fontWeight: '700', fontSize: 13 },
 
