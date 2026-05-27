@@ -1,5 +1,6 @@
 import { supabase } from '../../supabase';
 import type { Booking, BookingStatus, ServiceType } from '../types/database';
+import { insertNotification, insertNotificationsForAdmins } from './notifications.service';
 
 export async function getMyBookings(): Promise<Booking[]> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -34,6 +35,22 @@ export async function createBooking(bookingData: {
     .select()
     .single();
   if (error) throw error;
+
+  // Notify the host
+  try {
+    const table = bookingData.service_type === 'space' ? 'spaces' : 'visiters';
+    const { data: svc } = await supabase.from(table).select('host_id').eq('id', bookingData.service_id).single();
+    if (svc?.host_id) {
+      await insertNotification(
+        svc.host_id,
+        'booking_created',
+        '¡Nueva reserva recibida!',
+        `Tienes una nueva solicitud de reserva para el ${bookingData.start_date}.`,
+        { booking_id: data.id },
+      );
+    }
+  } catch (e) { console.error('[bookings] notify host:', e); }
+
   return data;
 }
 
@@ -70,6 +87,16 @@ export async function submitPaymentReceipt(bookingId: string, localUri: string):
     .eq('id', bookingId)
     .eq('owner_id', user.id);
   if (error) throw error;
+
+  // Notify all admins
+  try {
+    await insertNotificationsForAdmins(
+      'receipt_submitted',
+      'Comprobante de pago recibido',
+      'Un cliente subió un comprobante de transferencia. Revísalo en el panel de pagos.',
+      { booking_id: bookingId },
+    );
+  } catch (e) { console.error('[bookings] notify admins:', e); }
 }
 
 export async function cancelBooking(bookingId: string): Promise<void> {
@@ -86,9 +113,30 @@ export async function cancelBooking(bookingId: string): Promise<void> {
 export async function confirmBookingPayment(bookingId: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
+
+  // Fetch owner_id before updating so we can notify them
+  const { data: booking } = await supabase
+    .from('bookings')
+    .select('owner_id')
+    .eq('id', bookingId)
+    .single();
+
   const { error } = await supabase
     .from('bookings')
     .update({ payment_status: 'paid', status: 'active' })
     .eq('id', bookingId);
   if (error) throw error;
+
+  // Notify the booking owner
+  if (booking?.owner_id) {
+    try {
+      await insertNotification(
+        booking.owner_id,
+        'booking_confirmed',
+        '¡Tu reserva está activa! 🎉',
+        'Tu pago fue confirmado y tu reserva ya está activa. Puedes chatear con tu cuidador.',
+        { booking_id: bookingId },
+      );
+    } catch (e) { console.error('[bookings] notify owner:', e); }
+  }
 }
