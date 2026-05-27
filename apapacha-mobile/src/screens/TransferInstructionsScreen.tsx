@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   Alert, ActivityIndicator, Platform, Image,
@@ -11,18 +11,19 @@ import * as Clipboard from 'expo-clipboard';
 import { colors } from '../theme/colors';
 import type { RootStackParamList } from '../types/navigation';
 import { submitPaymentReceipt } from '../services/bookings.service';
+import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'TransferInstructions'>;
 
-const BANK_DETAILS = {
-  banco: 'Banco Estado',
-  tipo: 'Cuenta Vista',
-  numero: '123456789',   // ← actualizar
-  rut: '12.345.678-9',  // ← actualizar
-  nombre: 'Apapacha SpA',
-  email: 'apapachapet.app@gmail.com',
-};
+interface TransferDetails {
+  banco: string;
+  tipo: string;
+  numero: string;
+  rut: string;
+  nombre: string;
+  email: string;
+}
 
 const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
 
@@ -49,9 +50,27 @@ export function TransferInstructionsScreen() {
   const route = useRoute<Route>();
   const { bookingId, amount } = route.params;
 
+  const [transferDetails, setTransferDetails] = useState<TransferDetails | null>(null);
+  const [loadingDetails, setLoadingDetails]   = useState(true);
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
-  const [uploading, setUploading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [uploading, setUploading]   = useState(false);
+  const [done, setDone]             = useState(false);
+
+  useEffect(() => {
+    supabase
+      .from('app_config')
+      .select('value')
+      .eq('key', 'transfer_details')
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) {
+          console.error('[TransferInstructions] app_config fetch:', error?.message);
+        } else {
+          setTransferDetails(data.value as TransferDetails);
+        }
+        setLoadingDetails(false);
+      });
+  }, []);
 
   const shortId = bookingId.slice(0, 8).toUpperCase();
 
@@ -120,14 +139,26 @@ export function TransferInstructionsScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Datos de transferencia</Text>
-        <View style={styles.bankCard}>
-          <CopyRow label="Banco"   value={BANK_DETAILS.banco}  />
-          <CopyRow label="Tipo"    value={BANK_DETAILS.tipo}   />
-          <CopyRow label="Número"  value={BANK_DETAILS.numero} />
-          <CopyRow label="RUT"     value={BANK_DETAILS.rut}    />
-          <CopyRow label="Nombre"  value={BANK_DETAILS.nombre} />
-          <CopyRow label="Email"   value={BANK_DETAILS.email}  />
-        </View>
+        {loadingDetails ? (
+          <View style={styles.bankCard}>
+            <ActivityIndicator color={colors.primary} style={{ margin: 24 }} />
+          </View>
+        ) : !transferDetails ? (
+          <View style={[styles.bankCard, { padding: 20 }]}>
+            <Text style={{ color: colors.danger, fontSize: 14, textAlign: 'center' }}>
+              No se pudieron cargar los datos de transferencia. Contáctanos a apapachapet.app@gmail.com
+            </Text>
+          </View>
+        ) : (
+          <View style={styles.bankCard}>
+            <CopyRow label="Banco"   value={transferDetails.banco}  />
+            <CopyRow label="Tipo"    value={transferDetails.tipo}   />
+            <CopyRow label="Número"  value={transferDetails.numero} />
+            <CopyRow label="RUT"     value={transferDetails.rut}    />
+            <CopyRow label="Nombre"  value={transferDetails.nombre} />
+            <CopyRow label="Email"   value={transferDetails.email}  />
+          </View>
+        )}
 
         <View style={styles.infoBox}>
           <Text style={styles.infoText}>
