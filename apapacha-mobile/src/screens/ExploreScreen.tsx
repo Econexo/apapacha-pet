@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { radii, shadows } from '../theme/design';
 import { SpaceCard } from '../components/SpaceCard';
 import { VisiterCard } from '../components/VisiterCard';
 import { SpaceCardSkeleton, VisiterCardSkeleton } from '../components/Skeleton';
@@ -194,22 +195,22 @@ export function ExploreScreen() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.surface },
+  safeArea: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: 20, paddingTop: 10, paddingBottom: 5, backgroundColor: colors.surface },
-  serviceToggleContainer: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 30, padding: 4, marginBottom: 16, borderWidth: 1, borderColor: colors.border },
-  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 26 },
-  toggleBtnActive: { backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4, elevation: 2 },
+  serviceToggleContainer: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: radii.full, padding: 4, marginBottom: 16 },
+  toggleBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: radii.full },
+  toggleBtnActive: { backgroundColor: colors.surface, ...shadows.sm },
   toggleText: { fontSize: 14, fontWeight: '600', color: colors.textMuted },
   toggleTextActive: { color: colors.textMain, fontWeight: '800' },
-  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, padding: 12, borderRadius: 30, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 5, elevation: 2, borderWidth: 1, borderColor: colors.border },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, padding: 14, borderRadius: radii.full, ...shadows.md },
   searchIconPlaceholder: { marginLeft: 8, marginRight: 16 },
   searchTexts: { flex: 1 },
   searchTitle: { fontSize: 14, fontWeight: '700', color: colors.textMain },
   searchSubtitle: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
   filterContainer: { paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.border },
   filterScroll: { paddingHorizontal: 20, gap: 10 },
-  filterChip: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface },
-  filterChipActive: { backgroundColor: colors.primary, borderColor: colors.primary },
+  filterChip: { paddingHorizontal: 18, paddingVertical: 9, borderRadius: radii.full, backgroundColor: colors.surface, ...shadows.sm },
+  filterChipActive: { backgroundColor: colors.primary },
   filterText: { fontSize: 13, fontWeight: '600', color: colors.textMain },
   filterTextActive: { color: colors.surface },
   listContainer: { padding: 20, paddingTop: 16, paddingBottom: 100 },
