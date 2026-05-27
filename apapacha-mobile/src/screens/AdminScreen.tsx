@@ -349,20 +349,26 @@ export function AdminScreen() {
     Alert.alert('Eliminar visiter', `¿Eliminar "${name}"?\nEsta acción no se puede deshacer.`, [
       { text: 'Cancelar', style: 'cancel' },
       { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        const { error, count } = await supabase
-          .from('visiters')
-          .delete({ count: 'exact' })
-          .eq('id', visiterId);
-        console.log('[Admin] deleteVisiter result:', { error: error?.message, count });
-        if (error) {
-          Alert.alert('Error al eliminar', `${error.message}\n(${error.code ?? 'sin código'})`);
-          return;
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          const res = await fetch(`${SUPABASE_FUNCTIONS_URL}/admin-delete-record`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${session?.access_token}`,
+              apikey: supabaseAnonKey,
+            },
+            body: JSON.stringify({ table: 'visiters', id: visiterId }),
+          });
+          const json = await res.json();
+          if (!res.ok) {
+            Alert.alert('Error al eliminar', json.error ?? 'Error desconocido');
+            return;
+          }
+          await Promise.all([loadVisiters(), loadStats()]);
+        } catch (e: any) {
+          Alert.alert('Error al eliminar', e.message ?? 'Error de red');
         }
-        if (!count || count === 0) {
-          Alert.alert('Sin permisos', 'No se pudo eliminar. La política RLS bloqueó la operación.\n\nAplica el SQL de fix_admin_delete_rls en el dashboard de Supabase.');
-          return;
-        }
-        await Promise.all([loadVisiters(), loadStats()]);
       }},
     ]);
   }
