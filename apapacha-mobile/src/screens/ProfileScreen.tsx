@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Alert, ActivityIndicator, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -74,9 +74,18 @@ export function ProfileScreen() {
       const { data: urlData } = supabase.storage.from('contracts').getPublicUrl(path);
       await supabase.from('profiles').update({ signed_contract_url: urlData.publicUrl }).eq('id', user.id);
       await refreshProfile();
-      Alert.alert('✅ Contrato enviado', 'Tu contrato firmado fue cargado exitosamente. El equipo de ApapachaPet lo revisará pronto.');
+      if (Platform.OS === 'web') {
+        (window as any).alert('✅ Contrato enviado. El equipo de ApapachaPet lo revisará pronto.');
+      } else {
+        Alert.alert('✅ Contrato enviado', 'Tu contrato firmado fue cargado exitosamente. El equipo de ApapachaPet lo revisará pronto.');
+      }
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo subir el contrato');
+      const msg = e.message ?? 'No se pudo subir el contrato';
+      if (Platform.OS === 'web') {
+        (window as any).alert(`Error: ${msg}`);
+      } else {
+        Alert.alert('Error', msg);
+      }
     } finally {
       setUploadingContract(false);
     }
@@ -265,7 +274,14 @@ export function ProfileScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Cuenta y Legal</Text>
         <View style={styles.settingsMenu}>
-          <TouchableOpacity style={styles.menuItem}>
+          <TouchableOpacity style={styles.menuItem} onPress={() => {
+            const msg = 'ApapachaPet opera con pagos por transferencia bancaria. Al reservar un servicio, recibirás las instrucciones y datos de cuenta para realizar la transferencia.';
+            if (Platform.OS === 'web') {
+              (window as any).alert(msg);
+            } else {
+              Alert.alert('Métodos de Pago', msg);
+            }
+          }}>
             <Text style={styles.menuItemText}>Métodos de Pago</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
