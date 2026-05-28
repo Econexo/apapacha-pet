@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
+  ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -9,6 +9,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -16,6 +17,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export function SetPasswordScreen() {
   const navigation = useNavigation<Nav>();
   const { refreshProfile } = useAuth();
+  const toast = useToast();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
@@ -31,7 +33,7 @@ export function SetPasswordScreen() {
       await refreshProfile();
       navigation.replace('MainTabs');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo establecer la contraseña');
+      toast.error('Error', e.message ?? 'No se pudo establecer la contraseña');
     } finally {
       setSaving(false);
     }
@@ -47,7 +49,7 @@ export function SetPasswordScreen() {
       await refreshProfile();
       navigation.replace('MainTabs');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo continuar. Intenta de nuevo.');
+      toast.error('Error', e.message ?? 'No se pudo continuar. Intenta de nuevo.');
     }
   };
 
