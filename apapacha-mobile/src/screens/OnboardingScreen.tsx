@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import type { RootStackParamList } from '../types/navigation';
@@ -22,6 +23,7 @@ export function OnboardingScreen() {
   const [address, setAddress] = useState('');
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
 
   const isValid = fullName.trim().length >= 2 && lastName.trim().length >= 2
     && Number(age) >= 18 && Number(age) <= 100 && address.trim().length >= 5;
@@ -30,7 +32,7 @@ export function OnboardingScreen() {
     if (!isValid) return;
     const ageNum = parseInt(age, 10);
     if (isNaN(ageNum) || ageNum < 18 || ageNum > 100) {
-      Alert.alert('Edad inválida', 'Debes tener al menos 18 años para usar ApapachaPet.');
+      toast.warning('Edad inválida', 'Debes tener al menos 18 años para usar ApapachaPet.');
       return;
     }
     setSaving(true);
@@ -49,7 +51,7 @@ export function OnboardingScreen() {
       await refreshProfile();
       navigation.replace('SetPassword');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar');
+      toast.error('Error', e.message ?? 'No se pudo guardar');
     } finally {
       setSaving(false);
     }
