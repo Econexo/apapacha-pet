@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile, uploadAvatar } from '../services/profile.service';
 
@@ -23,6 +24,7 @@ export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
   const [avatarChanged, setAvatarChanged] = useState(false);
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
 
   const pickImage = async () => {
     if (Platform.OS !== 'web') {
@@ -46,7 +48,7 @@ export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
 
   const handleSave = async () => {
     if (!fullName.trim()) {
-      Alert.alert('Nombre requerido', 'Por favor ingresa tu nombre.');
+      toast.warning('Nombre requerido', 'Por favor ingresa tu nombre.');
       return;
     }
     setSaving(true);
@@ -66,12 +68,7 @@ export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
       await refreshProfile();
       close();
     } catch (e: any) {
-      const msg = e.message ?? 'No se pudo guardar el perfil';
-      if (Platform.OS === 'web') {
-        (window as any).alert(`Error: ${msg}`);
-      } else {
-        Alert.alert('Error', msg);
-      }
+      toast.error('Error', e.message ?? 'No se pudo guardar el perfil');
     } finally {
       setSaving(false);
     }
