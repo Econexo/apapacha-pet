@@ -22,6 +22,7 @@ import {
 import { completeBookingAsHost, startService } from '../services/host.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { ManageServiceScreen } from './ManageServiceScreen';
+import { useToast } from '../components/Toast';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Tab = 'servicios' | 'resumen' | 'solicitudes' | 'historial' | 'ganancias' | 'resenas';
@@ -159,13 +160,14 @@ function TabServicios({ mySpace, myVisiters, navigation, onReload, onManageServi
   onReload: () => void;
   onManageService: (params: { type: 'space' | 'visiter'; serviceId?: string }) => void;
 }) {
+  const toast = useToast();
   const handleDeleteVisiter = (v: Visiter) => {
     const doDelete = async () => {
       try {
         await deleteMyVisiter(v.id);
         onReload();
       } catch (e: any) {
-        Alert.alert('Error', e.message ?? 'No se pudo eliminar');
+        toast.error('Error', e.message ?? 'No se pudo eliminar');
       }
     };
     if (Platform.OS === 'web') {
@@ -575,7 +577,9 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
   if (bookings.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyIcon}>📭</Text>
+        <View style={styles.emptyIconBox}>
+          <Text style={styles.emptyEmoji}>📭</Text>
+        </View>
         <Text style={styles.emptyTitle}>Sin solicitudes activas</Text>
         <Text style={styles.emptyText}>Cuando un dueño reserve tu servicio aparecerá aquí para que puedas gestionarlo.</Text>
       </View>
@@ -682,7 +686,9 @@ function TabHistorial({ completedBookings }: { completedBookings: Booking[] }) {
   if (completedBookings.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyIcon}>📋</Text>
+        <View style={styles.emptyIconBox}>
+          <Text style={styles.emptyEmoji}>📋</Text>
+        </View>
         <Text style={styles.emptyTitle}>Sin servicios completados</Text>
         <Text style={styles.emptyText}>Aquí aparecerán los servicios que hayas finalizado.</Text>
       </View>
@@ -724,7 +730,9 @@ function TabGanancias({ earnings }: { earnings: MonthlyEarning[] }) {
   if (earnings.length === 0 || !hasData) {
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyIcon}>📊</Text>
+        <View style={styles.emptyIconBox}>
+          <Text style={styles.emptyEmoji}>📊</Text>
+        </View>
         <Text style={styles.emptyTitle}>Sin ganancias aún</Text>
         <Text style={styles.emptyText}>Aquí verás tus ganancias mensuales una vez que completes reservas.</Text>
       </View>
@@ -790,7 +798,9 @@ function TabResenas({ reviews }: { reviews: Review[] }) {
   if (reviews.length === 0) {
     return (
       <View style={styles.emptyState}>
-        <Text style={styles.emptyIcon}>⭐</Text>
+        <View style={styles.emptyIconBox}>
+          <Text style={styles.emptyEmoji}>⭐</Text>
+        </View>
         <Text style={styles.emptyTitle}>Sin reseñas aún</Text>
         <Text style={styles.emptyText}>Las reseñas de tus clientes aparecerán aquí.</Text>
       </View>
@@ -1020,8 +1030,9 @@ const styles = StyleSheet.create({
   flowActionArrow: { fontSize: 22, color: colors.primaryDark, fontWeight: '300' },
 
   // Empty
-  emptyState: { alignItems: 'center', paddingVertical: 60 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: colors.textMain, marginBottom: 8 },
-  emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center' },
+  emptyState: { alignItems: 'center', paddingVertical: 60, gap: 10, paddingHorizontal: 32 },
+  emptyIconBox: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyEmoji: { fontSize: 36 },
+  emptyTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 21 },
 });
