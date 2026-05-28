@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, Alert, ActivityIndicator, Platform,
+  TextInput, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { submitClaim, type IncidentType } from '../services/claims.service';
 
@@ -22,6 +23,7 @@ const INCIDENT_OPTIONS: { type: IncidentType; label: string; icon: string }[] = 
 
 export function InsuranceClaimScreen({ onClose }: { onClose?: () => void } = {}) {
   const navigation = useNavigation<Nav>();
+  const toast = useToast();
   const close = () => onClose ? onClose() : navigation.goBack();
   const [selectedType, setSelectedType] = useState<IncidentType | null>(null);
   const [description, setDescription] = useState('');
@@ -34,22 +36,10 @@ export function InsuranceClaimScreen({ onClose }: { onClose?: () => void } = {})
     setSubmitting(true);
     try {
       await submitClaim({ incident_type: selectedType!, description: description.trim() });
-      if (Platform.OS === 'web') {
-        (window as any).alert('Siniestro Reportado\n\nRecibimos tu reporte. Un agente revisará tu caso en 1-2 días hábiles y te contactará por email.');
-        close();
-      } else {
-        Alert.alert(
-          'Siniestro Reportado',
-          'Recibimos tu reporte. Un agente revisará tu caso en 1-2 días hábiles y te contactará por email.',
-          [{ text: 'Entendido', onPress: close }],
-        );
-      }
+      toast.success('Siniestro Reportado', 'Recibimos tu reporte. Un agente revisará tu caso en 1-2 días hábiles y te contactará por email.');
+      close();
     } catch (e: any) {
-      if (Platform.OS === 'web') {
-        (window as any).alert(`Error: ${e.message ?? 'No se pudo enviar el reporte'}`);
-      } else {
-        Alert.alert('Error', e.message ?? 'No se pudo enviar el reporte');
-      }
+      toast.error('Error', e.message ?? 'No se pudo enviar el reporte');
     } finally {
       setSubmitting(false);
     }
