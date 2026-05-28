@@ -773,8 +773,8 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
       )}
       {users.length === 0 && !dbError && (
         <View style={styles.emptyState}>
-          <Ionicons name="people-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
-          <Text style={styles.emptyText}>Sin usuarios registrados</Text>
+          <View style={styles.emptyIconBox}><Text style={styles.emptyEmoji}>👥</Text></View>
+          <Text style={styles.emptyTitle}>Sin usuarios registrados</Text>
         </View>
       )}
       {users.map(u => {
@@ -968,8 +968,8 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
       <Text style={styles.sectionTitle}>Postulaciones Pendientes ({pending.length})</Text>
       {pending.length === 0 && (
         <View style={styles.emptyState}>
-          <Ionicons name="checkmark-circle-outline" size={32} color={colors.accent} style={{ marginBottom: 8 }} />
-          <Text style={styles.emptyText}>Sin postulaciones pendientes</Text>
+          <View style={styles.emptyIconBox}><Text style={styles.emptyEmoji}>✅</Text></View>
+          <Text style={styles.emptyTitle}>Sin postulaciones pendientes</Text>
         </View>
       )}
       {pending.map(a => (
@@ -1053,8 +1053,8 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
       <Text style={styles.sectionTitle}>Comprobantes Pendientes ({payments.length})</Text>
       {payments.length === 0 && (
         <View style={styles.emptyState}>
-          <Ionicons name="checkmark-circle-outline" size={32} color={colors.accent} style={{ marginBottom: 8 }} />
-          <Text style={styles.emptyText}>Sin comprobantes pendientes</Text>
+          <View style={styles.emptyIconBox}><Text style={styles.emptyEmoji}>📋</Text></View>
+          <Text style={styles.emptyTitle}>Sin comprobantes pendientes</Text>
         </View>
       )}
       {payments.map(p => (
@@ -1110,8 +1110,8 @@ function BookingsTab({ bookings, onUpdateStatus, onConfirmPayment }: {
       <Text style={styles.sectionTitle}>Reservas Recientes ({bookings.length})</Text>
       {bookings.length === 0 && (
         <View style={styles.emptyState}>
-          <Ionicons name="calendar-outline" size={32} color={colors.textMuted} style={{ marginBottom: 8 }} />
-          <Text style={styles.emptyText}>Sin reservas registradas</Text>
+          <View style={styles.emptyIconBox}><Text style={styles.emptyEmoji}>📅</Text></View>
+          <Text style={styles.emptyTitle}>Sin reservas registradas</Text>
         </View>
       )}
       {bookings.map(b => (
@@ -1255,8 +1255,11 @@ const styles = StyleSheet.create({
   actionBtnText: { fontSize: 12, fontWeight: '700', color: colors.textMain },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, alignSelf: 'flex-start' },
   statusText: { fontSize: 11, fontWeight: '700' },
-  emptyState: { backgroundColor: colors.surface, borderRadius: 14, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
-  emptyText: { color: colors.textMuted, fontSize: 14 },
+  emptyState: { backgroundColor: colors.surface, borderRadius: 14, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border, gap: 8 },
+  emptyIconBox: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyEmoji: { fontSize: 28 },
+  emptyTitle: { fontSize: 15, fontWeight: '700', color: colors.textMain, textAlign: 'center' },
+  emptyText: { color: colors.textMuted, fontSize: 13, textAlign: 'center' },
   tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 20 },
   tagText: { fontSize: 11, fontWeight: '700' },
   userDetailSection: { borderTopWidth: 1, borderTopColor: colors.border, marginTop: 10, paddingTop: 10 },
