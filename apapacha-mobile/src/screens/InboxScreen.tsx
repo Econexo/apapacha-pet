@@ -3,13 +3,21 @@ import { View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, 
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { radii, shadows } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings } from '../services/bookings.service';
 import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
+
+const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
+  pending:   { label: 'Esperando confirmación', color: colors.warning,     bg: `${colors.warning}18`     },
+  active:    { label: 'Reserva activa',          color: colors.accent,      bg: `${colors.accent}18`      },
+  completed: { label: 'Cuidado finalizado',      color: colors.textMuted,   bg: colors.background         },
+};
 
 export function InboxScreen() {
   const navigation = useNavigation<Nav>();
@@ -59,70 +67,107 @@ export function InboxScreen() {
   };
 
   const fmt = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  const statusCfg = (b: Booking) => STATUS_CONFIG[b.status] ?? STATUS_CONFIG.active;
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mensajes</Text>
+        <Text style={styles.headerSub}>{bookings.length > 0 ? `${bookings.length} conversaciones activas` : 'Tus chats de reservas'}</Text>
       </View>
+
       {loading && bookings.length === 0 && (
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color={colors.primary} />
         </View>
       )}
+
       <FlatList
         data={bookings}
         keyExtractor={item => item.id}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.chatRow}
-            activeOpacity={0.7}
-            onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
-          >
-            <View style={styles.avatar}>
-              <Text style={styles.avatarEmoji}>{item.service_type === 'space' ? '🏠' : '🚗'}</Text>
-            </View>
-            <View style={styles.messageContent}>
-              <View style={styles.nameRow}>
-                <Text style={styles.name} numberOfLines={1}>
-                  {nameMap[item.id] ?? (item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria')}
-                </Text>
-                <Text style={styles.time}>{fmt(item.start_date)}</Text>
+        contentContainerStyle={[styles.listContent, bookings.length === 0 && { flex: 1 }]}
+        renderItem={({ item }) => {
+          const cfg = statusCfg(item);
+          const title = nameMap[item.id] ?? (item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria');
+          return (
+            <TouchableOpacity
+              style={styles.chatCard}
+              activeOpacity={0.7}
+              onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
+            >
+              <View style={[styles.avatar, { backgroundColor: item.service_type === 'space' ? colors.primaryLight : `${colors.accent}22` }]}>
+                <Text style={styles.avatarEmoji}>{item.service_type === 'space' ? '🏠' : '🚗'}</Text>
               </View>
-              <Text style={styles.snippet} numberOfLines={1}>
-                {item.status === 'pending' ? 'Esperando confirmación...' : item.status === 'completed' ? 'Cuidado finalizado' : 'Reserva activa — toca para chatear'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        )}
+              <View style={styles.messageContent}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>{title}</Text>
+                  <Text style={styles.time}>{fmt(item.start_date)}</Text>
+                </View>
+                <View style={styles.statusRow}>
+                  <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
+                  <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                </View>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+            </TouchableOpacity>
+          );
+        }}
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>💬</Text>
-              <Text style={styles.emptyText}>No tienes mensajes aún.</Text>
+              <View style={styles.emptyIconBox}>
+                <Text style={styles.emptyEmoji}>💬</Text>
+              </View>
+              <Text style={styles.emptyTitle}>Sin mensajes aún</Text>
+              <Text style={styles.emptyText}>Cuando reserves un servicio, el chat con tu cuidador aparecerá aquí.</Text>
             </View>
           ) : null
         }
-        contentContainerStyle={bookings.length === 0 ? { flex: 1 } : undefined}
       />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.surface },
-  header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+  safeArea: { flex: 1, backgroundColor: colors.background },
+
+  header: {
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
+    backgroundColor: colors.surface,
+    shadowColor: '#1A0A2E', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
+  },
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
-  chatRow: { flexDirection: 'row', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border, alignItems: 'center' },
-  avatar: { width: 56, height: 56, borderRadius: 28, marginRight: 16, backgroundColor: colors.background, alignItems: 'center', justifyContent: 'center' },
-  avatarEmoji: { fontSize: 28 },
+  headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
+
+  listContent: { padding: 16, gap: 10 },
+
+  chatCard: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    backgroundColor: colors.surface, borderRadius: radii.lg,
+    padding: 16, ...shadows.sm,
+  },
+  avatar: {
+    width: 52, height: 52, borderRadius: 26,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarEmoji: { fontSize: 26 },
   messageContent: { flex: 1 },
-  nameRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
-  name: { fontSize: 16, color: colors.textMain, fontWeight: '700' },
-  time: { fontSize: 13, color: colors.textMuted },
-  snippet: { flex: 1, fontSize: 14, color: colors.textMuted },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40 },
-  emptyIcon: { fontSize: 48, marginBottom: 16 },
-  emptyText: { fontSize: 16, color: colors.textMuted, textAlign: 'center' },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  name: { fontSize: 15, color: colors.textMain, fontWeight: '700', flex: 1, marginRight: 8 },
+  time: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  statusDot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: '600' },
+
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
+  emptyIconBox: {
+    width: 80, height: 80, borderRadius: 40,
+    backgroundColor: colors.primaryLight,
+    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+  },
+  emptyEmoji: { fontSize: 36 },
+  emptyTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain },
+  emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 21 },
 });
