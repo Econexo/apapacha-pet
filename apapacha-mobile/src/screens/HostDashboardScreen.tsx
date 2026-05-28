@@ -23,6 +23,7 @@ import { completeBookingAsHost, startService } from '../services/host.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { ManageServiceScreen } from './ManageServiceScreen';
 import { useToast } from '../components/Toast';
+import { useCountUp } from '../hooks/useCountUp';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Tab = 'servicios' | 'resumen' | 'solicitudes' | 'historial' | 'ganancias' | 'resenas';
@@ -340,6 +341,10 @@ function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, na
   );
   const { level, avgRating, totalTips, totalPoints } = stats;
   const progress = getProgressToNextLevel(totalPoints);
+  const animPoints = useCountUp(totalPoints);
+  const animTips = useCountUp(totalTips);
+  const animCompleted = useCountUp(completedCount);
+  const animActive = useCountUp(activeCount);
 
   return (
     <>
@@ -349,7 +354,7 @@ function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, na
           <Text style={styles.levelEmoji}>{level.emoji}</Text>
           <View style={styles.levelInfo}>
             <Text style={[styles.levelName, { color: level.color }]}>{level.name}</Text>
-            <Text style={styles.levelPoints}>{totalPoints} puntos acumulados</Text>
+            <Text style={styles.levelPoints}>{animPoints.toLocaleString('es-CL')} puntos acumulados</Text>
           </View>
         </View>
         <View style={styles.progressBarBg}>
@@ -370,11 +375,11 @@ function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, na
       {/* Stats grid */}
       <View style={styles.statsGrid}>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{activeCount}</Text>
+          <Text style={styles.statNumber}>{animActive}</Text>
           <Text style={styles.statLabel}>Activas</Text>
         </View>
         <View style={styles.statCard}>
-          <Text style={styles.statNumber}>{completedCount}</Text>
+          <Text style={styles.statNumber}>{animCompleted}</Text>
           <Text style={styles.statLabel}>Completadas</Text>
         </View>
         <View style={styles.statCard}>
@@ -385,7 +390,7 @@ function TabResumen({ stats, activeCount, completedCount, mySpace, myVisiter, na
         </View>
         <View style={styles.statCard}>
           <Text style={[styles.statNumber, { color: colors.accent, fontSize: 18 }]}>
-            {fmt(totalTips)}
+            ${animTips.toLocaleString('es-CL')}
           </Text>
           <Text style={styles.statLabel}>Propinas</Text>
         </View>
