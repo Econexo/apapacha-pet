@@ -10,6 +10,7 @@ import { colors } from '../theme/colors';
 import { radii, shadows, label } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import type { Pet, HostApplication } from '../types/database';
 import { getMyPets } from '../services/pets.service';
 import { getMyApplication } from '../services/host.service';
@@ -32,6 +33,7 @@ const APPLICATION_STATUS_LABEL: Record<string, { icon: IoniconName; text: string
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
   const { profile, signOut, refreshProfile } = useAuth();
+  const toast = useToast();
   const [pets, setPets] = useState<Pet[]>([]);
   const [application, setApplication] = useState<HostApplication | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
@@ -85,18 +87,9 @@ export function ProfileScreen() {
       const { data: urlData } = supabase.storage.from('contracts').getPublicUrl(path);
       await supabase.from('profiles').update({ signed_contract_url: urlData.publicUrl }).eq('id', user.id);
       await refreshProfile();
-      if (Platform.OS === 'web') {
-        (window as any).alert('✅ Contrato enviado. El equipo de ApapachaPet lo revisará pronto.');
-      } else {
-        Alert.alert('✅ Contrato enviado', 'Tu contrato firmado fue cargado exitosamente. El equipo de ApapachaPet lo revisará pronto.');
-      }
+      toast.success('Contrato enviado', 'El equipo de ApapachaPet lo revisará pronto.');
     } catch (e: any) {
-      const msg = e.message ?? 'No se pudo subir el contrato';
-      if (Platform.OS === 'web') {
-        (window as any).alert(`Error: ${msg}`);
-      } else {
-        Alert.alert('Error', msg);
-      }
+      toast.error('Error', e.message ?? 'No se pudo subir el contrato');
     } finally {
       setUploadingContract(false);
     }
@@ -283,12 +276,7 @@ export function ProfileScreen() {
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Cuenta y Legal</Text>
         <View style={styles.settingsMenu}>
           <TouchableOpacity style={styles.menuItem} onPress={() => {
-            const msg = 'ApapachaPet opera con pagos por transferencia bancaria. Al reservar un servicio, recibirás las instrucciones y datos de cuenta para realizar la transferencia.';
-            if (Platform.OS === 'web') {
-              (window as any).alert(msg);
-            } else {
-              Alert.alert('Métodos de Pago', msg);
-            }
+            toast.info('Métodos de Pago', 'ApapachaPet opera con pagos por transferencia bancaria. Al reservar recibirás los datos de cuenta.');
           }}>
             <Text style={styles.menuItemText}>Métodos de Pago</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
