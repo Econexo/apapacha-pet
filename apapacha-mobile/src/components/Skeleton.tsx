@@ -105,7 +105,7 @@ const styles = StyleSheet.create({
   spaceImage: { marginBottom: 12 },
   spaceInfo: { paddingHorizontal: 4 },
   // VisiterCard
-  visiterCard: { backgroundColor: colors.surface, marginBottom: 16, borderRadius: 16, borderWidth: 1, borderColor: colors.border, padding: 16 },
+  visiterCard: { backgroundColor: colors.surface, marginBottom: 16, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 2, padding: 16 },
   visiterRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   visiterFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 },
   // Detail
