@@ -9,6 +9,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { confirmBookingPayment } from '../services/bookings.service';
 import { insertNotification } from '../services/notifications.service';
 
@@ -105,6 +106,7 @@ interface PendingPayment {
 export function AdminScreen() {
   const navigation = useNavigation() as any;
   const { profile } = useAuth();
+  const toast = useToast();
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [stats, setStats] = useState<Stats | null>(null);
   const [users, setUsers] = useState<AdminUser[]>([]);
@@ -244,26 +246,18 @@ export function AdminScreen() {
   async function handleConfirmPayment(bookingId: string, ownerId?: string) {
     try {
       await confirmBookingPayment(bookingId);
-      if (Platform.OS === 'web') {
-        (window as any).alert('✅ Pago confirmado. La reserva está ahora activa.');
-      } else {
-        Alert.alert('✅ Pago confirmado', 'La reserva está ahora activa.');
-      }
+      toast.success('Pago confirmado', 'La reserva está ahora activa.');
       loadPendingPayments();
       loadBookings();
       loadStats();
     } catch (e: any) {
-      if (Platform.OS === 'web') {
-        (window as any).alert(`Error: ${e.message}`);
-      } else {
-        Alert.alert('Error', e.message);
-      }
+      toast.error('Error', e.message);
     }
   }
 
   async function approveApplication(id: string, userId: string, serviceType: string) {
     const { error } = await supabase.rpc('approve_host', { target_user_id: userId });
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error('Error', error.message); return; }
     const { error: appErr } = await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
     if (appErr) console.error('[Admin] approveApplication update:', appErr.message);
 
@@ -278,17 +272,9 @@ export function AdminScreen() {
         },
         body: JSON.stringify({ applicant_id: userId, application_id: id, service_type: serviceType }),
       });
-      if (Platform.OS === 'web') {
-        (window as any).alert('✅ El cuidador fue aprobado y se envió el correo de bienvenida con el contrato.');
-      } else {
-        Alert.alert('✅ Aprobado', 'El cuidador fue aprobado y se envió el correo de bienvenida con el contrato.');
-      }
+      toast.success('Cuidador aprobado', 'Se envió el correo de bienvenida con el contrato.');
     } catch {
-      if (Platform.OS === 'web') {
-        (window as any).alert('✅ El cuidador fue aprobado. No se pudo enviar el correo automáticamente.');
-      } else {
-        Alert.alert('✅ Aprobado', 'El cuidador fue aprobado. No se pudo enviar el correo automáticamente.');
-      }
+      toast.success('Cuidador aprobado', 'No se pudo enviar el correo automáticamente.');
     }
     // Notify the approved applicant
     try {
@@ -306,25 +292,22 @@ export function AdminScreen() {
 
   async function rejectApplication(id: string) {
     const { error } = await supabase.from('host_applications').update({ status: 'rejected' }).eq('id', id);
-    if (error) {
-      if (Platform.OS === 'web') { (window as any).alert(`Error: ${error.message}`); } else { Alert.alert('Error', error.message); }
-      return;
-    }
-    if (Platform.OS === 'web') { (window as any).alert('La postulación fue rechazada.'); } else { Alert.alert('Rechazado', 'La postulación fue rechazada.'); }
+    if (error) { toast.error('Error', error.message); return; }
+    toast.info('Postulación rechazada', 'La postulación fue rechazada.');
     loadApplications();
     loadStats();
   }
 
   async function recoverApplication(id: string) {
     const { error } = await supabase.from('host_applications').update({ status: 'pending' }).eq('id', id);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error('Error', error.message); return; }
     loadApplications();
     loadStats();
   }
 
   async function toggleAdmin(userId: string, current: boolean) {
     const { error } = await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error('Error', error.message); return; }
     loadUsers();
   }
 
@@ -336,10 +319,7 @@ export function AdminScreen() {
   async function deleteProfileUser(userId: string, name: string) {
     const doDelete = async () => {
       const { error } = await supabase.from('profiles').delete().eq('id', userId);
-      if (error) {
-        if (Platform.OS === 'web') { (window as any).alert(`Error: ${error.message}`); } else { Alert.alert('Error', error.message); }
-        return;
-      }
+      if (error) { toast.error('Error', error.message); return; }
       loadUsers(); loadStats();
     };
     if (Platform.OS === 'web') {
@@ -354,21 +334,15 @@ export function AdminScreen() {
 
   async function toggleSpaceActive(spaceId: string, current: boolean) {
     const { error } = await supabase.from('spaces').update({ active: !current }).eq('id', spaceId);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error('Error', error.message); return; }
     loadSpaces();
   }
 
   async function deleteSpace(spaceId: string, title: string) {
     const doDelete = async () => {
       const { error, count } = await supabase.from('spaces').delete({ count: 'exact' }).eq('id', spaceId);
-      if (error) {
-        if (Platform.OS === 'web') { (window as any).alert(`Error: ${error.message}`); } else { Alert.alert('Error al eliminar', error.message); }
-        return;
-      }
-      if (!count || count === 0) {
-        if (Platform.OS === 'web') { (window as any).alert('No se pudo eliminar. RLS bloqueó la operación.'); } else { Alert.alert('Sin permisos', 'No se pudo eliminar.'); }
-        return;
-      }
+      if (error) { toast.error('Error al eliminar', error.message); return; }
+      if (!count || count === 0) { toast.warning('Sin permisos', 'No se pudo eliminar. RLS bloqueó la operación.'); return; }
       await Promise.all([loadSpaces(), loadStats()]);
     };
     if (Platform.OS === 'web') {
@@ -383,7 +357,7 @@ export function AdminScreen() {
 
   async function toggleVisiterActive(visiterId: string, current: boolean) {
     const { error } = await supabase.from('visiters').update({ active: !current }).eq('id', visiterId);
-    if (error) { Alert.alert('Error', error.message); return; }
+    if (error) { toast.error('Error', error.message); return; }
     loadVisiters();
   }
 
@@ -404,13 +378,10 @@ export function AdminScreen() {
         const text = await res.text();
         let json: any = {};
         try { json = JSON.parse(text); } catch {}
-        if (!res.ok) {
-          Alert.alert('Error al eliminar', `HTTP ${res.status}: ${json.error ?? text}`);
-          return;
-        }
+        if (!res.ok) { toast.error('Error al eliminar', `HTTP ${res.status}: ${json.error ?? text}`); return; }
         await Promise.all([loadVisiters(), loadStats()]);
       } catch (e: any) {
-        Alert.alert('Error al eliminar', e.message ?? 'Error de red');
+        toast.error('Error al eliminar', e.message ?? 'Error de red');
       }
     };
 
