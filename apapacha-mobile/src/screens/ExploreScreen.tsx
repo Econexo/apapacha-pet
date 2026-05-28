@@ -158,7 +158,13 @@ export function ExploreScreen() {
               onPress={id => navigation.navigate('SpaceDetail', { id })}
             />
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No hay espacios disponibles.</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconBox}><Text style={styles.emptyEmoji}>🏠</Text></View>
+              <Text style={styles.emptyTitle}>Sin espacios disponibles</Text>
+              <Text style={styles.emptySubtitle}>Prueba cambiando los filtros o vuelve más tarde.</Text>
+            </View>
+          }
         />
       ) : (
         <FlatList
@@ -178,7 +184,13 @@ export function ExploreScreen() {
               onPress={id => navigation.navigate('VisiterDetail', { id })}
             />
           )}
-          ListEmptyComponent={<Text style={styles.emptyText}>No hay cuidadores disponibles.</Text>}
+          ListEmptyComponent={
+            <View style={styles.emptyState}>
+              <View style={styles.emptyIconBox}><Text style={styles.emptyEmoji}>🐾</Text></View>
+              <Text style={styles.emptyTitle}>Sin cuidadores disponibles</Text>
+              <Text style={styles.emptySubtitle}>Prueba cambiando los filtros o vuelve más tarde.</Text>
+            </View>
+          }
         />
       )}
       <OverlayModal visible={showFilter} onClose={() => setShowFilter(false)}>
@@ -214,6 +226,10 @@ const styles = StyleSheet.create({
   filterText: { fontSize: 13, fontWeight: '600', color: colors.textMain },
   filterTextActive: { color: colors.surface },
   listContainer: { padding: 20, paddingTop: 16, paddingBottom: 100 },
-  emptyText: { textAlign: 'center', color: colors.textMuted, marginTop: 40, fontSize: 15 },
+  emptyState: { alignItems: 'center', gap: 10, paddingTop: 60, paddingHorizontal: 32 },
+  emptyIconBox: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyEmoji: { fontSize: 36 },
+  emptyTitle: { fontSize: 17, fontWeight: '800', color: colors.textMain, textAlign: 'center' },
+  emptySubtitle: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20 },
   clearDestination: { fontSize: 16, color: colors.textMuted, paddingLeft: 8, fontWeight: '700' },
 });
