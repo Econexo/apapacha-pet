@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { completeKyc } from '../services/auth.service';
 import { useAuth } from '../context/AuthContext';
@@ -15,6 +16,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export function ClientVerificationScreen() {
   const navigation = useNavigation<Nav>();
   const { refreshProfile } = useAuth();
+  const toast = useToast();
   const [agreementSigned, setAgreementSigned] = useState(false);
   const [docScanned, setDocScanned] = useState(false);
   const [bioVerified, setBioVerified] = useState(false);
@@ -24,7 +26,7 @@ export function ClientVerificationScreen() {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos.');
+        toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.');
         return;
       }
     }
@@ -38,7 +40,7 @@ export function ClientVerificationScreen() {
   const pickFromCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara.');
+      toast.warning('Permiso requerido', 'Necesitamos acceso a la cámara.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
@@ -72,7 +74,7 @@ export function ClientVerificationScreen() {
 
   const handleFinish = async () => {
     if (!agreementSigned) {
-      Alert.alert('Firma Requerida', 'Debes aceptar la declaración de Zero Trust para continuar.');
+      toast.warning('Firma Requerida', 'Debes aceptar la declaración de Zero Trust para continuar.');
       return;
     }
     try {
@@ -80,7 +82,7 @@ export function ClientVerificationScreen() {
       await refreshProfile();
       navigation.navigate('MainTabs');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo completar la verificación');
+      toast.error('Error', e.message ?? 'No se pudo completar la verificación');
     }
   };
 
