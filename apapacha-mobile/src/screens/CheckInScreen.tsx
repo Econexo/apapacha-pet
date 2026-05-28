@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import { ChecklistRow } from '../components/ChecklistRow';
 import type { RootStackParamList } from '../types/navigation';
 import { updateBookingStatus } from '../services/bookings.service';
@@ -24,6 +25,7 @@ export function CheckInScreen() {
   const { bookingId } = route.params;
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [confirming, setConfirming] = useState(false);
+  const toast = useToast();
 
   const handleToggle = (id: string) => {
     setCheckedItems(prev => ({ ...prev, [id]: !prev[id] }));
@@ -37,7 +39,7 @@ export function CheckInScreen() {
       await updateBookingStatus(bookingId, 'active');
       navigation.navigate('MainTabs');
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo iniciar la estadía');
+      toast.error('Error', e.message ?? 'No se pudo iniciar la estadía');
     } finally {
       setConfirming(false);
     }
