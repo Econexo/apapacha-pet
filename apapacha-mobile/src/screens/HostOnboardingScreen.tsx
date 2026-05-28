@@ -21,28 +21,51 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
 
-  // { uri, name } when file picked, null otherwise
-  const [dniPhoto, setDniPhoto]         = useState<{ uri: string; name: string } | null>(null);
-  const [selfiePhoto, setSelfiePhoto]   = useState<{ uri: string; name: string } | null>(null);
-  const [mallaPhoto, setMallaPhoto]     = useState<{ uri: string; name: string } | null>(null);
-  const [rasPhoto, setRasPhoto]         = useState<{ uri: string; name: string } | null>(null);
-  const [antecedentes, setAntecedentes] = useState<{ uri: string; name: string } | null>(null);
-  const [certVet, setCertVet]           = useState<{ uri: string; name: string } | null>(null);
+  type FileEntry = { uri: string; name: string; blob?: Blob };
 
-  const pickPhoto = async (setter: (v: { uri: string; name: string }) => void, preferCamera = false) => {
+  const [dniPhoto, setDniPhoto]         = useState<FileEntry | null>(null);
+  const [selfiePhoto, setSelfiePhoto]   = useState<FileEntry | null>(null);
+  const [mallaPhoto, setMallaPhoto]     = useState<FileEntry | null>(null);
+  const [rasPhoto, setRasPhoto]         = useState<FileEntry | null>(null);
+  const [antecedentes, setAntecedentes] = useState<FileEntry | null>(null);
+  const [certVet, setCertVet]           = useState<FileEntry | null>(null);
+
+  // On web, blob: URIs from the picker can be revoked by the time we submit.
+  // We fetch and cache the blob immediately at pick time.
+  const captureBlob = async (uri: string): Promise<Blob | undefined> => {
+    if (Platform.OS !== 'web') return undefined;
+    try {
+      const res = await fetch(uri);
+      return await res.blob();
+    } catch {
+      return undefined;
+    }
+  };
+
+  const pickPhoto = async (setter: (v: FileEntry) => void, preferCamera = false) => {
     const doLibrary = async () => {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
       }
       const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, mediaTypes: ['images'] as ImagePicker.MediaType[] });
-      if (!r.canceled && r.assets[0]) setter({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? 'imagen.jpg' });
+      if (!r.canceled && r.assets[0]) {
+        const asset = r.assets[0];
+        const name = asset.fileName ?? `foto_${Date.now()}.jpg`;
+        const blob = await captureBlob(asset.uri);
+        setter({ uri: asset.uri, name, blob });
+      }
     };
     const doCamera = async () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a la cámara.'); return; }
       const r = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-      if (!r.canceled && r.assets[0]) setter({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? 'foto.jpg' });
+      if (!r.canceled && r.assets[0]) {
+        const asset = r.assets[0];
+        const name = asset.fileName ?? `foto_${Date.now()}.jpg`;
+        const blob = await captureBlob(asset.uri);
+        setter({ uri: asset.uri, name, blob });
+      }
     };
     if (Platform.OS === 'web') { await doLibrary(); }
     else if (preferCamera) {
@@ -54,22 +77,49 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
     } else { await doLibrary(); }
   };
 
-  const pickDoc = async (setter: (v: { uri: string; name: string }) => void) => {
+  const pickDoc = async (setter: (v: FileEntry) => void) => {
     const result = await DocumentPicker.getDocumentAsync({ type: ['application/pdf', 'image/*'], copyToCacheDirectory: true });
     if (!result.canceled && result.assets[0]) {
-      setter({ uri: result.assets[0].uri, name: result.assets[0].name });
+      const asset = result.assets[0];
+      const blob = await captureBlob(asset.uri);
+      setter({ uri: asset.uri, name: asset.name, blob });
     }
   };
 
-  const uploadFile = async (file: { uri: string; name: string }, folder: string): Promise<string> => {
+  const MIME_BY_EXT: Record<string, string> = {
+    jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+    webp: 'image/webp', heic: 'image/heic', pdf: 'application/pdf',
+  };
+
+  const uploadFile = async (file: FileEntry, folder: string): Promise<string> => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    const response = await fetch(file.uri);
-    const blob = await response.blob();
-    const ext = file.name.split('.').pop() ?? 'jpg';
-    const path = `${user.id}/kyc/${folder}-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from('kyc-docs').upload(path, blob, { contentType: blob.type || 'image/jpeg', upsert: true });
-    if (error) throw error;
+    if (!user) throw new Error('No autenticado');
+
+    // Use pre-fetched blob (web) or fetch now (native)
+    let blob: Blob;
+    if (file.blob) {
+      blob = file.blob;
+    } else {
+      const response = await fetch(file.uri);
+      if (!response.ok) throw new Error(`No se pudo leer el archivo: ${response.status}`);
+      blob = await response.blob();
+    }
+
+    // Sanitize file name and detect MIME type
+    const rawExt = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const ext = rawExt || 'jpg';
+    const mimeType = (blob.type && blob.type !== 'application/octet-stream')
+      ? blob.type
+      : (MIME_BY_EXT[ext] ?? 'image/jpeg');
+
+    const safeName = `${folder}-${Date.now()}.${ext}`;
+    const path = `${user.id}/kyc/${safeName}`;
+
+    const { error } = await supabase.storage
+      .from('kyc-docs')
+      .upload(path, blob, { contentType: mimeType, upsert: true });
+
+    if (error) throw new Error(`Error subiendo ${folder}: ${error.message}`);
     return supabase.storage.from('kyc-docs').getPublicUrl(path).data.publicUrl;
   };
 
@@ -96,6 +146,27 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
 
     setSubmitting(true);
     try {
+      // Check for existing pending/approved application before uploading
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: existing } = await supabase
+          .from('host_applications')
+          .select('id, status')
+          .eq('applicant_id', user.id)
+          .in('status', ['pending', 'approved'])
+          .maybeSingle();
+        if (existing) {
+          toast.warning(
+            existing.status === 'approved' ? 'Ya eres cuidador' : 'Solicitud en revisión',
+            existing.status === 'approved'
+              ? 'Tu postulación ya fue aprobada.'
+              : 'Ya tienes una solicitud pendiente de revisión. Te notificaremos pronto.',
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const [dniUrl, selfieUrl] = await Promise.all([
         uploadFile(dniPhoto!, 'dni'),
         uploadFile(selfiePhoto!, 'selfie'),
