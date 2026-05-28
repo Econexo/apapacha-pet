@@ -300,7 +300,9 @@ export function BookingsScreen() {
         ListEmptyComponent={
           !loading ? (
             <View style={styles.emptyState}>
-              <Ionicons name="calendar-outline" size={56} color={`${colors.primary}60`} />
+              <View style={styles.emptyIconBox}>
+                <Text style={{ fontSize: 36 }}>🐾</Text>
+              </View>
               <Text style={styles.emptyTitle}>Sin reservas aún</Text>
               <Text style={styles.emptyText}>Cuando reserves un espacio o visita, aparecerá aquí.</Text>
               <TouchableOpacity
@@ -357,9 +359,10 @@ const styles = StyleSheet.create({
   actionBtnText: { fontSize: 13, fontWeight: '700', color: colors.textMain },
   reviewDone: { paddingHorizontal: 14, paddingVertical: 8, flexDirection: 'row', alignItems: 'center', gap: 5 },
   reviewDoneText: { fontSize: 13, color: colors.accent, fontWeight: '700' },
-  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },
+  emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40, gap: 12, paddingHorizontal: 32 },
+  emptyIconBox: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain },
-  emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', paddingHorizontal: 32 },
+  emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 21 },
   emptyBtn: { marginTop: 8, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: radii.lg },
   emptyBtnText: { color: colors.surface, fontWeight: '800', fontSize: 14 },
   emptyActiveCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface, borderRadius: radii.lg, padding: 14, marginBottom: 16, ...shadows.sm },
