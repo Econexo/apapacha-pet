@@ -9,6 +9,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { submitPaymentReceipt } from '../services/bookings.service';
 import { supabase } from '../../supabase';
@@ -55,6 +56,7 @@ export function TransferInstructionsScreen() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [uploading, setUploading]   = useState(false);
   const [done, setDone]             = useState(false);
+  const toast = useToast();
 
   useEffect(() => {
     supabase
@@ -77,7 +79,7 @@ export function TransferInstructionsScreen() {
   const pickReceipt = async () => {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permiso requerido'); return; }
+      if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as ImagePicker.MediaType[],
@@ -93,7 +95,7 @@ export function TransferInstructionsScreen() {
       await submitPaymentReceipt(bookingId, receiptUri);
       setDone(true);
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo enviar el comprobante');
+      toast.error('Error', e.message ?? 'No se pudo enviar el comprobante');
     } finally {
       setUploading(false);
     }
