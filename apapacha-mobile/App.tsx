@@ -3,7 +3,7 @@ import { NavigationContainer, useRoute, RouteProp } from '@react-navigation/nati
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -35,6 +35,7 @@ import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { colors } from './src/theme/colors';
+import { ToastProvider } from './src/components/Toast';
 import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -80,16 +81,36 @@ function MainTabs() {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
           borderTopColor: colors.border,
-          height: 70,
+          height: 72,
           paddingBottom: 10,
-          paddingTop: 10,
+          paddingTop: 6,
         },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
           if (!icons) return null;
+          if (route.name === 'Explore') {
+            return (
+              <View style={{
+                width: 52, height: 52, borderRadius: 26,
+                backgroundColor: focused ? colors.primary : colors.primaryLight,
+                alignItems: 'center', justifyContent: 'center',
+                marginTop: -18,
+                shadowColor: colors.primary,
+                shadowOffset: { width: 0, height: 4 },
+                shadowOpacity: focused ? 0.4 : 0.15,
+                shadowRadius: 8,
+                elevation: 6,
+              }}>
+                <Ionicons name={focused ? icons.active : icons.inactive} size={24} color={focused ? '#fff' : colors.primary} />
+              </View>
+            );
+          }
           return <Ionicons name={focused ? icons.active : icons.inactive} size={size ?? 24} color={color} />;
         },
-        tabBarLabelStyle: { fontSize: 10, fontWeight: '700' },
+        tabBarLabelStyle: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
+        tabBarLabel: ({ focused, children }) =>
+          route.name === 'Explore' ? null :
+          <View><Text style={{ fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, color: focused ? colors.primary : colors.textMuted }}>{children}</Text></View>,
       })}
     >
       <Tab.Screen name="Home"     component={HomeScreen}     options={{ title: 'Inicio' }} />
@@ -172,11 +193,13 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="auto" />
-      <AuthProvider>
-        <NavigationContainer>
-          <RootNavigator />
-        </NavigationContainer>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <NavigationContainer>
+            <RootNavigator />
+          </NavigationContainer>
+        </AuthProvider>
+      </ToastProvider>
     </SafeAreaProvider>
   );
 }
