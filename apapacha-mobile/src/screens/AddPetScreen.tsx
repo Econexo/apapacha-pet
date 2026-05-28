@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import { addPet, updatePet, getPetById } from '../services/pets.service';
 
 export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () => void } = {}) {
   const navigation = useNavigation();
+  const toast = useToast();
   const close = () => onClose ? onClose() : navigation.goBack();
   const isEdit = !!petId;
 
@@ -26,7 +28,7 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
   useEffect(() => {
     if (!petId) return;
     getPetById(petId).then(pet => {
-      if (!pet) { Alert.alert('Error', 'No se encontró la mascota.'); close(); return; }
+      if (!pet) { toast.error('Error', 'No se encontró la mascota.'); close(); return; }
       setName(pet.name);
       setBreed(pet.breed ?? '');
       setAge(String(pet.age_years));
@@ -36,12 +38,12 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
       const alerts = pet.medical_alerts ?? [];
       setAllergies(alerts[0] ?? '');
       setMedication(alerts[1] ?? '');
-    }).catch(() => { Alert.alert('Error', 'No se pudo cargar la mascota.'); close(); })
+    }).catch(() => { toast.error('Error', 'No se pudo cargar la mascota.'); close(); })
       .finally(() => setLoadingPet(false));
   }, [petId]);
 
   const handleSubmit = async () => {
-    if (!name.trim()) { Alert.alert('Nombre requerido'); return; }
+    if (!name.trim()) { toast.warning('Nombre requerido', 'El nombre del gato es obligatorio.'); return; }
     setSaving(true);
     try {
       const payload = {
@@ -60,7 +62,7 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
       }
       close();
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo guardar');
+      toast.error('Error', e.message ?? 'No se pudo guardar');
     } finally {
       setSaving(false);
     }
@@ -69,7 +71,7 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
   const pickPhoto = async () => {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permiso requerido'); return; }
+      if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as ImagePicker.MediaType[],
@@ -82,7 +84,7 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
 
   const takePhoto = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permiso requerido'); return; }
+    if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a la cámara.'); return; }
     const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
     if (!result.canceled) setLocalImageUri(result.assets[0].uri);
   };
