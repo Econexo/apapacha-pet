@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Alert, TextInput, RefreshControl, Platform,
+  ActivityIndicator, Alert, TextInput, RefreshControl, Platform, Dimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -101,6 +101,28 @@ interface PendingPayment {
   service_type: string;
   created_at: string;
   profiles: { full_name: string } | null;
+}
+
+const { width: SCREEN_W } = Dimensions.get('window');
+
+const PAW_POSITIONS = Array.from({ length: 40 }, (_, i) => ({
+  top:     (i * 137 + 53) % 900,
+  left:    (i * 211 + 73) % (SCREEN_W || 400),
+  rotate:  `${((i * 73) % 60) - 30}deg`,
+  opacity: 0.028 + (i % 4) * 0.008,
+  size:    20 + (i % 3) * 8,
+}));
+
+function PawBackground() {
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {PAW_POSITIONS.map((p, i) => (
+        <Text key={i} style={{ position: 'absolute', top: p.top, left: p.left, fontSize: p.size, opacity: p.opacity, transform: [{ rotate: p.rotate }] }}>
+          🐾
+        </Text>
+      ))}
+    </View>
+  );
 }
 
 export function AdminScreen() {
@@ -416,39 +438,55 @@ export function AdminScreen() {
     );
   }
 
+  const TAB_LABELS: Record<Tab, string> = {
+    dashboard: 'Dashboard', users: 'Usuarios', applications: 'Postulaciones',
+    payments: 'Pagos', bookings: 'Reservas',
+  };
+  const TAB_BADGES: Partial<Record<Tab, number>> = {
+    applications: stats?.pendingApplications ?? 0,
+    payments: pendingPayments.length,
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
+      {/* ── Hero Header ──────────────────────────────── */}
       <View style={styles.header}>
+        <PawBackground />
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={22} color={colors.primary} />
+          <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Panel Admin</Text>
+        <View style={styles.headerCenter}>
+          <Text style={styles.headerIcon}>🛡️</Text>
+          <Text style={styles.headerTitle}>Panel Admin</Text>
+          <Text style={styles.headerSub}>Control total · Apapacha</Text>
+        </View>
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.tabBar}>
-        {(['dashboard', 'users', 'applications', 'payments', 'bookings'] as Tab[]).map(tab => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tabItem, activeTab === tab && styles.tabItemActive]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Ionicons
-              name={TAB_ICONS[tab]}
-              size={20}
-              color={activeTab === tab ? colors.primary : colors.textMuted}
-            />
-            <Text style={[styles.tabLabel, activeTab === tab && styles.tabLabelActive]}>
-              {tab === 'dashboard' ? 'Stats' : tab === 'users' ? 'Usuarios' : tab === 'applications' ? 'Postul.' : tab === 'payments' ? 'Pagos' : 'Reservas'}
-            </Text>
-            {tab === 'applications' && (stats?.pendingApplications ?? 0) > 0 && (
-              <View style={styles.badge}><Text style={styles.badgeText}>{stats?.pendingApplications}</Text></View>
-            )}
-            {tab === 'payments' && pendingPayments.length > 0 && (
-              <View style={styles.badge}><Text style={styles.badgeText}>{pendingPayments.length}</Text></View>
-            )}
-          </TouchableOpacity>
-        ))}
+      {/* ── Pill Tabs ─────────────────────────────────── */}
+      <View style={styles.tabBarWrapper}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.tabBar}>
+          {(['dashboard', 'users', 'applications', 'payments', 'bookings'] as Tab[]).map(tab => {
+            const isActive = activeTab === tab;
+            const badge = TAB_BADGES[tab] ?? 0;
+            return (
+              <TouchableOpacity
+                key={tab}
+                style={[styles.tabPill, isActive && styles.tabPillActive]}
+                onPress={() => setActiveTab(tab)}
+                activeOpacity={0.75}
+              >
+                <Ionicons name={TAB_ICONS[tab]} size={15} color={isActive ? '#fff' : colors.textMuted} />
+                <Text style={[styles.tabPillText, isActive && styles.tabPillTextActive]}>
+                  {TAB_LABELS[tab]}
+                </Text>
+                {badge > 0 && (
+                  <View style={styles.tabBadge}><Text style={styles.tabBadgeText}>{badge}</Text></View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       <ScrollView
@@ -538,6 +576,22 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
   return (
     <View>
       <Text style={styles.sectionTitle}>Resumen General</Text>
+
+      {/* 2-col stat grid */}
+      <View style={styles.statsGrid}>
+        {cards.map(c => (
+          <TouchableOpacity key={c.key} style={[styles.statCard, { borderTopColor: c.color }]} onPress={() => toggle(c.key)} activeOpacity={0.8}>
+            <View style={[styles.statIconBox, { backgroundColor: `${c.color}18` }]}>
+              <Ionicons name={c.icon} size={20} color={c.color} />
+            </View>
+            <Text style={[styles.statValue, { color: c.color }]}>{c.value}</Text>
+            <Text style={styles.statLabel}>{c.label}</Text>
+            <Ionicons name={expanded === c.key ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textMuted} style={{ marginTop: 4 }} />
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Detalle</Text>
       {cards.map(c => {
         const isOpen = expanded === c.key;
         return (
@@ -1205,18 +1259,43 @@ function BookingsTab({ bookings, onUpdateStatus, onConfirmPayment }: {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
+
+  // Header
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 16, paddingBottom: 20,
+    backgroundColor: colors.primaryDark ?? colors.primary,
+    overflow: 'hidden',
+  },
   backBtn: { padding: 8 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
-  tabBar: { flexDirection: 'row', backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  tabItem: { flex: 1, alignItems: 'center', paddingVertical: 10, position: 'relative' },
-  tabItemActive: { borderBottomWidth: 2, borderBottomColor: colors.primary },
-  tabLabel: { fontSize: 10, color: colors.textMuted, fontWeight: '600', marginTop: 2 },
-  tabLabelActive: { color: colors.primary },
-  badge: { position: 'absolute', top: 6, right: 8, backgroundColor: colors.danger, borderRadius: 10, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
-  badgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+  headerCenter: { alignItems: 'center', flex: 1 },
+  headerIcon: { fontSize: 28, marginBottom: 4 },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
+  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '600', marginTop: 2, letterSpacing: 0.3 },
+
+  // Tab pills
+  tabBarWrapper: { backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border, paddingVertical: 10 },
+  tabBar: { paddingHorizontal: 14, gap: 8 },
+  tabPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: colors.background },
+  tabPillActive: { backgroundColor: colors.primary },
+  tabPillText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  tabPillTextActive: { color: '#fff' },
+  tabBadge: { backgroundColor: colors.danger, borderRadius: 8, minWidth: 16, height: 16, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+  tabBadgeText: { color: '#fff', fontSize: 10, fontWeight: '800' },
+
   scrollContent: { padding: 16, paddingBottom: 40 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain, marginBottom: 16 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: colors.textMain, marginBottom: 12 },
+
+  // Stat grid (2 cols)
+  statsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 8 },
+  statCard: {
+    width: '47.5%', backgroundColor: colors.surface, borderRadius: 14,
+    padding: 16, alignItems: 'flex-start', borderTopWidth: 3, borderWidth: 1, borderColor: colors.border,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
+  },
+  statIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
+  statValue: { fontSize: 28, fontWeight: '900', lineHeight: 32, marginBottom: 4 },
+  statLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
 
   // Expandable cards
   expandCard: { backgroundColor: colors.surface, borderRadius: 14, marginBottom: 10, borderTopWidth: 3, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
