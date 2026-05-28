@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
-  TouchableOpacity, ActivityIndicator, Alert, Switch, Image, Platform,
+  TouchableOpacity, ActivityIndicator, Switch, Image, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import { getMySpace, upsertMySpace, uploadSpacePhoto } from '../services/spaces.service';
 import { getMyVisiter, getVisiterById, upsertMyVisiter, uploadVisiterPhoto } from '../services/visiters.service';
 import type { Space, Visiter } from '../types/database';
@@ -26,6 +27,7 @@ interface Props {
 export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Props = {}) {
   const navigation = useNavigation();
   const close = () => onClose ? onClose() : navigation.goBack();
+  const toast = useToast();
   const isSpace = type === 'space';
 
   const [loading, setLoading]   = useState(true);
@@ -101,7 +103,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
   const pickImage = async () => {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permiso requerido'); return; }
+      if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
     }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'] as ImagePicker.MediaType[],
@@ -115,12 +117,12 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
   const handleSave = async () => {
     if (isSpace) {
       if (!title.trim() || !desc.trim() || !location.trim() || !priceNight) {
-        Alert.alert('Campos requeridos', 'Completa título, descripción, ubicación y precio.');
+        toast.warning('Campos requeridos', 'Completa título, descripción, ubicación y precio.');
         return;
       }
     } else {
       if (!name.trim() || !profTitle.trim() || !bio.trim() || !priceVisit) {
-        Alert.alert('Campos requeridos', 'Completa nombre, título profesional, descripción y precio.');
+        toast.warning('Campos requeridos', 'Completa nombre, título profesional, descripción y precio.');
         return;
       }
     }
@@ -157,18 +159,10 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
       }
       const alertMsg = existingId ? 'Tu servicio fue actualizado.' : 'Tu servicio ya está visible en Explorar.';
       const alertTitle = existingId ? '¡Actualizado!' : '¡Publicación creada!';
-      if (Platform.OS === 'web') {
-        (window as any).alert(`${alertTitle}\n\n${alertMsg}`);
-        close();
-      } else {
-        Alert.alert(alertTitle, alertMsg, [{ text: 'OK', onPress: close }]);
-      }
+      toast.success(alertTitle, alertMsg);
+      close();
     } catch (e: any) {
-      if (Platform.OS === 'web') {
-        (window as any).alert(`Error: ${e.message ?? 'No se pudo guardar'}`);
-      } else {
-        Alert.alert('Error', e.message ?? 'No se pudo guardar');
-      }
+      toast.error('Error', e.message ?? 'No se pudo guardar');
     } finally {
       setSaving(false);
     }
@@ -211,7 +205,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
             onPickImage={async () => {
               if (Platform.OS !== 'web') {
                 const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (status !== 'granted') { Alert.alert('Permiso requerido'); return; }
+                if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
               }
               const result = await ImagePicker.launchImageLibraryAsync({
                 mediaTypes: ['images'] as ImagePicker.MediaType[],
