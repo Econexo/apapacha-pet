@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import type { Space, Visiter, Pet } from '../types/database';
 import { getSpaceById } from '../services/spaces.service';
@@ -26,6 +27,7 @@ export function CheckoutScreen() {
   const navigation = useNavigation<Nav>();
   const route = useRoute<Route>();
   const { id, type } = route.params;
+  const toast = useToast();
 
   const [service, setService] = useState<Space | Visiter | null>(null);
   const [pets, setPets] = useState<Pet[]>([]);
@@ -67,11 +69,11 @@ export function CheckoutScreen() {
 
   const handleConfirm = async () => {
     if (checkOut <= checkIn) {
-      Alert.alert('Fechas inválidas', 'La fecha de salida debe ser posterior a la de llegada.');
+      toast.warning('Fechas inválidas', 'La fecha de salida debe ser posterior a la de llegada.');
       return;
     }
     if (!selectedPet) {
-      Alert.alert('Mascota requerida', 'Añade una mascota en tu perfil antes de reservar.');
+      toast.warning('Mascota requerida', 'Añade una mascota en tu perfil antes de reservar.');
       return;
     }
     setSubmitting(true);
@@ -86,7 +88,7 @@ export function CheckoutScreen() {
       });
       navigation.navigate('TransferInstructions', { bookingId: booking.id, amount: grandTotal });
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo confirmar la reserva');
+      toast.error('Error', e.message ?? 'No se pudo confirmar la reserva');
     } finally {
       setSubmitting(false);
     }
