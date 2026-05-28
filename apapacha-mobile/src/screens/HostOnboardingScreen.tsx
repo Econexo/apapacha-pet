@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { colors } from '../theme/colors';
+import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { applyAsHost } from '../services/auth.service';
 import { supabase } from '../../supabase';
@@ -18,6 +19,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<'Alojamiento' | 'Visita'>('Alojamiento');
   const [submitting, setSubmitting] = useState(false);
+  const toast = useToast();
 
   // { uri, name } when file picked, null otherwise
   const [dniPhoto, setDniPhoto]         = useState<{ uri: string; name: string } | null>(null);
@@ -116,16 +118,10 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
         evidence_url_1: evidenceUrl1,
         evidence_url_2: evidenceUrl2,
       });
-      if (Platform.OS === 'web') {
-        (window as any).alert('¡Solicitud enviada!\n\nRevisaremos tu solicitud y te notificaremos en 24-48 horas.');
-        close();
-      } else {
-        Alert.alert('¡Solicitud enviada!', 'Revisaremos tu solicitud y te notificaremos en 24-48 horas.', [
-          { text: 'OK', onPress: close },
-        ]);
-      }
+      toast.success('¡Solicitud enviada!', 'Revisaremos tu solicitud y te notificaremos en 24-48 horas.');
+      close();
     } catch (e: any) {
-      Alert.alert('Error', e.message ?? 'No se pudo enviar la solicitud');
+      toast.error('Error', e.message ?? 'No se pudo enviar la solicitud');
     } finally {
       setSubmitting(false);
     }
