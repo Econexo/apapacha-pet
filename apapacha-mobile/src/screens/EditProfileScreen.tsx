@@ -30,7 +30,7 @@ export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
+        toast.warning('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
         return;
       }
     }
