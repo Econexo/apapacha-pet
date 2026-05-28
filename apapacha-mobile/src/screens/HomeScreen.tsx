@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -8,6 +8,7 @@ import { NotificationsModal } from '../components/NotificationsModal';
 import { colors } from '../theme/colors';
 import { radii, shadows, label } from '../theme/design';
 import { useAuth } from '../context/AuthContext';
+import { useToast } from '../components/Toast';
 import { supabase } from '../../supabase';
 import type { RootStackParamList } from '../types/navigation';
 import type { Pet, Booking } from '../types/database';
@@ -32,6 +33,7 @@ function getMoodForPet(pet: Pet) {
 export function HomeScreen() {
   const navigation = useNavigation<Nav>();
   const { profile } = useAuth();
+  const toast = useToast();
   const [pets, setPets] = useState<Pet[]>([]);
   const [nextBooking, setNextBooking] = useState<Booking | null>(null);
   const [nextServiceName, setNextServiceName] = useState<string | null>(null);
@@ -234,9 +236,7 @@ export function HomeScreen() {
           <TouchableOpacity
             style={[styles.actionCard, styles.actionCardDanger]}
             onPress={() => {
-              const msg = 'Contacta a tu veterinario de confianza o escríbenos a apapachapet.app@gmail.com';
-              if (Platform.OS === 'web') { (window as any).alert(`Emergencia Veterinaria\n\n${msg}`); }
-              else { Alert.alert('Emergencia Veterinaria', msg, [{ text: 'Entendido' }]); }
+              toast.warning('Emergencia Veterinaria', 'Contacta a tu veterinario de confianza o escríbenos a apapachapet.app@gmail.com');
             }}
             activeOpacity={0.8}
           >
