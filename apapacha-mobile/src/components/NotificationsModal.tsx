@@ -114,8 +114,9 @@ export function NotificationsModal({ visible, onClose, onUnreadChange }: Props) 
                   showsVerticalScrollIndicator={false}
                   ListEmptyComponent={
                     <View style={styles.emptyState}>
-                      <Ionicons name="notifications-off-outline" size={36} color={colors.textMuted} style={{ marginBottom: 8 }} />
-                      <Text style={styles.emptyText}>Sin notificaciones</Text>
+                      <View style={styles.emptyIconBox}><Text style={{ fontSize: 28 }}>🔔</Text></View>
+                      <Text style={styles.emptyTitle}>Sin notificaciones</Text>
+                      <Text style={styles.emptyText}>Te avisaremos cuando haya novedades.</Text>
                     </View>
                   }
                   renderItem={({ item: n }) => {
@@ -208,9 +209,8 @@ const styles = StyleSheet.create({
     backgroundColor: colors.primary,
     marginTop: 4, flexShrink: 0,
   },
-  emptyState: {
-    alignItems: 'center',
-    paddingVertical: 32,
-  },
-  emptyText: { fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  emptyState: { alignItems: 'center', paddingVertical: 32, gap: 8 },
+  emptyIconBox: { width: 64, height: 64, borderRadius: 32, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
+  emptyTitle: { fontSize: 15, fontWeight: '800', color: colors.textMain },
+  emptyText: { fontSize: 13, color: colors.textMuted, textAlign: 'center' },
 });
