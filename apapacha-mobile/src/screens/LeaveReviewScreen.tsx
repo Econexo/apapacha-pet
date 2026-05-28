@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
-  ScrollView, ActivityIndicator, Alert, Platform, Animated,
+  ScrollView, ActivityIndicator, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { radii, shadows } from '../theme/design';
+import { useToast } from '../components/Toast';
 import { createReview, getMyReviewForBooking } from '../services/reviews.service';
 
 const TIP_OPTIONS = [0, 1000, 2000, 5000, 10000];
@@ -32,6 +33,7 @@ interface Props {
 
 export function LeaveReviewScreen({ bookingId, hostId, hostName, onClose }: Props) {
   const navigation = useNavigation();
+  const toast = useToast();
   const close = () => onClose ? onClose() : navigation.goBack();
 
   const [rating, setRating]           = useState(0);
@@ -70,11 +72,7 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName, onClose }: Prop
 
   const handleSubmit = async () => {
     if (rating === 0) {
-      if (Platform.OS === 'web') {
-        (window as any).alert('Por favor selecciona al menos 1 estrella.');
-      } else {
-        Alert.alert('Calificación requerida', 'Por favor selecciona al menos 1 estrella.');
-      }
+      toast.warning('Calificación requerida', 'Por favor selecciona al menos 1 estrella.');
       return;
     }
     setSaving(true);
@@ -90,11 +88,7 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName, onClose }: Prop
       });
       setSubmitted(true);
     } catch (e: any) {
-      if (Platform.OS === 'web') {
-        (window as any).alert(`Error: ${e.message ?? 'No se pudo guardar la reseña'}`);
-      } else {
-        Alert.alert('Error', e.message ?? 'No se pudo guardar la reseña');
-      }
+      toast.error('Error', e.message ?? 'No se pudo guardar la reseña');
     } finally {
       setSaving(false);
     }
