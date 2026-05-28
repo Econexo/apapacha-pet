@@ -33,14 +33,14 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
     const doLibrary = async () => {
       if (Platform.OS !== 'web') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
+        if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
       }
       const r = await ImagePicker.launchImageLibraryAsync({ quality: 0.8, mediaTypes: ['images'] as ImagePicker.MediaType[] });
       if (!r.canceled && r.assets[0]) setter({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? 'imagen.jpg' });
     };
     const doCamera = async () => {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a la cámara.'); return; }
+      if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a la cámara.'); return; }
       const r = await ImagePicker.launchCameraAsync({ quality: 0.8 });
       if (!r.canceled && r.assets[0]) setter({ uri: r.assets[0].uri, name: r.assets[0].fileName ?? 'foto.jpg' });
     };
@@ -76,7 +76,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
   const handleNext = async () => {
     if (step === 1) {
       if (!dniPhoto || !selfiePhoto) {
-        Alert.alert('Documentos requeridos', 'Debes subir tu cédula de identidad y el selfie biométrico.');
+        toast.warning('Documentos requeridos', 'Debes subir tu cédula de identidad y el selfie biométrico.');
         return;
       }
       setStep(2); return;
@@ -86,11 +86,11 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
     // Step 3 — validate & submit
     const isSpace = role === 'Alojamiento';
     if (isSpace && (!mallaPhoto || !rasPhoto)) {
-      Alert.alert('Evidencia requerida', 'Debes subir las fotos de malla y rascador.');
+      toast.warning('Evidencia requerida', 'Debes subir las fotos de malla y rascador.');
       return;
     }
     if (!isSpace && !antecedentes) {
-      Alert.alert('Documento requerido', 'Debes subir el certificado de antecedentes.');
+      toast.warning('Documento requerido', 'Debes subir el certificado de antecedentes.');
       return;
     }
 
