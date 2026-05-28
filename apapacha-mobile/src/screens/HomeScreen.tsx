@@ -1,5 +1,5 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Image } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Alert, Image, Animated } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,6 +39,7 @@ export function HomeScreen() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAddPet, setShowAddPet] = useState(false);
   const [addPetId, setAddPetId] = useState<string | undefined>();
+  const [dismissedAlerts, setDismissedAlerts] = useState<Set<string>>(new Set());
 
   const loadData = useCallback(async () => {
     try {
@@ -87,6 +88,18 @@ export function HomeScreen() {
   const isActive = nextBooking?.status === 'active';
   const mood = firstPet ? getMoodForPet(firstPet) : null;
 
+  const smartAlerts: { key: string; type: 'info' | 'success' | 'warning'; icon: string; message: string }[] = [];
+  if (nextBooking) {
+    if (isActive) {
+      smartAlerts.push({ key: 'active', type: 'success', icon: '🟢', message: `Servicio en curso${nextServiceName ? ` en "${nextServiceName}"` : ''}. Tu cuidador está con tus gatos.` });
+    } else {
+      const daysUntil = Math.ceil((new Date(nextBooking.start_date).getTime() - Date.now()) / 86400000);
+      if (daysUntil === 0) smartAlerts.push({ key: 'today', type: 'warning', icon: '⚡', message: '¡Tu reserva empieza hoy! Asegúrate de coordinar con tu cuidador.' });
+      else if (daysUntil === 1) smartAlerts.push({ key: 'tomorrow', type: 'info', icon: '📅', message: 'Tienes una reserva mañana. ¿Ya está todo listo para tu gato?' });
+    }
+  }
+  const visibleAlerts = smartAlerts.filter(a => !dismissedAlerts.has(a.key));
+
   const bellIcon = (
     <TouchableOpacity
       onPress={() => setShowNotifications(true)}
@@ -122,6 +135,23 @@ export function HomeScreen() {
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <Text style={styles.greeting}>Hola, {firstName} 🐾</Text>
         <Text style={styles.subGreeting}>¿Cómo están tus compañeros felinos hoy?</Text>
+
+        {visibleAlerts.map(alert => {
+          const alertColors = {
+            success: { bg: '#F0FBF0', border: '#B8E6B9', text: '#1A4A1B' },
+            warning: { bg: '#FFFBEB', border: '#FDE68A', text: '#92400E' },
+            info:    { bg: '#EFF8FC', border: '#B3DCE8', text: '#1E5F75' },
+          }[alert.type];
+          return (
+            <View key={alert.key} style={[styles.smartAlert, { backgroundColor: alertColors.bg, borderColor: alertColors.border }]}>
+              <Text style={styles.smartAlertIcon}>{alert.icon}</Text>
+              <Text style={[styles.smartAlertText, { color: alertColors.text }]}>{alert.message}</Text>
+              <TouchableOpacity onPress={() => setDismissedAlerts(prev => new Set([...prev, alert.key]))} activeOpacity={0.7}>
+                <Ionicons name="close" size={16} color={alertColors.text} />
+              </TouchableOpacity>
+            </View>
+          );
+        })}
 
         {firstPet ? (
           <View style={styles.petCard}>
@@ -223,7 +253,14 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: colors.background },
   scroll: { padding: 20, paddingBottom: 100 },
   greeting: { fontSize: 28, fontWeight: '900', color: colors.textMain, marginTop: 8, marginBottom: 4, letterSpacing: -0.5 },
-  subGreeting: { fontSize: 14, color: colors.textMuted, marginBottom: 20 },
+  subGreeting: { fontSize: 14, color: colors.textMuted, marginBottom: 12 },
+
+  smartAlert: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    borderWidth: 1, borderRadius: radii.lg, padding: 14, marginBottom: 12,
+  },
+  smartAlertIcon: { fontSize: 16, marginTop: 1 },
+  smartAlertText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 19 },
 
   // Pet card
   petCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, flexDirection: 'row', alignItems: 'flex-start', ...shadows.md, marginBottom: 12, gap: 14 },
