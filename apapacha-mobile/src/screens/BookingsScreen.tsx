@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, Platform } from 'react-native';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -12,6 +12,7 @@ import { getMyBookings, cancelBooking } from '../services/bookings.service';
 import { supabase } from '../../supabase';
 import { OverlayModal } from '../components/OverlayModal';
 import { LeaveReviewScreen } from './LeaveReviewScreen';
+import { useToast } from '../components/Toast';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -33,6 +34,7 @@ const STATUS_CONFIG: Record<string, { icon: IoniconName; color: string; label: s
 
 export function BookingsScreen() {
   const navigation = useNavigation<Nav>();
+  const toast = useToast();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
   const [hostMap, setHostMap] = useState<Record<string, { id: string; name: string; serviceId: string; serviceType: string; serviceName: string }>>({});
@@ -120,11 +122,7 @@ export function BookingsScreen() {
         await cancelBooking(bookingId);
         loadAll();
       } catch (e: any) {
-        if (Platform.OS === 'web') {
-          (window as any).alert(`Error: ${e.message}`);
-        } else {
-          Alert.alert('Error', e.message);
-        }
+        toast.error('Error', e.message);
       }
     };
 
