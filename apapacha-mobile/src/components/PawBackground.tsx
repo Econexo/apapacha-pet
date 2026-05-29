@@ -24,7 +24,7 @@ const PAWS: { tx: number; ty: number; size: number; opacity: number; rotate: str
 
 export function PawBackground() {
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 1 }]} pointerEvents="none">
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
       {PAWS.map((p, i) => (
         <Text
           key={i}
