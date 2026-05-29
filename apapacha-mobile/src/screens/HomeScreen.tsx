@@ -15,6 +15,7 @@ import type { Pet, Booking } from '../types/database';
 import { getUnreadCount } from '../services/notifications.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { AddPetScreen } from './AddPetScreen';
+import { PawBackground } from '../components/PawBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -125,6 +126,7 @@ export function HomeScreen() {
 
   return (
     <View style={styles.root}>
+      <PawBackground />
       <AppHeader rightElement={bellIcon} />
       <NotificationsModal
         visible={showNotifications}
