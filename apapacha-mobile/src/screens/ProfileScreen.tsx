@@ -20,6 +20,7 @@ import { EditProfileScreen } from './EditProfileScreen';
 import { AddPetScreen } from './AddPetScreen';
 import { TrustAndSafetyScreen } from './TrustAndSafetyScreen';
 import { HostOnboardingScreen } from './HostOnboardingScreen';
+import { PawBackground } from '../components/PawBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -97,6 +98,7 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <PawBackground />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mi Perfil</Text>
         <TouchableOpacity style={styles.editBtn} onPress={() => setShowEditProfile(true)}>
