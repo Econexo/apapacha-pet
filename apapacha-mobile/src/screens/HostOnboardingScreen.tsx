@@ -259,7 +259,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
           <Text style={styles.roleDesc}>Alojar gatos temporalmente en tu propio hogar condicionado.</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.roleCard, role === 'Visita' && styles.roleCardActive]} onPress={() => setRole('Visita')}>
-          <Text style={[styles.roleTitle, role === 'Visita' && styles.roleTitleActive]}>Visita Veterinaria Básica</Text>
+          <Text style={[styles.roleTitle, role === 'Visita' && styles.roleTitleActive]}>Visita Básica</Text>
           <Text style={styles.roleDesc}>Ir a la casa del gato a alimentarlo, medicarlo y jugar.</Text>
         </TouchableOpacity>
       </View>
