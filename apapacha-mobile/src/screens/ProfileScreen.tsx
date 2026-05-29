@@ -104,7 +104,7 @@ export function ProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      {loadingProfile && !refreshing && (
+      {loadingProfile && !profile && !refreshing && (
         <View style={{ position: 'absolute', top: 80, left: 0, right: 0, alignItems: 'center', zIndex: 10 }}>
           <ActivityIndicator color={colors.primary} />
         </View>
