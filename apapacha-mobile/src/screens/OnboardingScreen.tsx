@@ -10,6 +10,7 @@ import { colors } from '../theme/colors';
 import { useToast } from '../components/Toast';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
+import { insertNotificationsForAdmins } from '../services/notifications.service';
 import type { RootStackParamList } from '../types/navigation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -48,6 +49,14 @@ export function OnboardingScreen() {
         onboarding_done: true,
       }).eq('id', user.id);
       if (error) throw error;
+      try {
+        await insertNotificationsForAdmins(
+          'user_registered',
+          'Nuevo usuario registrado',
+          `${fullName.trim()} ${lastName.trim()} completó su perfil y se unió a ApapachaPet.`,
+          { user_id: user.id },
+        );
+      } catch { /* notif errors must not block the main flow */ }
       await refreshProfile();
       navigation.replace('SetPassword');
     } catch (e: any) {
