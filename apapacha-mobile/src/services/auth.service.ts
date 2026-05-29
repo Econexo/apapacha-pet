@@ -40,16 +40,15 @@ export async function completeKyc(): Promise<void> {
 }
 
 export async function applyAsHost(data: {
+  userId: string;
   service_type: ServiceType;
   kyc_doc_url?: string;
   selfie_url?: string;
   evidence_url_1?: string;
   evidence_url_2?: string;
 }): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
   const { error } = await supabase.from('host_applications').insert({
-    applicant_id: user.id,
+    applicant_id: data.userId,
     service_type: data.service_type,
     kyc_doc_url: data.kyc_doc_url ?? null,
     selfie_url: data.selfie_url ?? null,
