@@ -200,6 +200,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
         if (certVet) evidenceUrl2 = await uploadFile(certVet, 'cert-vet', uid);
       }
       await applyAsHost({
+        userId: uid,
         service_type: isSpace ? 'space' : 'visiter',
         kyc_doc_url: dniUrl,
         selfie_url: selfieUrl,
