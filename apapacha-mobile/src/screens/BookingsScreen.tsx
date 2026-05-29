@@ -13,6 +13,7 @@ import { supabase } from '../../supabase';
 import { OverlayModal } from '../components/OverlayModal';
 import { LeaveReviewScreen } from './LeaveReviewScreen';
 import { useToast } from '../components/Toast';
+import { PawBackground } from '../components/PawBackground';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -144,6 +145,7 @@ export function BookingsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <PawBackground />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Reservas</Text>
       </View>
