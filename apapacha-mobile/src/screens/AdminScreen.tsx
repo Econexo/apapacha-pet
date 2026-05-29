@@ -2,6 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, TextInput, RefreshControl, Platform, Dimensions,
+  Image, Linking,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -75,7 +76,11 @@ interface Application {
   service_type: string;
   status: string;
   submitted_at: string | null;
-  welcome_email_sent: boolean;
+  welcome_email_sent?: boolean;
+  kyc_doc_url?: string | null;
+  selfie_url?: string | null;
+  safety_evidence_url?: string | null;
+  evidence_url_2?: string | null;
   profiles: { full_name: string; last_name: string | null } | null;
 }
 
@@ -1013,6 +1018,55 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
   );
 }
 
+// ─── DocViewer ────────────────────────────────────────────────────────────────
+
+function extractStoragePath(fullUrl: string, bucket: string): string | null {
+  const marker = `/object/public/${bucket}/`;
+  const alt = `/object/sign/${bucket}/`;
+  const idx = fullUrl.indexOf(marker);
+  if (idx !== -1) return fullUrl.slice(idx + marker.length).split('?')[0];
+  const idx2 = fullUrl.indexOf(alt);
+  if (idx2 !== -1) return fullUrl.slice(idx2 + alt.length).split('?')[0];
+  return null;
+}
+
+function DocViewer({ url, label }: { url: string | null | undefined; label: string }) {
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  const load = async () => {
+    if (signedUrl) { setExpanded(e => !e); return; }
+    setLoading(true);
+    const path = extractStoragePath(url ?? '', 'kyc-docs');
+    if (path) {
+      const { data } = await supabase.storage.from('kyc-docs').createSignedUrl(path, 3600);
+      if (data?.signedUrl) { setSignedUrl(data.signedUrl); setExpanded(true); }
+    }
+    setLoading(false);
+  };
+
+  if (!url) return null;
+  const isPdf = url.toLowerCase().includes('.pdf') || url.toLowerCase().includes('application/pdf');
+
+  return (
+    <View style={styles.docRow}>
+      <TouchableOpacity style={styles.docBtn} onPress={isPdf ? () => { load(); if (signedUrl) Linking.openURL(signedUrl); } : load} activeOpacity={0.75}>
+        <Ionicons name={isPdf ? 'document-outline' : 'image-outline'} size={13} color={colors.primary} />
+        <Text style={styles.docBtnText}>{label}</Text>
+        {loading ? <ActivityIndicator size="small" color={colors.primary} style={{ marginLeft: 4 }} /> : (
+          !isPdf && <Ionicons name={expanded ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textMuted} style={{ marginLeft: 4 }} />
+        )}
+      </TouchableOpacity>
+      {expanded && signedUrl && !isPdf && (
+        <TouchableOpacity onPress={() => Linking.openURL(signedUrl)} activeOpacity={0.9}>
+          <Image source={{ uri: signedUrl }} style={styles.docImage} resizeMode="contain" />
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+}
+
 // ─── Applications Tab ─────────────────────────────────────────────────────────
 
 function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
@@ -1034,32 +1088,48 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
           <Text style={styles.emptyTitle}>Sin postulaciones pendientes</Text>
         </View>
       )}
-      {pending.map(a => (
-        <View key={a.id} style={[styles.card, styles.cardPending]}>
-          <Text style={styles.cardName}>
-            {a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}
-          </Text>
-          <Text style={styles.cardMeta}>
-            Tipo: {a.service_type} · {a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('es-CL') : '—'}
-          </Text>
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnSuccess]}
-              onPress={() => onApprove(a.id, a.applicant_id, a.service_type)}
-            >
-              <Ionicons name="checkmark-outline" size={14} color={colors.accent} />
-              <Text style={styles.actionBtnText}>Aprobar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.actionBtn, styles.actionBtnDanger]}
-              onPress={() => onReject(a.id)}
-            >
-              <Ionicons name="close-outline" size={14} color={colors.danger} />
-              <Text style={styles.actionBtnText}>Rechazar</Text>
-            </TouchableOpacity>
+      {pending.map(a => {
+        const isSpace = a.service_type === 'space';
+        return (
+          <View key={a.id} style={[styles.card, styles.cardPending]}>
+            <Text style={styles.cardName}>
+              {a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}
+            </Text>
+            <Text style={styles.cardMeta}>
+              {isSpace ? '🏠 Alojamiento' : '🚗 Visita'} · {a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('es-CL') : '—'}
+            </Text>
+
+            {/* Documents */}
+            <View style={styles.docSection}>
+              <Text style={styles.docSectionTitle}>Documentos</Text>
+              <DocViewer url={a.kyc_doc_url} label="DNI / Cédula" />
+              <DocViewer url={a.selfie_url} label="Selfie con documento" />
+              <DocViewer url={a.safety_evidence_url} label={isSpace ? 'Foto malla de seguridad' : 'Antecedentes penales'} />
+              <DocViewer url={a.evidence_url_2} label={isSpace ? 'Foto rascador' : 'Certificado veterinario'} />
+              {!a.kyc_doc_url && !a.selfie_url && !a.safety_evidence_url && !a.evidence_url_2 && (
+                <Text style={styles.docMissing}>Sin documentos adjuntos</Text>
+              )}
+            </View>
+
+            <View style={styles.cardActions}>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnSuccess]}
+                onPress={() => onApprove(a.id, a.applicant_id, a.service_type)}
+              >
+                <Ionicons name="checkmark-outline" size={14} color={colors.accent} />
+                <Text style={styles.actionBtnText}>Aprobar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.actionBtn, styles.actionBtnDanger]}
+                onPress={() => onReject(a.id)}
+              >
+                <Ionicons name="close-outline" size={14} color={colors.danger} />
+                <Text style={styles.actionBtnText}>Rechazar</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      ))}
+        );
+      })}
 
       {approved.length > 0 && (
         <>
@@ -1328,6 +1398,13 @@ const styles = StyleSheet.create({
   searchInput: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, borderRadius: 10, paddingVertical: 10, paddingHorizontal: 14, fontSize: 14, color: colors.textMain, marginBottom: 16 },
   card: { backgroundColor: colors.surface, borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: colors.border },
   cardPending: { borderColor: colors.warning, borderWidth: 1.5 },
+  docSection: { marginTop: 10, marginBottom: 4, gap: 4 },
+  docSectionTitle: { fontSize: 11, fontWeight: '700', color: colors.textMuted, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: 4 },
+  docRow: { gap: 6 },
+  docBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: `${colors.primary}0D`, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 7, borderWidth: 1, borderColor: `${colors.primary}25`, alignSelf: 'flex-start' },
+  docBtnText: { fontSize: 12, color: colors.primary, fontWeight: '600' },
+  docImage: { width: '100%', height: 220, borderRadius: 10, marginTop: 6, backgroundColor: colors.border },
+  docMissing: { fontSize: 12, color: colors.textMuted, fontStyle: 'italic' },
   cardRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   avatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
   avatarText: { color: '#fff', fontSize: 18, fontWeight: '700' },
