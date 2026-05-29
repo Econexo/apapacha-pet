@@ -1,23 +1,25 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Dimensions } from 'react-native';
 
-// Deterministic positions — no random so web/mobile hydration stay consistent
-const PAWS: { top: number; left: number; size: number; opacity: number; rotate: string }[] = [
-  { top:  3,  left:  7,  size: 34, opacity: 0.055, rotate: '-18deg' },
-  { top:  6,  left: 72,  size: 22, opacity: 0.040, rotate:  '14deg' },
-  { top: 11,  left: 38,  size: 18, opacity: 0.035, rotate: '-5deg'  },
-  { top: 18,  left: 85,  size: 28, opacity: 0.050, rotate:  '25deg' },
-  { top: 24,  left: 15,  size: 24, opacity: 0.042, rotate: '-30deg' },
-  { top: 32,  left: 60,  size: 38, opacity: 0.048, rotate:  '8deg'  },
-  { top: 40,  left:  5,  size: 20, opacity: 0.038, rotate:  '18deg' },
-  { top: 46,  left: 82,  size: 16, opacity: 0.032, rotate: '-12deg' },
-  { top: 53,  left: 42,  size: 30, opacity: 0.052, rotate:  '35deg' },
-  { top: 60,  left: 18,  size: 22, opacity: 0.040, rotate: '-22deg' },
-  { top: 67,  left: 75,  size: 36, opacity: 0.055, rotate:  '10deg' },
-  { top: 72,  left:  2,  size: 18, opacity: 0.035, rotate: '-40deg' },
-  { top: 79,  left: 55,  size: 24, opacity: 0.042, rotate:  '20deg' },
-  { top: 86,  left: 88,  size: 20, opacity: 0.038, rotate: '-15deg' },
-  { top: 91,  left: 28,  size: 32, opacity: 0.050, rotate:  '28deg' },
+const { width: W, height: H } = Dimensions.get('window');
+
+// Positions as fractions of screen — resolved to px so web renders them reliably
+const PAWS: { tx: number; ty: number; size: number; opacity: number; rotate: string }[] = [
+  { tx: 0.07, ty: 0.04,  size: 36, opacity: 0.16, rotate: '-18deg' },
+  { tx: 0.72, ty: 0.07,  size: 24, opacity: 0.12, rotate:  '14deg' },
+  { tx: 0.38, ty: 0.12,  size: 20, opacity: 0.10, rotate:  '-5deg' },
+  { tx: 0.83, ty: 0.19,  size: 30, opacity: 0.14, rotate:  '25deg' },
+  { tx: 0.12, ty: 0.25,  size: 26, opacity: 0.13, rotate: '-30deg' },
+  { tx: 0.60, ty: 0.33,  size: 40, opacity: 0.15, rotate:   '8deg' },
+  { tx: 0.04, ty: 0.42,  size: 22, opacity: 0.11, rotate:  '18deg' },
+  { tx: 0.80, ty: 0.47,  size: 18, opacity: 0.10, rotate: '-12deg' },
+  { tx: 0.44, ty: 0.54,  size: 32, opacity: 0.16, rotate:  '35deg' },
+  { tx: 0.16, ty: 0.61,  size: 24, opacity: 0.13, rotate: '-22deg' },
+  { tx: 0.74, ty: 0.68,  size: 38, opacity: 0.15, rotate:  '10deg' },
+  { tx: 0.02, ty: 0.73,  size: 20, opacity: 0.11, rotate: '-40deg' },
+  { tx: 0.55, ty: 0.80,  size: 26, opacity: 0.14, rotate:  '20deg' },
+  { tx: 0.87, ty: 0.86,  size: 22, opacity: 0.12, rotate: '-15deg' },
+  { tx: 0.28, ty: 0.91,  size: 34, opacity: 0.15, rotate:  '28deg' },
 ];
 
 export function PawBackground() {
@@ -28,8 +30,8 @@ export function PawBackground() {
           key={i}
           style={{
             position: 'absolute',
-            top: `${p.top}%` as any,
-            left: `${p.left}%` as any,
+            top: p.ty * H,
+            left: p.tx * W,
             fontSize: p.size,
             opacity: p.opacity,
             transform: [{ rotate: p.rotate }],
