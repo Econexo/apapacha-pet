@@ -18,7 +18,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
   const navigation = useNavigation<Nav>();
   const close = () => onClose ? onClose() : navigation.goBack();
   const { user } = useAuth();
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(0);
   const [role, setRole] = useState<'Alojamiento' | 'Visita'>('Alojamiento');
   const [submitting, setSubmitting] = useState(false);
   const toast = useToast();
@@ -135,6 +135,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
   };
 
   const handleNext = async () => {
+    if (step === 0) { setStep(1); return; }
     if (step === 1) {
       if (!dniPhoto || !selfiePhoto) {
         toast.warning('Documentos requeridos', 'Debes subir tu cédula de identidad y el selfie biométrico.');
@@ -215,6 +216,78 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
       setSubmitting(false);
     }
   };
+
+  const renderStep0 = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.introIconBox}>
+        <Text style={styles.introIcon}>🐾</Text>
+      </View>
+      <Text style={styles.introTitle}>¡Únete como Cuidador!</Text>
+      <Text style={styles.introSubtitle}>
+        Antes de comenzar, ten a mano los siguientes documentos. El proceso toma menos de 5 minutos.
+      </Text>
+
+      <View style={styles.docSection}>
+        <Text style={styles.docSectionTitle}>📋 Siempre requeridos</Text>
+        <View style={styles.docItem}>
+          <Text style={styles.docDot}>•</Text>
+          <View style={styles.docItemText}>
+            <Text style={styles.docItemTitle}>Cédula de identidad o DNI</Text>
+            <Text style={styles.docItemDesc}>Foto frontal clara del documento oficial vigente</Text>
+          </View>
+        </View>
+        <View style={styles.docItem}>
+          <Text style={styles.docDot}>•</Text>
+          <View style={styles.docItemText}>
+            <Text style={styles.docItemTitle}>Selfie biométrico</Text>
+            <Text style={styles.docItemDesc}>Foto tuya sosteniendo tu documento de identidad</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.docSection}>
+        <Text style={styles.docSectionTitle}>🏠 Si ofreces Hospedaje</Text>
+        <View style={styles.docItem}>
+          <Text style={styles.docDot}>•</Text>
+          <View style={styles.docItemText}>
+            <Text style={styles.docItemTitle}>Foto de mallas anti-escape</Text>
+            <Text style={styles.docItemDesc}>Balcones y ventanas con malla instalada</Text>
+          </View>
+        </View>
+        <View style={styles.docItem}>
+          <Text style={styles.docDot}>•</Text>
+          <View style={styles.docItemText}>
+            <Text style={styles.docItemTitle}>Foto de rascador de suelo a techo</Text>
+            <Text style={styles.docItemDesc}>Evidencia de enriquecimiento ambiental felino</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.docSection}>
+        <Text style={styles.docSectionTitle}>🚗 Si ofreces Visita Básica</Text>
+        <View style={styles.docItem}>
+          <Text style={styles.docDot}>•</Text>
+          <View style={styles.docItemText}>
+            <Text style={styles.docItemTitle}>Certificado de antecedentes civiles</Text>
+            <Text style={styles.docItemDesc}>Emitido en los últimos 30 días (PDF oficial)</Text>
+          </View>
+        </View>
+        <View style={styles.docItem}>
+          <Text style={styles.docDot}>•</Text>
+          <View style={styles.docItemText}>
+            <Text style={styles.docItemTitle}>Certificado veterinario (opcional)</Text>
+            <Text style={styles.docItemDesc}>Diploma o registro profesional si lo tienes</Text>
+          </View>
+        </View>
+      </View>
+
+      <View style={styles.infoBanner}>
+        <Text style={styles.infoBannerText}>
+          🔒 Toda la documentación es tratada de forma confidencial y se usa únicamente para verificar tu identidad y la seguridad de tu hogar.
+        </Text>
+      </View>
+    </View>
+  );
 
   const renderStep1 = () => (
     <View style={styles.stepContent}>
@@ -337,7 +410,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
     </View>
   );
 
-  const progressPercent = (step / 3) * 100;
+  const progressPercent = step === 0 ? 0 : (step / 3) * 100;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -351,10 +424,11 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
         <View style={styles.progressTrack}>
           <View style={[styles.progressFill, { width: `${progressPercent}%` }]} />
         </View>
-        <Text style={styles.progressText}>Paso {step} de 3</Text>
+        <Text style={styles.progressText}>{step === 0 ? 'Requisitos' : `Paso ${step} de 3`}</Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scroll}>
+        {step === 0 && renderStep0()}
         {step === 1 && renderStep1()}
         {step === 2 && renderStep2()}
         {step === 3 && renderStep3()}
@@ -364,7 +438,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
         <TouchableOpacity style={[styles.nextBtn, submitting && { opacity: 0.7 }]} onPress={handleNext} disabled={submitting}>
           {submitting
             ? <ActivityIndicator color={colors.surface} />
-            : <Text style={styles.nextBtnText}>{step === 3 ? 'Enviar Solicitud a Evaluación Central' : 'Continuar'}</Text>
+            : <Text style={styles.nextBtnText}>{step === 0 ? 'Tengo los documentos, ¡Comenzar!' : step === 3 ? 'Enviar Solicitud a Evaluación Central' : 'Continuar'}</Text>
           }
         </TouchableOpacity>
       </View>
@@ -401,6 +475,19 @@ const styles = StyleSheet.create({
   warningBox: { backgroundColor: colors.dangerBg, padding: 16, borderRadius: 12, borderWidth: 1, borderColor: colors.dangerBorder },
   warningTitle: { color: colors.dangerText, fontWeight: '800', marginBottom: 4 },
   warningText: { color: colors.dangerTextDark, fontSize: 13, lineHeight: 18 },
+  introIconBox: { width: 72, height: 72, borderRadius: 36, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', alignSelf: 'center', marginBottom: 16 },
+  introIcon: { fontSize: 36 },
+  introTitle: { fontSize: 26, fontWeight: '800', color: colors.textMain, textAlign: 'center', marginBottom: 8 },
+  introSubtitle: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 21, marginBottom: 24 },
+  docSection: { backgroundColor: colors.background, borderRadius: 14, padding: 16, marginBottom: 14, borderWidth: 1, borderColor: colors.border },
+  docSectionTitle: { fontSize: 13, fontWeight: '800', color: colors.primaryDark, marginBottom: 12, letterSpacing: 0.2 },
+  docItem: { flexDirection: 'row', gap: 8, marginBottom: 10 },
+  docDot: { fontSize: 16, color: colors.primary, marginTop: 1 },
+  docItemText: { flex: 1 },
+  docItemTitle: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 1 },
+  docItemDesc: { fontSize: 12, color: colors.textMuted, lineHeight: 17 },
+  infoBanner: { backgroundColor: `${colors.primary}10`, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: `${colors.primary}25`, marginTop: 4 },
+  infoBannerText: { fontSize: 12, color: colors.primaryDark, lineHeight: 18, fontWeight: '500' },
   footer: { backgroundColor: colors.surface, padding: 20, borderTopWidth: 1, borderTopColor: colors.border },
   nextBtn: { backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   nextBtnText: { color: colors.surface, fontWeight: '800', fontSize: 16 },
