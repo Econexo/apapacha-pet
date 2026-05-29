@@ -9,6 +9,7 @@ import { colors } from '../theme/colors';
 import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { applyAsHost } from '../services/auth.service';
+import { useAuth } from '../context/AuthContext';
 import { supabase } from '../../supabase';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -16,6 +17,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {}) {
   const navigation = useNavigation<Nav>();
   const close = () => onClose ? onClose() : navigation.goBack();
+  const { user } = useAuth();
   const [step, setStep] = useState(1);
   const [role, setRole] = useState<'Alojamiento' | 'Visita'>('Alojamiento');
   const [submitting, setSubmitting] = useState(false);
@@ -95,10 +97,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
     webp: 'image/webp', heic: 'image/heic', pdf: 'application/pdf',
   };
 
-  const uploadFile = async (file: FileEntry, folder: string): Promise<string> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('No autenticado');
-
+  const uploadFile = async (file: FileEntry, folder: string, userId: string): Promise<string> => {
     let blob: Blob;
     if (file.blob) {
       // Pre-fetched at pick time — always use this on web
@@ -121,7 +120,7 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
       : (MIME_BY_EXT[ext] ?? 'image/jpeg');
 
     const safeName = `${folder}-${Date.now()}.${ext}`;
-    const path = `${user.id}/kyc/${safeName}`;
+    const path = `${userId}/kyc/${safeName}`;
 
     // 30-second timeout so the button never hangs forever
     const uploadResult = await Promise.race([
@@ -156,43 +155,49 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
       return;
     }
 
+    if (!user) { toast.error('Sesión expirada', 'Por favor cierra sesión y vuelve a ingresar.'); return; }
+
     setSubmitting(true);
     try {
-      // Check for existing pending/approved application before uploading
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: existing } = await supabase
-          .from('host_applications')
-          .select('id, status')
-          .eq('applicant_id', user.id)
-          .in('status', ['pending', 'approved'])
-          .maybeSingle();
-        if (existing) {
+      // Duplicate check — with timeout so a slow network doesn't hang the button
+      try {
+        const dupResult = await Promise.race([
+          supabase
+            .from('host_applications')
+            .select('id, status')
+            .eq('applicant_id', user.id)
+            .in('status', ['pending', 'approved'])
+            .maybeSingle(),
+          new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 5000)),
+        ]);
+        if (dupResult.data) {
+          const s = dupResult.data.status;
           toast.warning(
-            existing.status === 'approved' ? 'Ya eres cuidador' : 'Solicitud en revisión',
-            existing.status === 'approved'
+            s === 'approved' ? 'Ya eres cuidador' : 'Solicitud en revisión',
+            s === 'approved'
               ? 'Tu postulación ya fue aprobada.'
-              : 'Ya tienes una solicitud pendiente de revisión. Te notificaremos pronto.',
+              : 'Ya tienes una solicitud pendiente. Te notificaremos pronto.',
           );
           setSubmitting(false);
           return;
         }
-      }
+      } catch { /* timeout o error de red — ignorar y continuar con el envío */ }
 
+      const uid = user.id;
       const [dniUrl, selfieUrl] = await Promise.all([
-        uploadFile(dniPhoto!, 'dni'),
-        uploadFile(selfiePhoto!, 'selfie'),
+        uploadFile(dniPhoto!, 'dni', uid),
+        uploadFile(selfiePhoto!, 'selfie', uid),
       ]);
       let evidenceUrl1: string | undefined;
       let evidenceUrl2: string | undefined;
       if (isSpace) {
         [evidenceUrl1, evidenceUrl2] = await Promise.all([
-          uploadFile(mallaPhoto!, 'malla'),
-          uploadFile(rasPhoto!, 'rascador'),
+          uploadFile(mallaPhoto!, 'malla', uid),
+          uploadFile(rasPhoto!, 'rascador', uid),
         ]);
       } else {
-        evidenceUrl1 = await uploadFile(antecedentes!, 'antecedentes');
-        if (certVet) evidenceUrl2 = await uploadFile(certVet, 'cert-vet');
+        evidenceUrl1 = await uploadFile(antecedentes!, 'antecedentes', uid);
+        if (certVet) evidenceUrl2 = await uploadFile(certVet, 'cert-vet', uid);
       }
       await applyAsHost({
         service_type: isSpace ? 'space' : 'visiter',
