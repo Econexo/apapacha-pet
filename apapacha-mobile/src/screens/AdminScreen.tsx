@@ -239,10 +239,18 @@ export function AdminScreen() {
   async function loadApplications() {
     const { data, error } = await supabase
       .from('host_applications')
-      .select('id, applicant_id, service_type, status, submitted_at, welcome_email_sent, profiles(full_name, last_name)')
-      .order('submitted_at', { ascending: false });
+      .select('id, applicant_id, service_type, status, submitted_at, welcome_email_sent')
+      .order('submitted_at', { ascending: false, nullsFirst: false });
     if (error) { console.error('[Admin] loadApplications:', error.message); return; }
-    setApplications((data ?? []) as unknown as Application[]);
+    const apps = data ?? [];
+    if (apps.length === 0) { setApplications([]); return; }
+    const ids = [...new Set(apps.map((a: any) => a.applicant_id))];
+    const { data: profs } = await supabase
+      .from('profiles')
+      .select('id, full_name, last_name')
+      .in('id', ids);
+    const profMap = Object.fromEntries((profs ?? []).map((p: any) => [p.id, p]));
+    setApplications(apps.map((a: any) => ({ ...a, profiles: profMap[a.applicant_id] ?? null })) as unknown as Application[]);
   }
 
   async function loadBookings() {
