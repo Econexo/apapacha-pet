@@ -1,30 +1,41 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, ActivityIndicator, Image } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, Image, KeyboardAvoidingView, Platform, ScrollView,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
-import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { signIn, signUp, resetPassword } from '../services/auth.service';
-import type { RootStackParamList } from '../types/navigation';
 
-type Nav = NativeStackNavigationProp<RootStackParamList>;
+// Paw print decorations — deterministic positions so no hydration mismatch
+const PAWS = [
+  { top:  '6%',  left: '8%',  size: 28, opacity: 0.10, rotate: '-15deg' },
+  { top: '12%',  right: '6%', size: 20, opacity: 0.08, rotate:  '20deg' },
+  { top: '22%',  left: '3%',  size: 16, opacity: 0.07, rotate:  '-8deg' },
+  { top: '30%',  right: '10%',size: 24, opacity: 0.09, rotate:  '30deg' },
+  { top: '52%',  left: '5%',  size: 18, opacity: 0.07, rotate: '-25deg' },
+  { top: '62%',  right: '4%', size: 22, opacity: 0.08, rotate:  '12deg' },
+  { top: '75%',  left: '10%', size: 26, opacity: 0.09, rotate: '-10deg' },
+  { top: '82%',  right: '8%', size: 18, opacity: 0.07, rotate:  '22deg' },
+];
 
 export function LoginScreen() {
-  const navigation = useNavigation<Nav>();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
   const localizeError = (msg: string): string => {
     if (msg.includes('Invalid login credentials')) return 'Email o contraseña incorrectos.';
-    if (msg.includes('Email not confirmed')) return 'Debes confirmar tu email antes de ingresar. Revisa tu bandeja de entrada.';
+    if (msg.includes('Email not confirmed')) return 'Confirma tu email antes de ingresar. Revisa tu bandeja de entrada.';
     if (msg.includes('User already registered')) return 'Este email ya tiene una cuenta. Ingresa con tu contraseña.';
     if (msg.includes('Password should be at least')) return 'La contraseña debe tener al menos 6 caracteres.';
     if (msg.includes('Unable to validate email address')) return 'El formato del email no es válido.';
-    if (msg.includes('rate limit')) return 'Demasiados intentos. Espera unos minutos e intenta nuevamente.';
+    if (msg.includes('rate limit')) return 'Demasiados intentos. Espera unos minutos e intenta de nuevo.';
     return msg;
   };
 
@@ -70,106 +81,224 @@ export function LoginScreen() {
     }
   };
 
+  const switchMode = (m: 'login' | 'signup') => {
+    setMode(m);
+    setErrorMsg('');
+    setSuccessMsg('');
+  };
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.brandContainer}>
-          <Image source={require('../../assets/Logo.png')} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.brandSubtitle}>Hospitalidad Felina Premium</Text>
-        </View>
+      {/* Decorative paw background */}
+      {PAWS.map((p, i) => (
+        <Text
+          key={i}
+          style={[styles.pawDecor, {
+            top: p.top as any,
+            ...(p.left !== undefined ? { left: p.left as any } : { right: (p as any).right as any }),
+            fontSize: p.size,
+            opacity: p.opacity,
+            transform: [{ rotate: p.rotate }],
+          }]}
+        >🐾</Text>
+      ))}
 
-        <View style={styles.authContainer}>
-          <View style={styles.modeToggle}>
-            <TouchableOpacity
-              style={[styles.modeBtn, mode === 'login' && styles.modeBtnActive]}
-              onPress={() => { setMode('login'); setErrorMsg(''); setSuccessMsg(''); }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeBtnText, mode === 'login' && styles.modeBtnTextActive]}>Ingresar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modeBtn, mode === 'signup' && styles.modeBtnActive]}
-              onPress={() => { setMode('signup'); setErrorMsg(''); setSuccessMsg(''); }}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeBtnText, mode === 'signup' && styles.modeBtnTextActive]}>Crear cuenta</Text>
-            </TouchableOpacity>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Brand */}
+          <View style={styles.brand}>
+            <Image source={require('../../assets/Logo.png')} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.brandTagline}>Hospitalidad Felina Premium</Text>
+            <View style={styles.brandBadge}>
+              <Ionicons name="shield-checkmark-outline" size={13} color="rgba(255,255,255,0.9)" />
+              <Text style={styles.brandBadgeText}>Comunidad verificada</Text>
+            </View>
           </View>
 
-          <TextInput
-            style={styles.input}
-            placeholder="tu@email.com"
-            placeholderTextColor="rgba(255,255,255,0.4)"
-            value={email}
-            onChangeText={setEmail}
-            keyboardType="email-address"
-            autoCapitalize="none"
-            autoCorrect={false}
-          />
-          <TextInput
-            style={styles.input}
-            placeholder="Contraseña"
-            placeholderTextColor="rgba(255,255,255,0.4)"
-            value={password}
-            onChangeText={setPassword}
-            secureTextEntry
-          />
+          {/* Form card */}
+          <View style={styles.card}>
+            {/* Mode toggle */}
+            <View style={styles.toggle}>
+              <TouchableOpacity
+                style={[styles.toggleBtn, mode === 'login' && styles.toggleBtnActive]}
+                onPress={() => switchMode('login')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="log-in-outline" size={15} color={mode === 'login' ? colors.primaryDark : colors.textMuted} />
+                <Text style={[styles.toggleText, mode === 'login' && styles.toggleTextActive]}>Ingresar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.toggleBtn, mode === 'signup' && styles.toggleBtnActive]}
+                onPress={() => switchMode('signup')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="person-add-outline" size={15} color={mode === 'signup' ? colors.primaryDark : colors.textMuted} />
+                <Text style={[styles.toggleText, mode === 'signup' && styles.toggleTextActive]}>Crear cuenta</Text>
+              </TouchableOpacity>
+            </View>
 
-          <TouchableOpacity
-            style={[styles.authButton, loading && styles.authButtonDisabled]}
-            onPress={handleSubmit}
-            activeOpacity={0.8}
-            disabled={loading}
-          >
-            {loading
-              ? <ActivityIndicator color={colors.primaryDark} />
-              : <Text style={styles.authButtonText}>{mode === 'login' ? 'Entrar' : 'Crear cuenta'}</Text>
-            }
-          </TouchableOpacity>
+            <Text style={styles.cardTitle}>
+              {mode === 'login' ? 'Bienvenido de vuelta 👋' : 'Únete a ApapachaPet 🐱'}
+            </Text>
+            <Text style={styles.cardSub}>
+              {mode === 'login' ? 'Ingresa para acceder a tu cuenta' : 'Crea tu cuenta gratuitamente'}
+            </Text>
 
-          {mode === 'login' && (
-            <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7} style={styles.forgotBtn}>
-              <Text style={styles.forgotBtnText}>¿Olvidaste tu contraseña?</Text>
+            {/* Email field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Email</Text>
+              <View style={styles.inputWrap}>
+                <Ionicons name="mail-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={styles.input}
+                  placeholder="tu@email.com"
+                  placeholderTextColor={colors.textMuted}
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                />
+              </View>
+            </View>
+
+            {/* Password field */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.fieldLabel}>Contraseña</Text>
+              <View style={styles.inputWrap}>
+                <Ionicons name="lock-closed-outline" size={18} color={colors.textMuted} style={styles.inputIcon} />
+                <TextInput
+                  style={[styles.input, { paddingRight: 44 }]}
+                  placeholder={mode === 'signup' ? 'Mínimo 8 caracteres' : '••••••••'}
+                  placeholderTextColor={colors.textMuted}
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                />
+                <TouchableOpacity
+                  style={styles.eyeBtn}
+                  onPress={() => setShowPassword(v => !v)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color={colors.textMuted} />
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {/* Feedback messages */}
+            {errorMsg ? (
+              <View style={styles.errorBox}>
+                <Ionicons name="alert-circle-outline" size={15} color={colors.danger} />
+                <Text style={styles.errorText}>{errorMsg}</Text>
+              </View>
+            ) : null}
+            {successMsg ? (
+              <View style={styles.successBox}>
+                <Ionicons name="checkmark-circle-outline" size={15} color={colors.success} />
+                <Text style={styles.successText}>{successMsg}</Text>
+              </View>
+            ) : null}
+
+            {/* Submit */}
+            <TouchableOpacity
+              style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+              onPress={handleSubmit}
+              activeOpacity={0.85}
+              disabled={loading}
+            >
+              {loading
+                ? <ActivityIndicator color={colors.surface} />
+                : <>
+                    <Text style={styles.submitBtnText}>
+                      {mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+                    </Text>
+                    <Ionicons name="arrow-forward" size={18} color={colors.surface} />
+                  </>
+              }
             </TouchableOpacity>
-          )}
 
-          {errorMsg ? <Text style={styles.errorMsg}>{errorMsg}</Text> : null}
-          {successMsg ? <Text style={styles.successMsg}>{successMsg}</Text> : null}
-        </View>
+            {mode === 'login' && (
+              <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7} style={styles.forgotBtn}>
+                <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+              </TouchableOpacity>
+            )}
+          </View>
 
-        <View style={styles.trustDisclaimer}>
-          <Text style={styles.trustTitle}>🔒 Política de Confianza Cero</Text>
-          <Text style={styles.trustText}>
-            En ApapachaPet la seguridad de tu gato es innegociable. Todas las cuentas nuevas
-            pasan por validación de identidad antes de acceder al marketplace.
-          </Text>
-        </View>
-      </View>
+          {/* Trust section */}
+          <View style={styles.trust}>
+            <View style={styles.trustItem}>
+              <Ionicons name="shield-checkmark-outline" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.trustText}>Identidad verificada</Text>
+            </View>
+            <View style={styles.trustDivider} />
+            <View style={styles.trustItem}>
+              <Ionicons name="lock-closed-outline" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.trustText}>Datos encriptados</Text>
+            </View>
+            <View style={styles.trustDivider} />
+            <View style={styles.trustItem}>
+              <Ionicons name="paw-outline" size={16} color="rgba(255,255,255,0.8)" />
+              <Text style={styles.trustText}>100% para gatos</Text>
+            </View>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: colors.primary },
-  container: { flex: 1, justifyContent: 'space-between', padding: 30, paddingTop: 60, paddingBottom: 50 },
-  brandContainer: { alignItems: 'center' },
-  logoImage: { width: 200, height: 160, marginBottom: 8 },
-  brandSubtitle: { fontSize: 15, color: colors.surface, opacity: 0.85, fontWeight: '600', letterSpacing: 0.5 },
-  authContainer: { width: '100%', gap: 12 },
-  modeToggle: { flexDirection: 'row', backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 10, padding: 4, marginBottom: 4 },
-  modeBtn: { flex: 1, paddingVertical: 10, alignItems: 'center', borderRadius: 8 },
-  modeBtnActive: { backgroundColor: colors.surface },
-  modeBtnText: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
-  modeBtnTextActive: { color: colors.primaryDark },
-  input: { backgroundColor: 'rgba(255,255,255,0.15)', paddingVertical: 14, paddingHorizontal: 16, borderRadius: 12, fontSize: 16, color: colors.surface, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
-  authButton: { backgroundColor: colors.surface, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 4 },
-  authButtonDisabled: { opacity: 0.6 },
-  authButtonText: { color: colors.primaryDark, fontSize: 16, fontWeight: '700' },
-  forgotBtn: { alignItems: 'center', paddingVertical: 4 },
-  forgotBtnText: { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600', textDecorationLine: 'underline' },
-  errorMsg: { color: '#ff6b6b', fontSize: 13, textAlign: 'center', fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 8 },
-  successMsg: { color: '#4ade80', fontSize: 13, textAlign: 'center', fontWeight: '600', backgroundColor: 'rgba(0,0,0,0.2)', padding: 10, borderRadius: 8, lineHeight: 18 },
-  trustDisclaimer: { backgroundColor: 'rgba(0,0,0,0.15)', padding: 16, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  trustTitle: { color: colors.surface, fontSize: 13, fontWeight: '800', marginBottom: 6 },
-  trustText: { color: colors.surface, opacity: 0.7, fontSize: 12, lineHeight: 18 },
+  safeArea: { flex: 1, backgroundColor: colors.primaryDark },
+
+  pawDecor: { position: 'absolute', zIndex: 0 },
+
+  scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32, gap: 24 },
+
+  // Brand
+  brand: { alignItems: 'center', gap: 6, zIndex: 1 },
+  logo: { width: 180, height: 140 },
+  brandTagline: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '600', letterSpacing: 0.8 },
+  brandBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
+  brandBadgeText: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
+
+  // Card
+  card: { backgroundColor: colors.surface, borderRadius: 24, padding: 24, gap: 14, zIndex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
+
+  toggle: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 12, padding: 4, gap: 4 },
+  toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 9 },
+  toggleBtnActive: { backgroundColor: colors.surface, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 3 },
+  toggleText: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+  toggleTextActive: { color: colors.primaryDark },
+
+  cardTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain, marginTop: 2 },
+  cardSub: { fontSize: 13, color: colors.textMuted, marginTop: -6 },
+
+  fieldGroup: { gap: 6 },
+  fieldLabel: { fontSize: 13, fontWeight: '700', color: colors.textMain },
+  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: colors.background, borderRadius: 12, borderWidth: 1.5, borderColor: colors.border },
+  inputIcon: { paddingLeft: 14 },
+  input: { flex: 1, paddingVertical: 13, paddingHorizontal: 10, fontSize: 15, color: colors.textMain },
+  eyeBtn: { padding: 13 },
+
+  errorBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: colors.dangerBg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.dangerBorder },
+  errorText: { flex: 1, color: colors.dangerText, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+  successBox: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: colors.successBg, borderRadius: 10, padding: 12, borderWidth: 1, borderColor: colors.successBorder },
+  successText: { flex: 1, color: colors.successText, fontSize: 13, fontWeight: '600', lineHeight: 18 },
+
+  submitBtn: { backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 14, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 4 },
+  submitBtnDisabled: { opacity: 0.6 },
+  submitBtnText: { color: colors.surface, fontSize: 16, fontWeight: '800' },
+
+  forgotBtn: { alignItems: 'center', paddingVertical: 2 },
+  forgotText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+
+  // Trust
+  trust: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 1 },
+  trustItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  trustText: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '600' },
+  trustDivider: { width: 1, height: 14, backgroundColor: 'rgba(255,255,255,0.2)' },
 });
