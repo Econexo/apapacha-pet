@@ -14,6 +14,7 @@ import { getSpaces } from '../services/spaces.service';
 import { getVisiters } from '../services/visiters.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { SearchFilterScreen } from './SearchFilterScreen';
+import { PawBackground } from '../components/PawBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -86,6 +87,7 @@ export function ExploreScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <PawBackground />
       <View style={styles.header}>
         <View style={styles.serviceToggleContainer}>
           <TouchableOpacity style={[styles.toggleBtn, activeTab === 'SPACES' && styles.toggleBtnActive]} onPress={() => setActiveTab('SPACES')} activeOpacity={0.8}>
