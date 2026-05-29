@@ -10,19 +10,23 @@ import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings } from '../services/bookings.service';
 import { supabase } from '../../supabase';
+import { PawBackground } from '../components/PawBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const STATUS_CONFIG: Record<string, { label: string; color: string; bg: string }> = {
-  pending:   { label: 'Esperando confirmación', color: colors.warning,     bg: `${colors.warning}18`     },
-  active:    { label: 'Reserva activa',          color: colors.accent,      bg: `${colors.accent}18`      },
-  completed: { label: 'Cuidado finalizado',      color: colors.textMuted,   bg: colors.background         },
+interface LastMessage { content: string; created_at: string }
+
+const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
+  pending:   { label: 'Esperando confirmación', color: colors.warning   },
+  active:    { label: 'Reserva activa',          color: colors.accent    },
+  completed: { label: 'Cuidado finalizado',      color: colors.textMuted },
 };
 
 export function InboxScreen() {
   const navigation = useNavigation<Nav>();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
+  const [lastMsgs, setLastMsgs] = useState<Record<string, LastMessage>>({});
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -33,32 +37,48 @@ export function InboxScreen() {
       b.status === 'active' || b.status === 'pending' ||
       (b.status === 'completed' && new Date(b.end_date) >= cutoff)
     );
-    setBookings(active);
+
+    if (active.length === 0) { setBookings([]); setNameMap({}); setLastMsgs({}); return; }
+
+    const bookingIds = active.map(b => b.id);
     const spaceIds   = [...new Set(active.filter(b => b.service_type === 'space').map(b => b.service_id))];
     const visiterIds = [...new Set(active.filter(b => b.service_type === 'visiter').map(b => b.service_id))];
-    const [spacesRes, visitersRes] = await Promise.all([
+
+    const [spacesRes, visitersRes, msgsRes] = await Promise.all([
       spaceIds.length ? supabase.from('spaces').select('id, title').in('id', spaceIds) : Promise.resolve({ data: [] }),
       visiterIds.length ? supabase.from('visiters').select('id, name').in('id', visiterIds) : Promise.resolve({ data: [] }),
+      supabase.from('messages').select('booking_id, content, created_at').in('booking_id', bookingIds).order('created_at', { ascending: false }),
     ]);
-    const map: Record<string, string> = {};
-    for (const b of active) {
+
+    // Build last-message map (first occurrence per booking_id = most recent)
+    const msgMap: Record<string, LastMessage> = {};
+    for (const m of (msgsRes.data ?? []) as any[]) {
+      if (!msgMap[m.booking_id]) msgMap[m.booking_id] = { content: m.content, created_at: m.created_at };
+    }
+
+    // Only keep bookings that have at least one message
+    const withMessages = active.filter(b => msgMap[b.id]);
+
+    const nameM: Record<string, string> = {};
+    for (const b of withMessages) {
       if (b.service_type === 'space') {
         const sp = (spacesRes.data ?? []).find((s: any) => s.id === b.service_id);
-        if (sp) map[b.id] = sp.title;
+        if (sp) nameM[b.id] = (sp as any).title;
       } else {
         const vi = (visitersRes.data ?? []).find((v: any) => v.id === b.service_id);
-        if (vi) map[b.id] = vi.name;
+        if (vi) nameM[b.id] = (vi as any).name;
       }
     }
-    setNameMap(map);
+
+    setBookings(withMessages);
+    setNameMap(nameM);
+    setLastMsgs(msgMap);
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      setLoading(true);
-      loadInbox().catch(console.error).finally(() => setLoading(false));
-    }, [loadInbox])
-  );
+  useFocusEffect(useCallback(() => {
+    setLoading(true);
+    loadInbox().catch(console.error).finally(() => setLoading(false));
+  }, [loadInbox]));
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -66,14 +86,24 @@ export function InboxScreen() {
     setRefreshing(false);
   };
 
-  const fmt = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
-  const statusCfg = (b: Booking) => STATUS_CONFIG[b.status] ?? STATUS_CONFIG.active;
+  const fmtDate = (d: string) => {
+    const diff = Date.now() - new Date(d).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'ahora';
+    if (mins < 60) return `${mins}m`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h`;
+    return new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <PawBackground />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mensajes</Text>
-        <Text style={styles.headerSub}>{bookings.length > 0 ? `${bookings.length} conversaciones activas` : 'Tus chats de reservas'}</Text>
+        <Text style={styles.headerSub}>
+          {bookings.length > 0 ? `${bookings.length} conversación${bookings.length > 1 ? 'es' : ''}` : 'Tus chats de reservas'}
+        </Text>
       </View>
 
       {loading && bookings.length === 0 && (
@@ -88,8 +118,9 @@ export function InboxScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
         contentContainerStyle={[styles.listContent, bookings.length === 0 && { flex: 1 }]}
         renderItem={({ item }) => {
-          const cfg = statusCfg(item);
+          const cfg = STATUS_CONFIG[item.status] ?? STATUS_CONFIG.active;
           const title = nameMap[item.id] ?? (item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria');
+          const lastMsg = lastMsgs[item.id];
           return (
             <TouchableOpacity
               style={styles.chatCard}
@@ -102,12 +133,16 @@ export function InboxScreen() {
               <View style={styles.messageContent}>
                 <View style={styles.nameRow}>
                   <Text style={styles.name} numberOfLines={1}>{title}</Text>
-                  <Text style={styles.time}>{fmt(item.start_date)}</Text>
+                  {lastMsg && <Text style={styles.time}>{fmtDate(lastMsg.created_at)}</Text>}
                 </View>
-                <View style={styles.statusRow}>
-                  <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
-                  <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
-                </View>
+                {lastMsg ? (
+                  <Text style={styles.preview} numberOfLines={1}>{lastMsg.content}</Text>
+                ) : (
+                  <View style={styles.statusRow}>
+                    <View style={[styles.statusDot, { backgroundColor: cfg.color }]} />
+                    <Text style={[styles.statusText, { color: cfg.color }]}>{cfg.label}</Text>
+                  </View>
+                )}
               </View>
               <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
             </TouchableOpacity>
@@ -120,7 +155,7 @@ export function InboxScreen() {
                 <Text style={styles.emptyEmoji}>💬</Text>
               </View>
               <Text style={styles.emptyTitle}>Sin mensajes aún</Text>
-              <Text style={styles.emptyText}>Cuando reserves un servicio, el chat con tu cuidador aparecerá aquí.</Text>
+              <Text style={styles.emptyText}>Cuando reserves un servicio y comiences a chatear con tu cuidador, la conversación aparecerá aquí.</Text>
             </View>
           ) : null
         }
@@ -131,7 +166,6 @@ export function InboxScreen() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
-
   header: {
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 16,
     backgroundColor: colors.surface,
@@ -140,33 +174,24 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
   headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
-
   listContent: { padding: 16, gap: 10 },
-
   chatCard: {
     flexDirection: 'row', alignItems: 'center', gap: 14,
     backgroundColor: colors.surface, borderRadius: radii.lg,
     padding: 16, ...shadows.sm,
   },
-  avatar: {
-    width: 52, height: 52, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  avatar: { width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center' },
   avatarEmoji: { fontSize: 26 },
   messageContent: { flex: 1 },
-  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
+  nameRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 },
   name: { fontSize: 15, color: colors.textMain, fontWeight: '700', flex: 1, marginRight: 8 },
-  time: { fontSize: 12, color: colors.textMuted, fontWeight: '500' },
+  time: { fontSize: 11, color: colors.textMuted, fontWeight: '500' },
+  preview: { fontSize: 13, color: colors.textMuted, fontWeight: '400' },
   statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   statusDot: { width: 7, height: 7, borderRadius: 4 },
   statusText: { fontSize: 12, fontWeight: '600' },
-
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 12 },
-  emptyIconBox: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: colors.primaryLight,
-    alignItems: 'center', justifyContent: 'center', marginBottom: 4,
-  },
+  emptyIconBox: { width: 80, height: 80, borderRadius: 40, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
   emptyEmoji: { fontSize: 36 },
   emptyTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 21 },
