@@ -31,11 +31,15 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
   const [certVet, setCertVet]           = useState<FileEntry | null>(null);
 
   // On web, blob: URIs from the picker can be revoked by the time we submit.
-  // We fetch and cache the blob immediately at pick time.
+  // We fetch and cache the blob immediately at pick time, with an AbortController timeout.
   const captureBlob = async (uri: string): Promise<Blob | undefined> => {
     if (Platform.OS !== 'web') return undefined;
     try {
-      const res = await fetch(uri);
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 8000);
+      const res = await fetch(uri, { signal: controller.signal });
+      clearTimeout(timer);
+      if (!res.ok) return undefined;
       return await res.blob();
     } catch {
       return undefined;
@@ -95,31 +99,39 @@ export function HostOnboardingScreen({ onClose }: { onClose?: () => void } = {})
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('No autenticado');
 
-    // Use pre-fetched blob (web) or fetch now (native)
     let blob: Blob;
     if (file.blob) {
+      // Pre-fetched at pick time — always use this on web
       blob = file.blob;
+    } else if (Platform.OS === 'web') {
+      // On web the blob must have been captured at pick time.
+      // If it's missing the URI has already expired — don't hang trying to re-fetch it.
+      throw new Error(`El archivo "${folder}" ya no está disponible. Selecciónalo de nuevo e intenta enviar.`);
     } else {
+      // Native: local file URI is always valid
       const response = await fetch(file.uri);
-      if (!response.ok) throw new Error(`No se pudo leer el archivo: ${response.status}`);
+      if (!response.ok) throw new Error(`No se pudo leer el archivo (${response.status})`);
       blob = await response.blob();
     }
 
-    // Sanitize file name and detect MIME type
     const rawExt = (file.name.split('.').pop() ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
     const ext = rawExt || 'jpg';
-    const mimeType = (blob.type && blob.type !== 'application/octet-stream')
+    const mimeType = (blob.type && blob.type !== 'application/octet-stream' && blob.type !== '')
       ? blob.type
       : (MIME_BY_EXT[ext] ?? 'image/jpeg');
 
     const safeName = `${folder}-${Date.now()}.${ext}`;
     const path = `${user.id}/kyc/${safeName}`;
 
-    const { error } = await supabase.storage
-      .from('kyc-docs')
-      .upload(path, blob, { contentType: mimeType, upsert: true });
+    // 30-second timeout so the button never hangs forever
+    const uploadResult = await Promise.race([
+      supabase.storage.from('kyc-docs').upload(path, blob, { contentType: mimeType, upsert: true }),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error('Tiempo agotado al subir el archivo. Verifica tu conexión.')), 30000)
+      ),
+    ]);
 
-    if (error) throw new Error(`Error subiendo ${folder}: ${error.message}`);
+    if (uploadResult.error) throw new Error(`Error subiendo ${folder}: ${uploadResult.error.message}`);
     return supabase.storage.from('kyc-docs').getPublicUrl(path).data.publicUrl;
   };
 
