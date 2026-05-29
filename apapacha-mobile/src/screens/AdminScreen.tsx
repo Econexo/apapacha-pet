@@ -74,7 +74,7 @@ interface Application {
   applicant_id: string;
   service_type: string;
   status: string;
-  submitted_at: string;
+  submitted_at: string | null;
   welcome_email_sent: boolean;
   profiles: { full_name: string; last_name: string | null } | null;
 }
@@ -239,8 +239,8 @@ export function AdminScreen() {
   async function loadApplications() {
     const { data, error } = await supabase
       .from('host_applications')
-      .select('id, applicant_id, service_type, status, submitted_at, welcome_email_sent')
-      .order('submitted_at', { ascending: false, nullsFirst: false });
+      .select('*')
+      .order('id', { ascending: false });
     if (error) { console.error('[Admin] loadApplications:', error.message); return; }
     const apps = data ?? [];
     if (apps.length === 0) { setApplications([]); return; }
@@ -743,7 +743,7 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
                         <Ionicons name="time-outline" size={16} color={colors.warning} style={{ marginRight: 10, marginTop: 1 }} />
                         <View style={{ flex: 1 }}>
                           <Text style={styles.expandRowName}>{a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}</Text>
-                          <Text style={styles.expandRowMeta}>{a.service_type} · {new Date(a.submitted_at).toLocaleDateString('es-CL')}</Text>
+                          <Text style={styles.expandRowMeta}>{a.service_type} · {a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('es-CL') : '—'}</Text>
                         </View>
                       </View>
                     ))
@@ -1040,7 +1040,7 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
             {a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}
           </Text>
           <Text style={styles.cardMeta}>
-            Tipo: {a.service_type} · {new Date(a.submitted_at).toLocaleDateString('es-CL')}
+            Tipo: {a.service_type} · {a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('es-CL') : '—'}
           </Text>
           <View style={styles.cardActions}>
             <TouchableOpacity
@@ -1071,7 +1071,7 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
               </Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Ionicons name="checkmark-circle-outline" size={12} color={colors.accent} />
-                <Text style={styles.cardMeta}>{a.service_type} · aprobada · {new Date(a.submitted_at).toLocaleDateString('es-CL')}</Text>
+                <Text style={styles.cardMeta}>{a.service_type} · aprobada · {a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('es-CL') : '—'}</Text>
               </View>
             </View>
           ))}
@@ -1087,7 +1087,7 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
                 {a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}
               </Text>
               <Text style={styles.cardMeta}>
-                {a.service_type} · {new Date(a.submitted_at).toLocaleDateString('es-CL')}
+                {a.service_type} · {a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('es-CL') : '—'}
               </Text>
               <View style={styles.cardActions}>
                 <TouchableOpacity
