@@ -290,28 +290,36 @@ export function AdminScreen() {
     }
   }
 
-  async function approveApplication(id: string, userId: string, serviceType: string) {
-    const { error } = await supabase.rpc('approve_host', { target_user_id: userId });
-    if (error) { toast.error('Error', error.message); return; }
-    const { error: appErr } = await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
-    if (appErr) console.error('[Admin] approveApplication update:', appErr.message);
-
+  async function sendResultEmail(type: 'application_approved' | 'application_rejected', userId: string, serviceType: string, reason?: string) {
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await fetch(`${SUPABASE_FUNCTIONS_URL}/send-approval-email`, {
+      const { data: authUser } = await supabase.auth.admin.getUserById(userId);
+      const email = authUser?.user?.email;
+      if (!email) return;
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single();
+      const name = profile?.full_name ?? 'Postulante';
+      await fetch(`${SUPABASE_FUNCTIONS_URL}/send-email`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${session?.access_token}`,
           apikey: supabaseAnonKey,
         },
-        body: JSON.stringify({ applicant_id: userId, application_id: id, service_type: serviceType }),
+        body: JSON.stringify({ type, to: email, name, service_type: serviceType, reason }),
       });
-      toast.success('Cuidador aprobado', 'Se envió el correo de bienvenida con el contrato.');
-    } catch {
-      toast.success('Cuidador aprobado', 'No se pudo enviar el correo automáticamente.');
+    } catch (e) {
+      console.warn('[Admin] sendResultEmail error:', e);
     }
-    // Notify the approved applicant
+  }
+
+  async function approveApplication(id: string, userId: string, serviceType: string) {
+    const { error } = await supabase.rpc('approve_host', { target_user_id: userId });
+    if (error) { toast.error('Error', error.message); return; }
+    const { error: appErr } = await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
+    if (appErr) console.error('[Admin] approveApplication update:', appErr.message);
+
+    await sendResultEmail('application_approved', userId, serviceType);
+
     try {
       await insertNotification(
         userId,
@@ -321,16 +329,47 @@ export function AdminScreen() {
         { application_id: id },
       );
     } catch (e) { console.error('[Admin] notify applicant:', e); }
+
+    toast.success('Cuidador aprobado', 'Se notificó al postulante por correo y en la app.');
     loadApplications();
     loadStats();
   }
 
-  async function rejectApplication(id: string) {
-    const { error } = await supabase.from('host_applications').update({ status: 'rejected' }).eq('id', id);
-    if (error) { toast.error('Error', error.message); return; }
-    toast.info('Postulación rechazada', 'La postulación fue rechazada.');
-    loadApplications();
-    loadStats();
+  async function rejectApplication(id: string, userId: string, serviceType: string) {
+    const doReject = async (reason?: string) => {
+      const { error } = await supabase.from('host_applications')
+        .update({ status: 'rejected', rejection_reason: reason ?? null })
+        .eq('id', id);
+      if (error) { toast.error('Error', error.message); return; }
+      await sendResultEmail('application_rejected', userId, serviceType, reason);
+      try {
+        await insertNotification(
+          userId,
+          'application_rejected',
+          'Tu postulación no fue aprobada',
+          reason ?? 'Lamentablemente tu solicitud no pudo ser aprobada en esta oportunidad.',
+          { application_id: id },
+        );
+      } catch {}
+      toast.info('Postulación rechazada', 'Se notificó al postulante por correo y en la app.');
+      loadApplications();
+      loadStats();
+    };
+
+    if (Platform.OS === 'web') {
+      const reason = window.prompt('Motivo de rechazo (opcional):') ?? undefined;
+      await doReject(reason || undefined);
+    } else {
+      Alert.prompt(
+        'Rechazar postulación',
+        'Ingresa el motivo (opcional, se enviará al postulante):',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Rechazar', style: 'destructive', onPress: (reason) => doReject(reason || undefined) },
+        ],
+        'plain-text',
+      );
+    }
   }
 
   async function recoverApplication(id: string) {
@@ -1072,7 +1111,7 @@ function DocViewer({ url, label }: { url: string | null | undefined; label: stri
 function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
   applications: Application[];
   onApprove: (id: string, userId: string, serviceType: string) => void;
-  onReject: (id: string) => void;
+  onReject: (id: string, userId: string, serviceType: string) => void;
   onRecover: (id: string) => void;
 }) {
   const pending  = applications.filter(a => a.status === 'pending');
@@ -1121,7 +1160,7 @@ function ApplicationsTab({ applications, onApprove, onReject, onRecover }: {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, styles.actionBtnDanger]}
-                onPress={() => onReject(a.id)}
+                onPress={() => onReject(a.id, a.applicant_id, a.service_type)}
               >
                 <Ionicons name="close-outline" size={14} color={colors.danger} />
                 <Text style={styles.actionBtnText}>Rechazar</Text>
