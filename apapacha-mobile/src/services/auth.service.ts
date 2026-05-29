@@ -1,5 +1,6 @@
 import { supabase } from '../../supabase';
 import type { ServiceType } from '../types/database';
+import { insertNotificationsForAdmins } from './notifications.service';
 
 export async function signIn(email: string, password: string): Promise<void> {
   const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -57,4 +58,14 @@ export async function applyAsHost(data: {
     status: 'pending',
   });
   if (error) throw error;
+
+  try {
+    const typeLabel = data.service_type === 'space' ? 'Alojamiento' : 'Visita';
+    await insertNotificationsForAdmins(
+      'application_submitted',
+      'Nueva postulación de cuidador',
+      `Un usuario envió una solicitud de tipo ${typeLabel}. Revísala en el panel de postulaciones.`,
+      { applicant_id: data.userId, service_type: data.service_type },
+    );
+  } catch { /* notif errors must not block the main flow */ }
 }
