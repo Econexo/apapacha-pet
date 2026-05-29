@@ -51,6 +51,17 @@ export async function createBooking(bookingData: {
     }
   } catch (e) { console.error('[bookings] notify host:', e); }
 
+  // Notify admins
+  try {
+    const typeLabel = bookingData.service_type === 'space' ? 'Alojamiento' : 'Visita';
+    await insertNotificationsForAdmins(
+      'booking_created',
+      'Nueva reserva creada',
+      `Un cliente creó una reserva de ${typeLabel} para el ${bookingData.start_date}.`,
+      { booking_id: data.id },
+    );
+  } catch (e) { console.error('[bookings] notify admins booking_created:', e); }
+
   return data;
 }
 
