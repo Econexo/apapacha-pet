@@ -1,5 +1,6 @@
 import React from 'react';
 import { Modal } from 'react-native';
+import { ToastProvider } from './Toast';
 
 interface Props {
   visible: boolean;
@@ -15,7 +16,9 @@ export function OverlayModal({ visible, onClose, children }: Props) {
       onRequestClose={onClose}
       statusBarTranslucent
     >
-      {children}
+      <ToastProvider>
+        {children}
+      </ToastProvider>
     </Modal>
   );
 }
