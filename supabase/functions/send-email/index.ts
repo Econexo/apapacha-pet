@@ -96,7 +96,7 @@ function bookingConfirmHtml(name: string, serviceName: string, startDate: string
         <div class="step"><div class="step-n">2</div><p>Coordina los detalles de entrega desde la sección <strong>Mensajes</strong> de la app.</p></div>
         <div class="step"><div class="step-n">3</div><p>Al finalizar el servicio, califica la experiencia para ayudar a otros dueños.</p></div>
       </div>
-      <div class="cta-wrap"><a class="cta" href="${APP_URL}">Ver mi reserva →</a></div>
+      <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Ver mi reserva →</span></a></div>
     </div>`);
 }
 
