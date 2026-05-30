@@ -37,11 +37,11 @@ function baseLayout(content: string): string {
   .highlight{background:#F5EEFF;border-left:4px solid #6B35A0;border-radius:6px;padding:14px 18px;margin:18px 0}
   .highlight p{margin:4px 0;font-size:14px}
   .steps{background:#FAF7FD;border-radius:12px;padding:20px 20px 8px;margin:18px 0}
-  .step{display:flex;gap:12px;margin-bottom:14px;align-items:flex-start}
-  .step-n{background:#6B35A0;color:#fff;border-radius:50%;min-width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;margin-top:1px}
+  .step{display:flex;gap:12px;margin-bottom:14px;align-items:center}
+  .step-n{background:#6B35A0;color:#fff !important;border-radius:50%;min-width:24px;width:24px;height:24px;line-height:24px;text-align:center;font-size:12px;font-weight:800;display:inline-block;flex-shrink:0}
   .step p{margin:0;font-size:14px;color:#1A0A2E;line-height:1.5}
   .cta-wrap{text-align:center;margin:24px 0 8px}
-  .cta{background:#6B35A0;color:#fff;text-decoration:none;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;display:inline-block}
+  .cta{background:#6B35A0 !important;color:#fff !important;text-decoration:none !important;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;display:inline-block}
   .badge{display:inline-block;background:#F0FBF0;color:#1A4A1B;border:1px solid #B8E6B9;border-radius:20px;padding:4px 14px;font-size:12px;font-weight:700;margin-bottom:12px}
   .badge-warn{background:#FFFBEB;color:#92400E;border-color:#FDE68A}
   .badge-danger{background:#FEF2F2;color:#991B1B;border-color:#FECACA}
@@ -69,7 +69,7 @@ function welcomeHtml(name: string): string {
         <div class="step"><div class="step-n">2</div><p><strong>Explora cuidadores</strong> — encuentra alojamiento certificado o visitas domiciliarias cerca de ti.</p></div>
         <div class="step"><div class="step-n">3</div><p><strong>Reserva con confianza</strong> — todos nuestros cuidadores pasan por verificación de identidad y seguridad.</p></div>
       </div>
-      <div class="cta-wrap"><a class="cta" href="${APP_URL}">Ir a la App →</a></div>
+      <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Ir a la App →</span></a></div>
     </div>`);
 }
 
@@ -138,7 +138,7 @@ function applicationResultHtml(name: string, serviceType: string, approved: bool
           <div class="step"><div class="step-n">2</div><p><strong>Activa tu servicio</strong> — aparecerás en el listado de cuidadores disponibles.</p></div>
           <div class="step"><div class="step-n">3</div><p><strong>¡Recibe tu primera reserva!</strong> — los dueños de gatos podrán encontrarte en Explorar.</p></div>
         </div>
-        <div class="cta-wrap"><a class="cta" href="${APP_URL}">Ir a la App →</a></div>
+        <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Ir a la App →</span></a></div>
       </div>`);
   } else {
     return baseLayout(`
@@ -284,7 +284,12 @@ serve(async (req) => {
     // Database trigger path — no auth required (called server-side via pg_net)
     const trigger = req.headers.get('x-trigger-secret');
     if (trigger === Deno.env.get('TRIGGER_SECRET')) {
-      await handleTrigger(supabase, body);
+      // Direct payload (has 'to' field) — send immediately without DB lookup
+      if (body.to) {
+        await sendEmail(body as EmailPayload);
+      } else {
+        await handleTrigger(supabase, body);
+      }
       return new Response(JSON.stringify({ ok: true }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
