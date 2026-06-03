@@ -69,15 +69,22 @@ export function BookingsScreen() {
 
       const [spacesRes, visitersRes, reviewsRes] = await Promise.all([
         spaceIds.length
-          ? supabase.from('spaces').select('id, host_id, title, profiles(id, full_name, last_name)').in('id', spaceIds)
-          : Promise.resolve({ data: [] }),
+          ? supabase.from('spaces').select('id, host_id, title').in('id', spaceIds)
+          : Promise.resolve({ data: [] as any[] }),
         visiterIds.length
           ? supabase.from('visiters').select('id, host_id, name').in('id', visiterIds)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [] as any[] }),
         completedIds.length
           ? supabase.from('reviews').select('booking_id').in('booking_id', completedIds)
-          : Promise.resolve({ data: [] }),
+          : Promise.resolve({ data: [] as any[] }),
       ]);
+
+      // Separate profiles lookup — avoids ambiguous FK embed that can fail silently
+      const spaceHostIds = [...new Set((spacesRes.data ?? []).map((s: any) => s.host_id).filter(Boolean))];
+      const profilesRes = spaceHostIds.length
+        ? await supabase.from('profiles').select('id, full_name, last_name').in('id', spaceHostIds)
+        : { data: [] as any[] };
+      const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
 
       if (cancelled) return;
 
@@ -86,12 +93,13 @@ export function BookingsScreen() {
         if (b.service_type === 'space') {
           const sp = (spacesRes.data ?? []).find((s: any) => s.id === b.service_id);
           if (sp) {
-            const prof = sp.profiles as any;
-            hosts[b.id] = { id: prof?.id ?? sp.host_id, name: prof ? `${prof.full_name} ${prof.last_name ?? ''}`.trim() : 'Cuidador', serviceId: sp.id, serviceType: 'space', serviceName: sp.title };
+            const prof = profileMap.get(sp.host_id);
+            const name = prof ? `${prof.full_name ?? ''} ${prof.last_name ?? ''}`.trim() || 'Cuidador' : 'Cuidador';
+            hosts[b.id] = { id: sp.host_id, name, serviceId: sp.id, serviceType: 'space', serviceName: sp.title };
           }
         } else {
           const vi = (visitersRes.data ?? []).find((v: any) => v.id === b.service_id);
-          if (vi) hosts[b.id] = { id: vi.host_id, name: vi.name, serviceId: vi.id, serviceType: 'visiter', serviceName: vi.name };
+          if (vi) hosts[b.id] = { id: vi.host_id, name: vi.name ?? 'Cuidador', serviceId: vi.id, serviceType: 'visiter', serviceName: vi.name ?? 'Visita Básica' };
         }
       }
 
