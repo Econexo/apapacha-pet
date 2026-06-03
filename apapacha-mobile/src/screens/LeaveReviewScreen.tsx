@@ -31,7 +31,8 @@ interface Props {
   onClose?: () => void;
 }
 
-export function LeaveReviewScreen({ bookingId, hostId, hostName, onClose }: Props) {
+export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, onClose }: Props) {
+  const hostName = rawHostName || 'Cuidador';
   const navigation = useNavigation();
   const toast = useToast();
   const close = () => onClose ? onClose() : navigation.goBack();
