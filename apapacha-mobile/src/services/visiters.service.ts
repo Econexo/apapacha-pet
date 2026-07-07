@@ -1,6 +1,5 @@
 import { supabase } from '../../supabase';
 import type { Visiter } from '../types/database';
-import { insertNotificationsForAdmins } from './notifications.service';
 
 export async function uploadVisiterPhoto(localUri: string): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -110,14 +109,7 @@ export async function upsertMyVisiter(input: {
       .select()
       .single();
     if (error) throw error;
-    try {
-      await insertNotificationsForAdmins(
-        'service_published',
-        'Nuevo perfil de visita publicado',
-        `Un cuidador publicó un nuevo servicio de visita: "${input.name}".`,
-        { visiter_id: data.id },
-      );
-    } catch { /* notif errors must not block the main flow */ }
+    // La notificación a admins la emite el trigger DB trg_admin_new_visiter
     return data;
   }
 }
