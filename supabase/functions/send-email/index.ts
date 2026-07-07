@@ -69,6 +69,11 @@ function welcomeHtml(name: string): string {
         <div class="step"><div class="step-n">2</div><p><strong>Explora cuidadores</strong> — encuentra alojamiento certificado o visitas domiciliarias cerca de ti.</p></div>
         <div class="step"><div class="step-n">3</div><p><strong>Reserva con confianza</strong> — todos nuestros cuidadores pasan por verificación de identidad y seguridad.</p></div>
       </div>
+      <div class="highlight">
+        <p style="font-weight:800;color:#6B35A0">🛡️ Malla de Seguro Zero Trust</p>
+        <p>Cada reserva incluye una <strong>cobertura veterinaria</strong> que protege a tu gato durante todo el servicio. Si ocurre una emergencia de salud mientras está al cuidado, respaldamos la atención veterinaria hasta el límite de la póliza.</p>
+        <p>Se cobra por separado del cuidador porque <strong>no es parte de su tarifa</strong>: ApapachaPet contrata esta protección directamente por cada reserva, así el 100% de ese monto va al respaldo de tu mascota.</p>
+      </div>
       <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Ir a la App →</span></a></div>
     </div>`);
 }
