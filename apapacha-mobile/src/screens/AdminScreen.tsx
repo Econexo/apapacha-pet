@@ -365,7 +365,7 @@ export function AdminScreen() {
         'Ingresa el motivo (opcional, se enviará al postulante):',
         [
           { text: 'Cancelar', style: 'cancel' },
-          { text: 'Rechazar', style: 'destructive', onPress: (reason) => doReject(reason || undefined) },
+          { text: 'Rechazar', style: 'destructive', onPress: (reason?: string) => doReject(reason || undefined) },
         ],
         'plain-text',
       );
