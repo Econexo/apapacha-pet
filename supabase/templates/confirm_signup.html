@@ -1,0 +1,53 @@
+<!--
+  Plantilla del correo de CONFIRMACIÓN DE REGISTRO (Supabase Auth).
+  Este es el correo genérico que llega JUSTO al registrarse.
+
+  Cómo aplicarla:
+    Supabase Dashboard → Authentication → Emails → Templates → "Confirm signup"
+    - Subject:  Confirma tu cuenta en ApapachaPet 🐾
+    - Message body: pega TODO el HTML de abajo (desde <!DOCTYPE html>).
+
+  Variable de Supabase disponible: {{ .ConfirmationURL }}
+-->
+<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  body{margin:0;padding:0;background:#FAF7FD;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+  .wrap{max-width:600px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(107,53,160,.10)}
+  .hero{background:linear-gradient(135deg,#6B35A0,#B57BCC);padding:40px 32px;text-align:center;color:#fff}
+  .hero-icon{font-size:52px;margin-bottom:12px}
+  .hero h1{margin:0 0 6px;font-size:22px;font-weight:800}
+  .hero p{margin:0;opacity:.88;font-size:14px}
+  .body{padding:32px}
+  .body p{color:#1A0A2E;line-height:1.65;font-size:15px;margin:0 0 14px}
+  .highlight{background:#F5EEFF;border-left:4px solid #6B35A0;border-radius:6px;padding:14px 18px;margin:18px 0}
+  .highlight p{margin:4px 0;font-size:14px}
+  .cta-wrap{text-align:center;margin:24px 0 8px}
+  .cta{background:#6B35A0 !important;color:#fff !important;text-decoration:none !important;padding:14px 32px;border-radius:10px;font-weight:800;font-size:15px;display:inline-block}
+  .muted{font-size:12px;color:#7B6B8D;word-break:break-all}
+  .footer{padding:20px 32px;border-top:1px solid #E8D5F5;font-size:12px;color:#7B6B8D;text-align:center;line-height:1.6}
+</style></head>
+<body><div class="wrap">
+  <div class="hero">
+    <div class="hero-icon">🐾</div>
+    <h1>¡Bienvenido/a a ApapachaPet!</h1>
+    <p>Confirma tu correo para activar tu cuenta</p>
+  </div>
+  <div class="body">
+    <p>Gracias por registrarte en <strong>ApapachaPet</strong>, la comunidad que conecta a dueños de gatos con cuidadores verificados. Solo falta un paso: confirma tu correo.</p>
+    <div class="cta-wrap"><a class="cta" href="{{ .ConfirmationURL }}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Confirmar mi cuenta →</span></a></div>
+    <div class="highlight">
+      <p style="font-weight:800;color:#6B35A0">🛡️ Reservas protegidas: Malla de Seguro Zero Trust</p>
+      <p>Cada reserva en ApapachaPet incluye una <strong>cobertura veterinaria</strong> que respalda la salud de tu gato durante el servicio. Se cobra por separado del cuidador porque es una protección que contratamos directamente por cada reserva — así el 100% de ese monto va al respaldo de tu mascota.</p>
+    </div>
+    <p style="font-size:13px;color:#7B6B8D">Si el botón no funciona, copia y pega este enlace en tu navegador:</p>
+    <p class="muted">{{ .ConfirmationURL }}</p>
+    <p style="font-size:13px;color:#7B6B8D">Si no creaste esta cuenta, puedes ignorar este correo.</p>
+  </div>
+  <div class="footer">
+    ApapachaPet SpA · Santiago, Chile 🐾<br>
+    <a href="https://apapacha-mobile.vercel.app" style="color:#6B35A0">apapacha-mobile.vercel.app</a> ·
+    <a href="mailto:apapachapet.app@gmail.com" style="color:#6B35A0">apapachapet.app@gmail.com</a>
+  </div>
+</div></body></html>
