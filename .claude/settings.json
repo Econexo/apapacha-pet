@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(supabase secrets *)",
+      "Read(//Users/sebastian/**)"
+    ]
+  }
+}
