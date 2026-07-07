@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -17,12 +17,28 @@ export function ClientVerificationScreen() {
   const navigation = useNavigation<Nav>();
   const { refreshProfile } = useAuth();
   const toast = useToast();
+  const scrollRef = useRef<ScrollView>(null);
   const [agreementSigned, setAgreementSigned] = useState(false);
-  const [docScanned, setDocScanned] = useState(false);
+  const [docFront, setDocFront] = useState(false);
+  const [docBack, setDocBack] = useState(false);
+  const [scanningSide, setScanningSide] = useState<null | 'front' | 'back'>(null);
   const [bioVerified, setBioVerified] = useState(false);
-  const [scanning, setScanning] = useState(false);
+  const [finishing, setFinishing] = useState(false);
 
-  const pickFromLibrary = async () => {
+  const docScanned = docFront && docBack;
+
+  // Auto-scroll to agreement section once biometric is done
+  useEffect(() => {
+    if (bioVerified) {
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 300);
+    }
+  }, [bioVerified]);
+
+  const markSide = (side: 'front' | 'back') => {
+    (side === 'front' ? setDocFront : setDocBack)(true);
+  };
+
+  const pickFromLibrary = async (side: 'front' | 'back') => {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
@@ -34,55 +50,76 @@ export function ClientVerificationScreen() {
       mediaTypes: ['images'] as ImagePicker.MediaType[],
       quality: 0.8,
     });
-    if (!result.canceled) setDocScanned(true);
+    if (!result.canceled) markSide(side);
   };
 
-  const pickFromCamera = async () => {
+  const pickFromCamera = async (side: 'front' | 'back') => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
       toast.warning('Permiso requerido', 'Necesitamos acceso a la cámara.');
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!result.canceled) setDocScanned(true);
+    if (!result.canceled) markSide(side);
   };
 
-  const handleScanDoc = async () => {
-    setScanning(true);
-    try {
-      if (Platform.OS === 'web') {
-        await pickFromLibrary();
-      } else {
-        Alert.alert('Escanear documento', 'Elige cómo subir tu documento', [
-          { text: 'Cámara', onPress: pickFromCamera },
-          { text: 'Galería', onPress: pickFromLibrary },
-          { text: 'Cancelar', style: 'cancel' },
-        ]);
-      }
-    } finally {
-      setScanning(false);
+  const handleScanDoc = async (side: 'front' | 'back') => {
+    const label = side === 'front' ? 'FRENTE' : 'REVERSO';
+    if (Platform.OS === 'web') {
+      setScanningSide(side);
+      await pickFromLibrary(side);
+      setScanningSide(null);
+    } else {
+      // Alert.alert is non-blocking on native — manage scanning state inside each callback
+      Alert.alert(`Escanear ${label}`, `Sube el ${label.toLowerCase()} de tu cédula`, [
+        {
+          text: 'Cámara', onPress: async () => {
+            setScanningSide(side);
+            await pickFromCamera(side);
+            setScanningSide(null);
+          },
+        },
+        {
+          text: 'Galería', onPress: async () => {
+            setScanningSide(side);
+            await pickFromLibrary(side);
+            setScanningSide(null);
+          },
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
     }
   };
 
   const handleBiometry = () => {
-    Alert.alert(
-      'Verificación Biométrica',
-      'La verificación biométrica completa estará disponible en la app nativa. Por ahora tu identidad se validará manualmente en 24 hrs.',
-      [{ text: 'Entendido', onPress: () => setBioVerified(true) }]
-    );
+    if (Platform.OS === 'web') {
+      // window.alert onPress callbacks are unreliable in some browser environments
+      setBioVerified(true);
+      toast.info('Identidad registrada', 'Tu identidad se validará manualmente en 24 hrs.');
+    } else {
+      Alert.alert(
+        'Verificación Biométrica',
+        'La verificación biométrica completa estará disponible en la app nativa. Por ahora tu identidad se validará manualmente en 24 hrs.',
+        [{ text: 'Entendido', onPress: () => setBioVerified(true) }]
+      );
+    }
   };
 
   const handleFinish = async () => {
     if (!agreementSigned) {
-      toast.warning('Firma Requerida', 'Debes aceptar la declaración de Zero Trust para continuar.');
+      toast.warning('Firma Requerida', 'Acepta la declaración jurada en el paso 3 para continuar.');
+      scrollRef.current?.scrollToEnd({ animated: true });
       return;
     }
+    setFinishing(true);
     try {
       await completeKyc();
       await refreshProfile();
-      navigation.navigate('MainTabs');
+      navigation.replace('MainTabs');
     } catch (e: any) {
       toast.error('Error', e.message ?? 'No se pudo completar la verificación');
+    } finally {
+      setFinishing(false);
     }
   };
 
@@ -92,24 +129,41 @@ export function ClientVerificationScreen() {
         <View />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll}>
+      <ScrollView ref={scrollRef} contentContainerStyle={styles.scroll}>
         <Text style={styles.title}>Protegemos tu entorno</Text>
         <Text style={styles.subtitle}>En ApapachaPet aplicamos un modelo estricto de Zero Trust. Validaremos tu identidad antes de que confíes la de tu mascota.</Text>
 
         <View style={styles.securityModule}>
           <Text style={styles.moduleTitle}>1. Documento de Identidad (DNI/Pasaporte)</Text>
-          <Text style={styles.moduleText}>Escanea el código QR de tu cédula o toma una fotografía nítida del frente y reverso.</Text>
-          {docScanned ? (
-            <View style={styles.doneRow}>
-              <Text style={styles.doneText}>✅ Documento escaneado correctamente</Text>
+          <Text style={styles.moduleText}>Toma una fotografía nítida del <Text style={{ fontWeight: '800' }}>frente</Text> y del <Text style={{ fontWeight: '800' }}>reverso</Text> de tu cédula. Debes subir ambos lados.</Text>
+          <View style={styles.docSlotsRow}>
+            {(['front', 'back'] as const).map((side) => {
+              const done = side === 'front' ? docFront : docBack;
+              const label = side === 'front' ? 'Frente' : 'Reverso';
+              return done ? (
+                <View key={side} style={[styles.docSlot, styles.docSlotDone]}>
+                  <Text style={styles.docSlotDoneText}>✅ {label}</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  key={side}
+                  style={styles.docSlot}
+                  onPress={() => handleScanDoc(side)}
+                  disabled={scanningSide !== null}
+                  activeOpacity={0.8}
+                >
+                  {scanningSide === side
+                    ? <ActivityIndicator color={colors.primaryDark} size="small" />
+                    : <Text style={styles.actionBtnText}>📸 {label}</Text>
+                  }
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+          {docScanned && (
+            <View style={[styles.doneRow, { marginTop: 12 }]}>
+              <Text style={styles.doneText}>✅ Documento completo (frente y reverso)</Text>
             </View>
-          ) : (
-            <TouchableOpacity style={styles.actionBtn} onPress={handleScanDoc} disabled={scanning} activeOpacity={0.8}>
-              {scanning
-                ? <ActivityIndicator color={colors.primaryDark} size="small" />
-                : <Text style={styles.actionBtnText}>📸 Escanear Documento</Text>
-              }
-            </TouchableOpacity>
           )}
         </View>
 
@@ -144,14 +198,21 @@ export function ClientVerificationScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
+        {!agreementSigned && (
+          <Text style={styles.footerHint}>Acepta la declaración jurada (paso 3) para continuar</Text>
+        )}
         <TouchableOpacity
-          style={[styles.submitBtn, !agreementSigned && styles.submitBtnDisabled]}
+          style={[styles.submitBtn, (!agreementSigned || finishing) && styles.submitBtnDisabled]}
           onPress={handleFinish}
+          disabled={finishing}
           activeOpacity={0.8}
         >
-          <Text style={[styles.submitBtnText, !agreementSigned && styles.submitBtnTextDisabled]}>
-            Validar Identidad y Explorar
-          </Text>
+          {finishing
+            ? <ActivityIndicator color={colors.surface} />
+            : <Text style={[styles.submitBtnText, !agreementSigned && styles.submitBtnTextDisabled]}>
+                Validar Identidad y Explorar
+              </Text>
+          }
         </TouchableOpacity>
       </View>
     </SafeAreaView>
@@ -169,6 +230,10 @@ const styles = StyleSheet.create({
   moduleText: { fontSize: 14, color: colors.textMuted, lineHeight: 20, marginBottom: 16 },
   actionBtn: { backgroundColor: `${colors.primary}15`, paddingVertical: 14, borderRadius: 10, alignItems: 'center' },
   actionBtnText: { color: colors.primaryDark, fontWeight: '800', fontSize: 14 },
+  docSlotsRow: { flexDirection: 'row', gap: 12 },
+  docSlot: { flex: 1, backgroundColor: `${colors.primary}15`, paddingVertical: 16, borderRadius: 10, alignItems: 'center', justifyContent: 'center', minHeight: 52 },
+  docSlotDone: { backgroundColor: colors.successBg, borderWidth: 1, borderColor: colors.successBorder },
+  docSlotDoneText: { color: colors.successText, fontWeight: '800', fontSize: 14 },
   agreementModule: { backgroundColor: colors.successBg, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.successBorder, marginBottom: 16, marginTop: 8 },
   agreementTitle: { fontSize: 16, fontWeight: '800', color: colors.successText, marginBottom: 8 },
   agreementText: { fontSize: 13, color: colors.successTextDark, lineHeight: 18, marginBottom: 16 },
@@ -178,7 +243,8 @@ const styles = StyleSheet.create({
   checkboxChecked: { backgroundColor: colors.primary, borderColor: colors.primary },
   checkIcon: { color: colors.surface, fontSize: 14, fontWeight: '900' },
   checkboxText: { fontSize: 15, fontWeight: '700', color: colors.textMain },
-  footer: { backgroundColor: colors.surface, padding: 20, borderTopWidth: 1, borderTopColor: colors.border },
+  footer: { backgroundColor: colors.surface, paddingHorizontal: 20, paddingTop: 12, paddingBottom: 20, borderTopWidth: 1, borderTopColor: colors.border },
+  footerHint: { fontSize: 12, color: colors.textMuted, textAlign: 'center', marginBottom: 10 },
   submitBtn: { backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.1, shadowRadius: 4 },
   submitBtnDisabled: { backgroundColor: colors.border, elevation: 0 },
   submitBtnText: { color: colors.surface, fontWeight: '800', fontSize: 16 },
