@@ -1,6 +1,6 @@
 import { supabase } from '../../supabase';
 import type { Booking, BookingStatus, ServiceType } from '../types/database';
-import { insertNotification, insertNotificationsForAdmins } from './notifications.service';
+import { insertNotification } from './notifications.service';
 
 export async function getMyBookings(): Promise<Booking[]> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -51,16 +51,7 @@ export async function createBooking(bookingData: {
     }
   } catch (e) { console.error('[bookings] notify host:', e); }
 
-  // Notify admins
-  try {
-    const typeLabel = bookingData.service_type === 'space' ? 'Alojamiento' : 'Visita';
-    await insertNotificationsForAdmins(
-      'booking_created',
-      'Nueva reserva creada',
-      `Un cliente creó una reserva de ${typeLabel} para el ${bookingData.start_date}.`,
-      { booking_id: data.id },
-    );
-  } catch (e) { console.error('[bookings] notify admins booking_created:', e); }
+  // La notificación a admins la emite el trigger DB trg_admin_new_booking
 
   return data;
 }
@@ -99,15 +90,7 @@ export async function submitPaymentReceipt(bookingId: string, localUri: string):
     .eq('owner_id', user.id);
   if (error) throw error;
 
-  // Notify all admins
-  try {
-    await insertNotificationsForAdmins(
-      'receipt_submitted',
-      'Comprobante de pago recibido',
-      'Un cliente subió un comprobante de transferencia. Revísalo en el panel de pagos.',
-      { booking_id: bookingId },
-    );
-  } catch (e) { console.error('[bookings] notify admins:', e); }
+  // La notificación a admins la emite el trigger DB trg_admin_receipt_submitted
 }
 
 export async function cancelBooking(bookingId: string): Promise<void> {
