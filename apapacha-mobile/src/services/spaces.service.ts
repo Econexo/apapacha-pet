@@ -1,6 +1,5 @@
 import { supabase } from '../../supabase';
 import type { Space } from '../types/database';
-import { insertNotificationsForAdmins } from './notifications.service';
 
 export async function uploadSpacePhoto(localUri: string): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -99,14 +98,7 @@ export async function upsertMySpace(input: {
       .select()
       .single();
     if (error) throw error;
-    try {
-      await insertNotificationsForAdmins(
-        'service_published',
-        'Nuevo espacio publicado',
-        `Un cuidador publicó un nuevo alojamiento: "${input.title}".`,
-        { space_id: data.id },
-      );
-    } catch { /* notif errors must not block the main flow */ }
+    // La notificación a admins la emite el trigger DB trg_admin_new_space
     return data;
   }
 }
