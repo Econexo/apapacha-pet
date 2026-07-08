@@ -4,6 +4,7 @@ import {
   ActivityIndicator, Dimensions, Alert, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
@@ -11,6 +12,7 @@ import { radii, shadows, label } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking, Space, Visiter } from '../types/database';
 import { getMyHostBookings } from '../services/host.service';
+import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import { getMySpace } from '../services/spaces.service';
 import { getMyVisiters, deleteMyVisiter } from '../services/visiters.service';
@@ -48,6 +50,8 @@ export function HostDashboardScreen() {
   const [myVisiters, setMyVisiters] = useState<Visiter[]>([]);
   const [loading, setLoading]   = useState(true);
   const [manageModal, setManageModal] = useState<{ type: 'space' | 'visiter'; serviceId?: string } | null>(null);
+  const [clientMap, setClientMap] = useState<Record<string, string>>({});
+  const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
 
   const reload = async () => {
     if (!hostId) { setLoading(false); return; }
@@ -68,6 +72,19 @@ export function HostDashboardScreen() {
     setMySpace(sp);
     setMyVisiters(vi);
     setLoading(false);
+
+    // Nombres de clientes + reservas que ya reseñé (para "Calificar cliente")
+    const ownerIds = [...new Set(b.filter(bk => bk.status === 'completed').map(bk => bk.owner_id).filter(Boolean))];
+    const [ownersRes, myReviewsRes] = await Promise.all([
+      ownerIds.length
+        ? supabase.from('profiles').select('id, full_name, last_name').in('id', ownerIds)
+        : Promise.resolve({ data: [] as any[] }),
+      supabase.from('reviews').select('booking_id').eq('reviewer_id', hostId),
+    ]);
+    const cMap: Record<string, string> = {};
+    for (const p of (ownersRes.data ?? [])) cMap[p.id] = `${p.full_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Cliente';
+    setClientMap(cMap);
+    setReviewedIds(new Set((myReviewsRes.data ?? []).map((r: any) => r.booking_id)));
   };
 
   useEffect(() => { reload(); }, [hostId]);
@@ -131,7 +148,7 @@ export function HostDashboardScreen() {
           {tab === 'servicios'   && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} onManageService={setManageModal} />}
           {tab === 'resumen'     && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} onManageService={setManageModal} />}
           {tab === 'solicitudes' && <TabSolicitudes bookings={activeBookings} navigation={navigation} onReload={reload} />}
-          {tab === 'historial'   && <TabHistorial completedBookings={completedBookings} />}
+          {tab === 'historial'   && <TabHistorial completedBookings={completedBookings} clientMap={clientMap} reviewedIds={reviewedIds} navigation={navigation} />}
           {tab === 'ganancias'   && <TabGanancias earnings={earnings} />}
           {tab === 'resenas'     && <TabResenas   reviews={reviews} />}
         </ScrollView>
@@ -687,7 +704,12 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
 
 /* ─── TAB: HISTORIAL (solo completadas) ────────────────────────────────────── */
 
-function TabHistorial({ completedBookings }: { completedBookings: Booking[] }) {
+function TabHistorial({ completedBookings, clientMap, reviewedIds, navigation }: {
+  completedBookings: Booking[];
+  clientMap: Record<string, string>;
+  reviewedIds: Set<string>;
+  navigation: Nav;
+}) {
   if (completedBookings.length === 0) {
     return (
       <View style={styles.emptyState}>
@@ -719,6 +741,29 @@ function TabHistorial({ completedBookings }: { completedBookings: Booking[] }) {
             <View style={styles.histFooter}>
               <Text style={styles.histPrice}>{fmt(b.total_price)}</Text>
               <Text style={styles.histPaid}>{b.payment_status === 'paid' ? '💰 Pagado' : '⏳ Pago pendiente'}</Text>
+            </View>
+            <View style={styles.histClientRow}>
+              <Text style={styles.histClientName} numberOfLines={1}>👤 {clientMap[b.owner_id] ?? 'Cliente'}</Text>
+              {reviewedIds.has(b.id) ? (
+                <View style={styles.histReviewedTag}>
+                  <Ionicons name="checkmark-circle" size={14} color={colors.successText} />
+                  <Text style={styles.histReviewedText}>Calificado</Text>
+                </View>
+              ) : (
+                <TouchableOpacity
+                  style={styles.histRateBtn}
+                  onPress={() => navigation.navigate('LeaveReview', {
+                    bookingId: b.id,
+                    hostId: b.owner_id,
+                    hostName: clientMap[b.owner_id] ?? 'Cliente',
+                    variant: 'client',
+                  })}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="star-outline" size={14} color={colors.primary} />
+                  <Text style={styles.histRateText}>Calificar cliente</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         );
@@ -911,6 +956,12 @@ const styles = StyleSheet.create({
   histFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   histPrice: { fontSize: 16, fontWeight: '800', color: colors.textMain },
   histPaid: { fontSize: 13, color: colors.textMuted },
+  histClientRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.border, gap: 8 },
+  histClientName: { fontSize: 13, color: colors.textMuted, fontWeight: '600', flexShrink: 1 },
+  histRateBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: colors.primaryLight, borderRadius: radii.full, paddingHorizontal: 12, paddingVertical: 7 },
+  histRateText: { fontSize: 12, fontWeight: '800', color: colors.primary },
+  histReviewedTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.successBg, borderRadius: radii.full, paddingHorizontal: 12, paddingVertical: 7 },
+  histReviewedText: { fontSize: 12, fontWeight: '700', color: colors.successText },
   histDuracion: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   durationPill: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   durationPillText: { fontSize: 11, color: colors.primaryDark, fontWeight: '700' },
