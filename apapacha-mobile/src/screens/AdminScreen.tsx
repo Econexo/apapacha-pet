@@ -382,9 +382,18 @@ export function AdminScreen() {
   }
 
   async function toggleAdmin(userId: string, current: boolean) {
-    const { error } = await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId);
-    if (error) { toast.error('Error', error.message); return; }
-    loadUsers();
+    const doIt = async () => {
+      const { error } = await supabase.from('profiles').update({ is_admin: !current }).eq('id', userId);
+      if (error) { toast.error('Error', error.message); return; }
+      toast.success('Listo', current ? 'Permisos de admin retirados' : 'Usuario ahora es admin');
+      loadUsers();
+    };
+    const msg = current ? '¿Quitar permisos de admin a este usuario?' : '¿Dar permisos de admin a este usuario?';
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(msg)) await doIt();
+    } else {
+      Alert.alert('Confirmar', msg, [{ text: 'Cancelar', style: 'cancel' }, { text: 'Confirmar', onPress: doIt }]);
+    }
   }
 
   async function updateKycStatus(userId: string, status: string) {
@@ -627,208 +636,170 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
   onToggleVisiter: (id: string, current: boolean) => void;
   onDeleteVisiter: (id: string, name: string) => void;
 }) {
-  const [expanded, setExpanded] = useState<CardKey | null>(null);
+  const [servicesOpen, setServicesOpen] = useState(false);
 
   if (!stats) return null;
 
-  const toggle = (key: CardKey) => setExpanded(prev => prev === key ? null : key);
-
   const activeBookings = bookings.filter(b => b.status === 'active');
-  const pendingApps = applications.filter(a => a.status === 'pending');
 
-  const cards: { key: CardKey; label: string; value: number; icon: IoniconName; color: string }[] = [
-    { key: 'users',    label: 'Usuarios',   value: stats.totalUsers,          icon: 'people-outline',           color: colors.primary  },
-    { key: 'spaces',   label: 'Espacios',   value: stats.totalSpaces,         icon: 'home-outline',             color: colors.accent   },
-    { key: 'visiters', label: 'Visiters',   value: stats.totalVisitors,       icon: 'paw-outline',              color: colors.lilac    },
-    { key: 'bookings', label: 'Reservas',   value: stats.totalBookings,       icon: 'calendar-outline',         color: colors.info     },
-    { key: 'active',   label: 'Activas',    value: stats.activeBookings,      icon: 'checkmark-circle-outline', color: colors.success  },
-    { key: 'pending',  label: 'Pendientes', value: stats.pendingApplications, icon: 'time-outline',             color: colors.warning  },
+  // ── KPIs de navegación (sin duplicar: cada uno salta a su pestaña) ──
+  const kpis: { label: string; value: number; icon: IoniconName; color: string; tab?: Tab }[] = [
+    { label: 'Usuarios',        value: stats.totalUsers,          icon: 'people-outline',   color: colors.primary, tab: 'users' },
+    { label: 'Reservas',        value: stats.totalBookings,       icon: 'calendar-outline', color: colors.info,    tab: 'bookings' },
+    { label: 'Activas',         value: stats.activeBookings,      icon: 'flash-outline',    color: colors.success, tab: 'bookings' },
+    { label: 'Postul. pend.',   value: stats.pendingApplications, icon: 'time-outline',     color: colors.warning, tab: 'applications' },
   ];
+
+  // ── Ingresos (según reservas cargadas: activas + completadas) ──
+  const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  const now = new Date();
+  const thisMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+  const paidBookings = bookings.filter(b => b.status === 'active' || b.status === 'completed');
+  const revenue = paidBookings.reduce((s, b) => s + (b.total_price || 0), 0);
+  const monthRevenue = paidBookings
+    .filter(b => { const d = new Date(b.created_at); return `${d.getFullYear()}-${d.getMonth()}` === thisMonthKey; })
+    .reduce((s, b) => s + (b.total_price || 0), 0);
+
+  // ── Serie mensual de reservas (últimos 6 meses) ──
+  const monthly: { key: string; month: string; count: number }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    monthly.push({ key: `${d.getFullYear()}-${d.getMonth()}`, month: MONTHS[d.getMonth()], count: 0 });
+  }
+  const mIdx = new Map(monthly.map((m, i) => [m.key, i]));
+  for (const b of bookings) {
+    const d = new Date(b.created_at);
+    const idx = mIdx.get(`${d.getFullYear()}-${d.getMonth()}`);
+    if (idx !== undefined) monthly[idx].count++;
+  }
+  const maxMonthly = Math.max(1, ...monthly.map(m => m.count));
+
+  // ── Desglose por estado ──
+  const statusOrder = ['pending', 'active', 'completed', 'cancelled'];
+  const statusLabel: Record<string, string> = { pending: 'Pendientes', active: 'Activas', completed: 'Completadas', cancelled: 'Canceladas' };
+  const statusCounts: Record<string, number> = {};
+  for (const b of bookings) statusCounts[b.status] = (statusCounts[b.status] ?? 0) + 1;
+  const statusTotal = bookings.length || 1;
+
+  const fmt$ = (n: number) => `$${n.toLocaleString('es-CL')}`;
 
   return (
     <View>
-      <Text style={styles.sectionTitle}>Resumen General</Text>
+      {/* ── Ingresos (hero) ── */}
+      <View style={styles.revenueCard}>
+        <View style={styles.revenueTop}>
+          <View>
+            <Text style={styles.revenueLabel}>Ingresos (reservas confirmadas)</Text>
+            <Text style={styles.revenueValue}>{fmt$(revenue)}</Text>
+          </View>
+          <View style={styles.revenueIconBox}><Ionicons name="cash-outline" size={26} color="#fff" /></View>
+        </View>
+        <View style={styles.revenueChips}>
+          <View style={styles.revenueChip}><Text style={styles.revenueChipText}>{fmt$(monthRevenue)} este mes</Text></View>
+          <View style={styles.revenueChip}><Text style={styles.revenueChipText}>{activeBookings.length} activas ahora</Text></View>
+        </View>
+      </View>
 
-      {/* 2-col stat grid */}
+      {/* ── KPIs (navegan a su pestaña) ── */}
       <View style={styles.statsGrid}>
-        {cards.map(c => (
-          <TouchableOpacity key={c.key} style={[styles.statCard, { borderTopColor: c.color }]} onPress={() => toggle(c.key)} activeOpacity={0.8}>
-            <View style={[styles.statIconBox, { backgroundColor: `${c.color}18` }]}>
-              <Ionicons name={c.icon} size={20} color={c.color} />
+        {kpis.map(k => (
+          <TouchableOpacity key={k.label} style={[styles.statCard, { borderTopColor: k.color }]} onPress={() => k.tab && onTabChange(k.tab)} activeOpacity={0.8}>
+            <View style={[styles.statIconBox, { backgroundColor: `${k.color}18` }]}>
+              <Ionicons name={k.icon} size={20} color={k.color} />
             </View>
-            <Text style={[styles.statValue, { color: c.color }]}>{c.value}</Text>
-            <Text style={styles.statLabel}>{c.label}</Text>
-            <Ionicons name={expanded === c.key ? 'chevron-up' : 'chevron-down'} size={12} color={colors.textMuted} style={{ marginTop: 4 }} />
+            <Text style={[styles.statValue, { color: k.color }]}>{k.value}</Text>
+            <Text style={styles.statLabel}>{k.label}</Text>
           </TouchableOpacity>
         ))}
       </View>
 
-      <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Detalle</Text>
-      {cards.map(c => {
-        const isOpen = expanded === c.key;
-        return (
-          <View key={c.key} style={[styles.expandCard, { borderTopColor: c.color }]}>
-            <TouchableOpacity
-              style={styles.expandCardHeader}
-              onPress={() => toggle(c.key)}
-              activeOpacity={0.7}
-            >
-              <View style={styles.expandCardLeft}>
-                <Ionicons name={c.icon} size={22} color={c.color} />
-                <View style={{ marginLeft: 12 }}>
-                  <Text style={[styles.expandCardValue, { color: c.color }]}>{c.value}</Text>
-                  <Text style={styles.expandCardLabel}>{c.label}</Text>
+      {/* ── Actividad: reservas por mes ── */}
+      <View style={styles.chartCard}>
+        <Text style={styles.chartTitle}>Reservas — últimos 6 meses</Text>
+        <View style={styles.barChart}>
+          {monthly.map(m => (
+            <View key={m.key} style={styles.barCol}>
+              <Text style={styles.barValue}>{m.count || ''}</Text>
+              <View style={[styles.bar, { height: Math.max(4, (m.count / maxMonthly) * 96) }]} />
+              <Text style={styles.barLabel}>{m.month}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
+
+      {/* ── Reservas por estado ── */}
+      <View style={styles.chartCard}>
+        <Text style={styles.chartTitle}>Reservas por estado</Text>
+        {statusOrder.map(s => {
+          const count = statusCounts[s] ?? 0;
+          return (
+            <View key={s} style={styles.statusBarRow}>
+              <Text style={styles.statusBarLabel}>{statusLabel[s]}</Text>
+              <View style={styles.statusBarTrack}>
+                <View style={[styles.statusBarFill, { width: `${(count / statusTotal) * 100}%`, backgroundColor: STATUS_COLOR[s] }]} />
+              </View>
+              <Text style={styles.statusBarCount}>{count}</Text>
+            </View>
+          );
+        })}
+      </View>
+
+      {/* ── Gestión de servicios (sin pestaña propia) ── */}
+      <TouchableOpacity style={styles.servicesHeader} onPress={() => setServicesOpen(o => !o)} activeOpacity={0.7}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <Ionicons name="briefcase-outline" size={18} color={colors.accent} />
+          <Text style={styles.chartTitle}>Gestión de servicios ({stats.totalSpaces + stats.totalVisitors})</Text>
+        </View>
+        <Ionicons name={servicesOpen ? 'chevron-up' : 'chevron-down'} size={16} color={colors.textMuted} />
+      </TouchableOpacity>
+      {servicesOpen && (
+        <View style={styles.expandContent}>
+          <Text style={styles.servicesSubhead}>🏠 Espacios ({spaces.length})</Text>
+          {spaces.length === 0 ? <Text style={styles.expandEmpty}>Sin espacios publicados</Text> : spaces.map(s => (
+            <View key={s.id} style={[styles.expandRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', width: '100%' }}>
+                <Ionicons name="home-outline" size={16} color={colors.accent} style={{ marginRight: 10, marginTop: 1 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.expandRowName}>{s.title}</Text>
+                  <Text style={styles.expandRowMeta}>{s.location} · ${s.price_per_night.toLocaleString('es-CL')}/noche</Text>
                 </View>
               </View>
-              <Ionicons
-                name={isOpen ? 'chevron-up' : 'chevron-down'}
-                size={16}
-                color={colors.textMuted}
-              />
-            </TouchableOpacity>
-
-            {isOpen && (
-              <View style={styles.expandContent}>
-                {c.key === 'users' && (
-                  users.length === 0
-                    ? <Text style={styles.expandEmpty}>Sin usuarios registrados</Text>
-                    : users.map(u => (
-                      <View key={u.id} style={styles.expandRow}>
-                        <View style={[styles.miniAvatar, { backgroundColor: u.role === 'host' ? `${colors.accent}30` : `${colors.primary}20` }]}>
-                          <Text style={[styles.miniAvatarText, { color: u.role === 'host' ? colors.accent : colors.primary }]}>
-                            {(u.full_name?.[0] ?? '?').toUpperCase()}
-                          </Text>
-                        </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.expandRowName}>{u.full_name ?? '(sin nombre)'} {u.last_name ?? ''}</Text>
-                          <Text style={styles.expandRowMeta}>{u.role === 'host' ? 'Cuidador' : u.is_admin ? 'Admin' : 'Cliente'} · KYC: {u.kyc_status}</Text>
-                        </View>
-                      </View>
-                    ))
-                )}
-
-                {c.key === 'spaces' && (
-                  spaces.length === 0
-                    ? <Text style={styles.expandEmpty}>Sin espacios publicados</Text>
-                    : spaces.map(s => (
-                      <View key={s.id} style={[styles.expandRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', width: '100%' }}>
-                          <Ionicons name="home-outline" size={16} color={colors.accent} style={{ marginRight: 10, marginTop: 1 }} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.expandRowName}>{s.title}</Text>
-                            <Text style={styles.expandRowMeta}>{s.location} · ${s.price_per_night.toLocaleString('es-CL')}/noche</Text>
-                          </View>
-                        </View>
-                        <View style={styles.expandRowActions}>
-                          <TouchableOpacity
-                            style={[styles.miniActionBtn, { backgroundColor: s.active ? `${colors.warning}15` : `${colors.accent}15`, borderColor: s.active ? colors.warning : colors.accent }]}
-                            onPress={() => onToggleSpace(s.id, s.active)}
-                          >
-                            <Ionicons name={s.active ? 'pause-circle-outline' : 'play-circle-outline'} size={12} color={s.active ? colors.warning : colors.accent} />
-                            <Text style={[styles.miniActionText, { color: s.active ? colors.warning : colors.accent }]}>{s.active ? 'Desactivar' : 'Activar'}</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.miniActionBtn, { backgroundColor: `${colors.danger}10`, borderColor: colors.danger }]}
-                            onPress={() => onDeleteSpace(s.id, s.title)}
-                          >
-                            <Ionicons name="trash-outline" size={12} color={colors.danger} />
-                            <Text style={[styles.miniActionText, { color: colors.danger }]}>Eliminar</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))
-                )}
-
-                {c.key === 'visiters' && (
-                  visiters.length === 0
-                    ? <Text style={styles.expandEmpty}>Sin visiters publicados</Text>
-                    : visiters.map(v => (
-                      <View key={v.id} style={[styles.expandRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
-                        <View style={{ flexDirection: 'row', alignItems: 'flex-start', width: '100%' }}>
-                          <Ionicons name="paw-outline" size={16} color={colors.lilac} style={{ marginRight: 10, marginTop: 1 }} />
-                          <View style={{ flex: 1 }}>
-                            <Text style={styles.expandRowName}>{v.name}</Text>
-                            <Text style={styles.expandRowMeta}>{v.profession_title} · ${v.price_per_visit.toLocaleString('es-CL')}/visita</Text>
-                          </View>
-                        </View>
-                        <View style={styles.expandRowActions}>
-                          <TouchableOpacity
-                            style={[styles.miniActionBtn, { backgroundColor: v.active ? `${colors.warning}15` : `${colors.accent}15`, borderColor: v.active ? colors.warning : colors.accent }]}
-                            onPress={() => onToggleVisiter(v.id, v.active)}
-                          >
-                            <Ionicons name={v.active ? 'pause-circle-outline' : 'play-circle-outline'} size={12} color={v.active ? colors.warning : colors.accent} />
-                            <Text style={[styles.miniActionText, { color: v.active ? colors.warning : colors.accent }]}>{v.active ? 'Desactivar' : 'Activar'}</Text>
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={[styles.miniActionBtn, { backgroundColor: `${colors.danger}10`, borderColor: colors.danger }]}
-                            onPress={() => onDeleteVisiter(v.id, v.name)}
-                          >
-                            <Ionicons name="trash-outline" size={12} color={colors.danger} />
-                            <Text style={[styles.miniActionText, { color: colors.danger }]}>Eliminar</Text>
-                          </TouchableOpacity>
-                        </View>
-                      </View>
-                    ))
-                )}
-
-                {c.key === 'bookings' && (
-                  bookings.length === 0
-                    ? <Text style={styles.expandEmpty}>Sin reservas</Text>
-                    : bookings.slice(0, 10).map(b => (
-                      <View key={b.id} style={styles.expandRow}>
-                        <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[b.status] ?? colors.textMuted, marginRight: 10, marginTop: 5 }]} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.expandRowName}>{b.profiles?.full_name ?? 'Usuario'}</Text>
-                          <Text style={styles.expandRowMeta}>{b.service_type} · {b.start_date} → {b.end_date} · ${b.total_price.toLocaleString('es-CL')}</Text>
-                        </View>
-                      </View>
-                    ))
-                )}
-
-                {c.key === 'active' && (
-                  activeBookings.length === 0
-                    ? <Text style={styles.expandEmpty}>Sin reservas activas en este momento</Text>
-                    : activeBookings.map(b => (
-                      <View key={b.id} style={styles.expandRow}>
-                        <View style={[styles.statusDot, { backgroundColor: colors.success, marginRight: 10, marginTop: 5 }]} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.expandRowName}>{b.profiles?.full_name ?? 'Usuario'}</Text>
-                          <Text style={styles.expandRowMeta}>{b.service_type} · {b.start_date} → {b.end_date}</Text>
-                        </View>
-                      </View>
-                    ))
-                )}
-
-                {c.key === 'pending' && (
-                  pendingApps.length === 0
-                    ? <Text style={styles.expandEmpty}>Sin postulaciones pendientes</Text>
-                    : pendingApps.map(a => (
-                      <View key={a.id} style={styles.expandRow}>
-                        <Ionicons name="time-outline" size={16} color={colors.warning} style={{ marginRight: 10, marginTop: 1 }} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.expandRowName}>{a.profiles?.full_name ?? 'Usuario'} {a.profiles?.last_name ?? ''}</Text>
-                          <Text style={styles.expandRowMeta}>{a.service_type} · {a.submitted_at ? new Date(a.submitted_at).toLocaleDateString('es-CL') : '—'}</Text>
-                        </View>
-                      </View>
-                    ))
-                )}
-
-                {(c.key === 'users' || c.key === 'bookings' || c.key === 'pending') && (
-                  <TouchableOpacity
-                    style={styles.expandSeeAll}
-                    onPress={() => {
-                      setExpanded(null);
-                      onTabChange(c.key === 'users' ? 'users' : c.key === 'pending' ? 'applications' : 'bookings');
-                    }}
-                  >
-                    <Text style={styles.expandSeeAllText}>Ver todos en pestaña →</Text>
-                  </TouchableOpacity>
-                )}
+              <View style={styles.expandRowActions}>
+                <TouchableOpacity style={[styles.miniActionBtn, { backgroundColor: s.active ? `${colors.warning}15` : `${colors.accent}15`, borderColor: s.active ? colors.warning : colors.accent }]} onPress={() => onToggleSpace(s.id, s.active)}>
+                  <Ionicons name={s.active ? 'pause-circle-outline' : 'play-circle-outline'} size={12} color={s.active ? colors.warning : colors.accent} />
+                  <Text style={[styles.miniActionText, { color: s.active ? colors.warning : colors.accent }]}>{s.active ? 'Desactivar' : 'Activar'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.miniActionBtn, { backgroundColor: `${colors.danger}10`, borderColor: colors.danger }]} onPress={() => onDeleteSpace(s.id, s.title)}>
+                  <Ionicons name="trash-outline" size={12} color={colors.danger} />
+                  <Text style={[styles.miniActionText, { color: colors.danger }]}>Eliminar</Text>
+                </TouchableOpacity>
               </View>
-            )}
-          </View>
-        );
-      })}
+            </View>
+          ))}
+          <Text style={[styles.servicesSubhead, { marginTop: 14 }]}>🐾 Visiters ({visiters.length})</Text>
+          {visiters.length === 0 ? <Text style={styles.expandEmpty}>Sin visiters publicados</Text> : visiters.map(v => (
+            <View key={v.id} style={[styles.expandRow, { flexDirection: 'column', alignItems: 'flex-start' }]}>
+              <View style={{ flexDirection: 'row', alignItems: 'flex-start', width: '100%' }}>
+                <Ionicons name="paw-outline" size={16} color={colors.lilac} style={{ marginRight: 10, marginTop: 1 }} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.expandRowName}>{v.name}</Text>
+                  <Text style={styles.expandRowMeta}>{v.profession_title} · ${v.price_per_visit.toLocaleString('es-CL')}/visita</Text>
+                </View>
+              </View>
+              <View style={styles.expandRowActions}>
+                <TouchableOpacity style={[styles.miniActionBtn, { backgroundColor: v.active ? `${colors.warning}15` : `${colors.accent}15`, borderColor: v.active ? colors.warning : colors.accent }]} onPress={() => onToggleVisiter(v.id, v.active)}>
+                  <Ionicons name={v.active ? 'pause-circle-outline' : 'play-circle-outline'} size={12} color={v.active ? colors.warning : colors.accent} />
+                  <Text style={[styles.miniActionText, { color: v.active ? colors.warning : colors.accent }]}>{v.active ? 'Desactivar' : 'Activar'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.miniActionBtn, { backgroundColor: `${colors.danger}10`, borderColor: colors.danger }]} onPress={() => onDeleteVisiter(v.id, v.name)}>
+                  <Ionicons name="trash-outline" size={12} color={colors.danger} />
+                  <Text style={[styles.miniActionText, { color: colors.danger }]}>Eliminar</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </View>
+      )}
     </View>
   );
 }
@@ -1465,6 +1436,30 @@ const styles = StyleSheet.create({
   statIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
   statValue: { fontSize: 28, fontWeight: '900', lineHeight: 32, marginBottom: 4 },
   statLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
+
+  // Dashboard rediseñado
+  revenueCard: { backgroundColor: colors.primary, borderRadius: 16, padding: 18, marginBottom: 14 },
+  revenueTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  revenueLabel: { fontSize: 12, color: '#fff', opacity: 0.85, fontWeight: '700' },
+  revenueValue: { fontSize: 30, fontWeight: '900', color: '#fff', marginTop: 2 },
+  revenueIconBox: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
+  revenueChips: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
+  revenueChip: { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
+  revenueChipText: { color: '#fff', fontSize: 12, fontWeight: '700' },
+  chartCard: { backgroundColor: colors.surface, borderRadius: 14, padding: 16, marginTop: 14, borderWidth: 1, borderColor: colors.border },
+  chartTitle: { fontSize: 14, fontWeight: '800', color: colors.textMain },
+  barChart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 130, marginTop: 14, gap: 6 },
+  barCol: { flex: 1, alignItems: 'center' },
+  barValue: { fontSize: 11, fontWeight: '700', color: colors.textMuted, marginBottom: 4, height: 14 },
+  bar: { width: '62%', backgroundColor: colors.primary, borderRadius: 5, minHeight: 4 },
+  barLabel: { fontSize: 10, color: colors.textMuted, marginTop: 6, fontWeight: '600' },
+  statusBarRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
+  statusBarLabel: { fontSize: 12, color: colors.textMain, fontWeight: '600', width: 88 },
+  statusBarTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.background, overflow: 'hidden' },
+  statusBarFill: { height: 10, borderRadius: 5 },
+  statusBarCount: { fontSize: 12, fontWeight: '800', color: colors.textMain, width: 28, textAlign: 'right' },
+  servicesHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 4, paddingVertical: 6 },
+  servicesSubhead: { fontSize: 13, fontWeight: '800', color: colors.textMain, marginBottom: 6 },
 
   // Expandable cards
   expandCard: { backgroundColor: colors.surface, borderRadius: 14, marginBottom: 10, borderTopWidth: 3, borderWidth: 1, borderColor: colors.border, overflow: 'hidden' },
