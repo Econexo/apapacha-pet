@@ -24,15 +24,27 @@ const QUICK_TAGS: Record<number, string[]> = {
   1: ['No cumplió expectativas', 'Mala experiencia'],
 };
 
+// Reseña inversa: el cuidador califica al cliente
+const CLIENT_TAGS: Record<number, string[]> = {
+  5: ['Puntual ⏰', 'Buen trato 🤝', 'Instrucciones claras 📋', 'Gato tranquilo 😺', 'Volvería a atender 🔄'],
+  4: ['Puntual ⏰', 'Buena comunicación 💬', 'Todo en orden ✨'],
+  3: ['Comunicación aceptable', 'Instrucciones básicas'],
+  2: ['Poca comunicación', 'Instrucciones confusas'],
+  1: ['Mala experiencia', 'No recomendado'],
+};
+
 interface Props {
   bookingId: string;
   hostId: string;
   hostName: string;
+  variant?: 'host' | 'client';
   onClose?: () => void;
 }
 
-export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, onClose }: Props) {
-  const hostName = rawHostName || 'Cuidador';
+export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, variant = 'host', onClose }: Props) {
+  const isClient = variant === 'client';
+  const hostName = rawHostName || (isClient ? 'Cliente' : 'Cuidador');
+  const TAGS = isClient ? CLIENT_TAGS : QUICK_TAGS;
   const navigation = useNavigation();
   const toast = useToast();
   const close = () => onClose ? onClose() : navigation.goBack();
@@ -112,7 +124,9 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, on
         {submitted
           ? tip > 0
             ? `Tu propina de ${fmt(tip)} fue enviada a ${hostName}. Tu opinión ayuda a toda la comunidad 💜`
-            : 'Tu opinión ayuda a otros dueños a encontrar el mejor cuidado para sus gatos.'
+            : isClient
+              ? 'Tu calificación ayuda a otros cuidadores a conocer a sus futuros clientes.'
+              : 'Tu opinión ayuda a otros dueños a encontrar el mejor cuidado para sus gatos.'
           : 'Solo puedes dejar una reseña por servicio.'}
       </Text>
       {submitted && tip > 0 && (
@@ -134,7 +148,7 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, on
         <TouchableOpacity style={styles.closeX} onPress={close} activeOpacity={0.7}>
           <Ionicons name="close" size={22} color={colors.textMain} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Calificar servicio</Text>
+        <Text style={styles.headerTitle}>{isClient ? 'Calificar cliente' : 'Calificar servicio'}</Text>
         <View style={{ width: 36 }} />
       </View>
 
@@ -145,7 +159,7 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, on
             <Text style={{ fontSize: 28 }}>{hostName.charAt(0).toUpperCase()}</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.hostLabel}>Tu cuidador</Text>
+            <Text style={styles.hostLabel}>{isClient ? 'Tu cliente' : 'Tu cuidador'}</Text>
             <Text style={styles.hostName}>{hostName}</Text>
           </View>
         </View>
@@ -172,11 +186,11 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, on
         )}
 
         {/* Quick tags */}
-        {rating > 0 && (QUICK_TAGS[rating] ?? []).length > 0 && (
+        {rating > 0 && (TAGS[rating] ?? []).length > 0 && (
           <View style={styles.tagsSection}>
             <Text style={styles.tagsTitle}>¿Qué destacarías?</Text>
             <View style={styles.tagsRow}>
-              {(QUICK_TAGS[rating] ?? []).map(tag => (
+              {(TAGS[rating] ?? []).map(tag => (
                 <TouchableOpacity
                   key={tag}
                   style={[styles.tag, selectedTags.has(tag) && styles.tagActive]}
@@ -208,8 +222,8 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, on
           </>
         )}
 
-        {/* Tip */}
-        {rating > 0 && (
+        {/* Tip — solo cuando el dueño califica al cuidador */}
+        {!isClient && rating > 0 && (
           <>
             <Text style={styles.sectionLabel}>Propina para {hostName} 💝</Text>
             <Text style={styles.tipHint}>Va directamente al cuidador y suma puntos a su nivel.</Text>
@@ -242,7 +256,7 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, on
           {saving
             ? <ActivityIndicator color={colors.surface} />
             : <Text style={styles.submitBtnText}>
-                {rating === 0 ? 'Selecciona una calificación' : tip > 0 ? `Enviar reseña + ${fmt(tip)}` : 'Enviar reseña'}
+                {rating === 0 ? 'Selecciona una calificación' : (!isClient && tip > 0) ? `Enviar reseña + ${fmt(tip)}` : 'Enviar reseña'}
               </Text>
           }
         </TouchableOpacity>
