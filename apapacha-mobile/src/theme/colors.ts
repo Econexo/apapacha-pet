@@ -1,41 +1,56 @@
+// ApapachaPet 2.0 — paleta luminosa, cálida, con gradiente firma (lila→lavanda).
+// Se conservan todas las llaves usadas por las pantallas actuales (compatibilidad),
+// solo se actualizan los valores + se agregan tokens nuevos y gradientes.
 export const colors = {
-  // Brand — extraído del logo ApapachaPet
-  primary: '#6B35A0',        // Morado principal (logo "Apapacha")
-  primaryDark: '#4A2070',    // Morado oscuro (hover/press)
-  primaryLight: '#E8D5F5',   // Morado muy claro (fondos sutiles)
-  accent: '#7DC67E',         // Verde (huellas verdes del logo)
-  accentBlue: '#7EC8E3',     // Azul claro (huellas azules del logo)
-  lilac: '#B57BCC',          // Lila (tono intermedio del logo)
+  // Brand
+  primary: '#7C4DBB',        // Morado principal (más luminoso que el 6B35A0 anterior)
+  primaryDark: '#5E2E93',    // Press/hover
+  primaryLight: '#F3EBFB',   // Fondo suave morado (tint)
+  brand2: '#B98AE0',         // Lila — extremo del gradiente
+  brandTint: '#F3EBFB',
+  accent: '#57B06B',         // Verde verificado/éxito (del logo, profundizado)
+  accentBlue: '#7EC8E3',     // Azul del logo
+  lilac: '#B98AE0',
+  gold: '#EBAE3E',           // Estrellas/rating
 
   // Base
-  background: '#FAF7FD',     // Blanco con tinte morado muy sutil
+  background: '#FCFAFF',     // Casi blanco con tinte lila
   surface: '#FFFFFF',
-  textMain: '#1A0A2E',       // Casi negro con tinte morado
-  textMuted: '#7B6B8D',      // Gris con tinte morado
-  border: '#E8D5F5',         // Borde lila muy claro
+  surfaceAlt: '#F6F0FC',     // Fondo hundido / insets
+  textMain: '#2C2340',       // Tinta suave (no negro duro)
+  textMuted: '#8B7FA6',      // Texto secundario
+  border: '#EFE7F6',         // Hairline lila muy claro
 
-  // Semantic — success (verde del logo)
-  success: '#7DC67E',
-  successBg: '#F0FBF0',
-  successBorder: '#B8E6B9',
-  successText: '#2D7A2E',
-  successTextDark: '#1A4A1B',
+  // Semantic — success (verde)
+  success: '#57B06B',
+  successBg: '#E9F6EC',
+  successBorder: '#BFE6C8',
+  successText: '#2E7D4B',
+  successTextDark: '#1C4E30',
 
   // Semantic — danger
-  danger: '#DC2626',
-  dangerBg: '#FEF2F2',
-  dangerBorder: '#FCA5A5',
-  dangerText: '#991B1B',
+  danger: '#E0574C',
+  dangerBg: '#FDEEED',
+  dangerBorder: '#F6C9C4',
+  dangerText: '#B23A30',
   dangerTextDark: '#7F1D1D',
 
-  // Semantic — warning
-  warning: '#F59E0B',
-  warningBg: '#FFFBEB',
-  warningBorder: '#FEF3C7',
-  warningText: '#92400E',
+  // Semantic — warning (oro)
+  warning: '#EBAE3E',
+  warningBg: '#FDF5E6',
+  warningBorder: '#F5E0B0',
+  warningText: '#8A5A12',
 
-  // Semantic — info (azul del logo)
+  // Semantic — info (azul)
   info: '#4A9DB5',
   infoBg: '#EFF8FC',
   infoBorder: '#B3DCE8',
+};
+
+// Gradientes (para expo-linear-gradient). Ángulo por defecto 135°.
+export const gradients = {
+  brand: ['#7C4DBB', '#B98AE0'] as const,       // botones, avatar, FAB, barras
+  brandDeep: ['#5E2E93', '#7C4DBB'] as const,
+  hero: ['#EFE4FB', '#FCE9F1', '#E6F6EC'] as const, // washes suaves / blobs
+  gold: ['#F2C15A', '#E0912A'] as const,
 };
