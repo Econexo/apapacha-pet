@@ -153,8 +153,10 @@ function RootNavigator() {
     // Onboarding solo si explícitamente false Y el perfil parece recién creado (sin datos)
     const needsOnboarding = profile?.onboarding_done === false && !profile?.age && !profile?.address;
     if (needsOnboarding) return 'Onboarding';
-    // ClientVerification solo si kyc está pending Y nunca ha subido docs (under_review/verified/rejected ya pasaron por ahí)
-    if (profile?.kyc_status === 'pending' && profile?.onboarding_done === true) return 'ClientVerification';
+    // NOTA: NO forzamos ClientVerification en cada login (antes molestaba a los
+    // usuarios con kyc 'pending' en cada reingreso). La verificación de identidad
+    // se ofrece con un banner opcional en el Perfil (ClientVerification sigue
+    // accesible por navegación).
     return 'MainTabs';
   };
 
