@@ -1,6 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { radii, shadows } from '../theme/design';
+import { AppText } from './ui/AppText';
+import { RatingStars } from './ui/RatingStars';
+import { Chip } from './ui/Chip';
 
 interface VisiterCardProps {
   id: string;
@@ -13,128 +18,40 @@ interface VisiterCardProps {
   onPress: (id: string) => void;
 }
 
-export function VisiterCard({ 
-  id, name, professionTitle, pricePerVisit, rating, totalVisits, imageUrl, onPress 
-}: VisiterCardProps) {
+export function VisiterCard({ id, name, professionTitle, pricePerVisit, rating, totalVisits, imageUrl, onPress }: VisiterCardProps) {
   return (
-    <TouchableOpacity activeOpacity={0.9} style={styles.card} onPress={() => onPress(id)}>
+    <TouchableOpacity activeOpacity={0.92} style={styles.card} onPress={() => onPress(id)}>
       <View style={styles.contentRow}>
         <Image source={{ uri: imageUrl }} style={styles.avatar} />
-        
-        <View style={styles.infoContainer}>
+        <View style={styles.info}>
           <View style={styles.headerRow}>
-            <Text style={styles.name} numberOfLines={1}>{name}</Text>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>✓ Identificado</Text>
-            </View>
+            <AppText variant="title" numberOfLines={1} style={{ fontSize: 18, flexShrink: 1 }}>{name}</AppText>
+            <Chip label="Verificado" icon="shield-checkmark" tone="leaf" />
           </View>
-          
-          <Text style={styles.profession} numberOfLines={1}>{professionTitle}</Text>
-          
+          <AppText variant="small" color={colors.textMuted} numberOfLines={1} style={{ marginTop: 1 }}>{professionTitle}</AppText>
           <View style={styles.statsRow}>
-            <Text style={styles.statText}>{rating > 0 ? `⭐ ${rating}` : '✨ Nuevo'}</Text>
-            <Text style={styles.statDot}> • </Text>
-            <Text style={styles.statText}>{totalVisits} visitas</Text>
+            {rating > 0 ? <RatingStars value={rating} size={13} /> : <Chip label="Nuevo" tone="brand" />}
+            <AppText variant="small" color={colors.textMuted}>· {totalVisits} visitas</AppText>
           </View>
         </View>
       </View>
-      
       <View style={styles.footerRow}>
-        <Text style={styles.priceLabel}>Tarifa base:</Text>
-        <Text style={styles.priceValue}>${pricePerVisit.toLocaleString('es-CL')} <Text style={styles.priceDetail}>/ visita</Text></Text>
+        <AppText variant="small" color={colors.textMuted}>Tarifa base</AppText>
+        <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
+          <AppText variant="h" style={{ fontSize: 17 }}>${pricePerVisit.toLocaleString('es-CL')}</AppText>
+          <AppText variant="small" color={colors.textMuted}> /visita</AppText>
+        </View>
       </View>
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
-  card: {
-    backgroundColor: colors.surface,
-    marginBottom: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.03,
-    shadowRadius: 5,
-    elevation: 2,
-  },
-  contentRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  avatar: {
-    width: 65,
-    height: 65,
-    borderRadius: 35,
-    marginRight: 16,
-  },
-  infoContainer: {
-    flex: 1,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  name: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: colors.textMain,
-    marginRight: 8,
-  },
-  badge: {
-    backgroundColor: `${colors.success}15`,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-  },
-  badgeText: {
-    color: colors.success,
-    fontSize: 10,
-    fontWeight: '700',
-  },
-  profession: {
-    fontSize: 14,
-    color: colors.textMuted,
-    marginBottom: 6,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: colors.textMain,
-  },
-  statDot: {
-    color: colors.border,
-  },
-  footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    paddingTop: 12,
-  },
-  priceLabel: {
-    fontSize: 14,
-    color: colors.textMuted,
-    fontWeight: '500',
-  },
-  priceValue: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: colors.textMain,
-  },
-  priceDetail: {
-    fontSize: 13,
-    fontWeight: '500',
-    color: colors.textMuted,
-  }
+  card: { backgroundColor: colors.surface, marginBottom: 16, borderRadius: radii.lg, borderWidth: 1, borderColor: colors.border, padding: 16, ...shadows.sm },
+  contentRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  avatar: { width: 64, height: 64, borderRadius: 20, marginRight: 14, backgroundColor: colors.surfaceAlt },
+  info: { flex: 1 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  statsRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 7 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: colors.border, paddingTop: 12 },
 });
