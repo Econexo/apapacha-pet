@@ -19,7 +19,7 @@ export type RootStackParamList = {
   HostDashboard: undefined;
   InsuranceClaim: undefined;
   EditProfile: undefined;
-  LeaveReview: { bookingId: string; hostId: string; hostName: string };
+  LeaveReview: { bookingId: string; hostId: string; hostName: string; variant?: 'host' | 'client' };
   ManageService: { type: 'space' | 'visiter'; serviceId?: string };
   Notifications: undefined;
 };
