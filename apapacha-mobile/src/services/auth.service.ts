@@ -33,12 +33,31 @@ export async function resetPassword(email: string): Promise<void> {
   if (error) throw error;
 }
 
-export async function completeKyc(): Promise<void> {
+// Sube una imagen de la cédula al bucket privado kyc-docs y devuelve
+// una URL (formato public) de la que el admin extrae el path para firmar.
+export async function uploadKycDoc(side: 'front' | 'back', localUri: string): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
+  const response = await fetch(localUri);
+  const blob = await response.blob();
+  const ext = blob.type?.includes('png') ? 'png' : 'jpg';
+  const path = `${user.id}/cedula-${side === 'front' ? 'frente' : 'reverso'}.${ext}`;
+  const { error } = await supabase.storage
+    .from('kyc-docs')
+    .upload(path, blob, { upsert: true, contentType: blob.type || 'image/jpeg' });
+  if (error) throw error;
+  return supabase.storage.from('kyc-docs').getPublicUrl(path).data.publicUrl;
+}
+
+export async function completeKyc(docs?: { front?: string; back?: string }): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+  const update: Record<string, unknown> = { kyc_status: 'under_review' };
+  if (docs?.front) update.kyc_doc_front_url = docs.front;
+  if (docs?.back) update.kyc_doc_back_url = docs.back;
   const { error } = await supabase
     .from('profiles')
-    .update({ kyc_status: 'under_review' })
+    .update(update)
     .eq('id', user.id);
   if (error) throw error;
 }
