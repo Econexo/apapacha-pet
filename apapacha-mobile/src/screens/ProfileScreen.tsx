@@ -14,6 +14,7 @@ import { useToast } from '../components/Toast';
 import type { Pet, HostApplication } from '../types/database';
 import { getMyPets } from '../services/pets.service';
 import { getMyApplication } from '../services/host.service';
+import { getHostStats, type HostStats } from '../services/reviews.service';
 import { supabase } from '../../supabase';
 import { OverlayModal } from '../components/OverlayModal';
 import { EditProfileScreen } from './EditProfileScreen';
@@ -37,6 +38,7 @@ export function ProfileScreen() {
   const toast = useToast();
   const [pets, setPets] = useState<Pet[]>([]);
   const [application, setApplication] = useState<HostApplication | null>(null);
+  const [stats, setStats] = useState<HostStats | null>(null);
   const [loadingProfile, setLoadingProfile] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -47,9 +49,11 @@ export function ProfileScreen() {
   const [showHostOnboarding, setShowHostOnboarding] = useState(false);
 
   const loadProfile = useCallback(async () => {
+    const { data: { user } } = await supabase.auth.getUser();
     await Promise.all([
       getMyPets().then(setPets).catch(console.error),
       getMyApplication().then(setApplication).catch(console.error),
+      user ? getHostStats(user.id).then(setStats).catch(console.error) : Promise.resolve(),
     ]);
   }, []);
 
@@ -154,6 +158,55 @@ export function ProfileScreen() {
             </Text>
           </View>
         )}
+
+        {(profile?.kyc_status === 'pending' || profile?.kyc_status === 'rejected') && (
+          <TouchableOpacity style={styles.kycBanner} onPress={() => navigation.navigate('ClientVerification')} activeOpacity={0.85}>
+            <Ionicons name="shield-outline" size={22} color={colors.warning} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.kycBannerTitle}>
+                {profile?.kyc_status === 'rejected' ? 'Verificación rechazada' : 'Verifica tu identidad'}
+              </Text>
+              <Text style={styles.kycBannerText}>
+                {profile?.kyc_status === 'rejected'
+                  ? 'Vuelve a subir tu cédula para acceder a todas las funciones.'
+                  : 'Sube tu cédula para desbloquear todas las funciones. Toca aquí para verificar.'}
+              </Text>
+            </View>
+            <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+          </TouchableOpacity>
+        )}
+
+        {/* Reputación estilo Uber */}
+        <View style={styles.repCard}>
+          <View style={styles.repHeader}>
+            <Text style={styles.repTitle}>Mi reputación</Text>
+            {stats && stats.totalReviews > 0 && (
+              <View style={[styles.repLevelBadge, { backgroundColor: `${stats.level.color}20`, borderColor: stats.level.color }]}>
+                <Text style={[styles.repLevelText, { color: stats.level.color }]}>{stats.level.emoji} {stats.level.name}</Text>
+              </View>
+            )}
+          </View>
+          {stats && stats.totalReviews > 0 ? (
+            <View style={styles.repBody}>
+              <Text style={styles.repScore}>{stats.avgRating.toFixed(1)}</Text>
+              <View style={{ flex: 1 }}>
+                <View style={styles.repStarsRow}>
+                  {[1, 2, 3, 4, 5].map(s => (
+                    <Text key={s} style={[styles.repStar, { color: s <= Math.round(stats.avgRating) ? '#F59E0B' : colors.border }]}>★</Text>
+                  ))}
+                </View>
+                <Text style={styles.repCount}>Basado en {stats.totalReviews} reseña{stats.totalReviews !== 1 ? 's' : ''}</Text>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.repEmpty}>
+              <View style={styles.repStarsRow}>
+                {[1, 2, 3, 4, 5].map(s => <Text key={s} style={[styles.repStar, { color: colors.border }]}>★</Text>)}
+              </View>
+              <Text style={styles.repEmptyText}>Aún no tienes calificaciones. Se construyen con los servicios que completas en ApapachaPet.</Text>
+            </View>
+          )}
+        </View>
 
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Mi Familia Felina</Text>
@@ -346,6 +399,25 @@ const styles = StyleSheet.create({
   alertText: { fontSize: 13, color: colors.dangerTextDark, marginBottom: 4 },
   reviewBanner: { backgroundColor: '#FFF8E7', borderRadius: radii.lg, padding: 16, marginBottom: 20 },
   reviewBannerText: { fontSize: 13, color: '#92400E', lineHeight: 18 },
+
+  // KYC prompt banner (pending/rejected)
+  kycBanner: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFF8E7', borderWidth: 1, borderColor: '#FDE68A', borderRadius: radii.lg, padding: 14, marginBottom: 20 },
+  kycBannerTitle: { fontSize: 14, fontWeight: '800', color: '#92400E' },
+  kycBannerText: { fontSize: 12, color: '#92400E', lineHeight: 16, marginTop: 2, opacity: 0.9 },
+
+  // Reputación estilo Uber
+  repCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, marginBottom: 20, borderWidth: 1, borderColor: colors.border, ...shadows.sm },
+  repHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 },
+  repTitle: { fontSize: 15, fontWeight: '800', color: colors.textMain },
+  repLevelBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: radii.full, borderWidth: 1 },
+  repLevelText: { fontSize: 12, fontWeight: '800' },
+  repBody: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  repScore: { fontSize: 44, fontWeight: '900', color: colors.textMain, lineHeight: 48 },
+  repStarsRow: { flexDirection: 'row', gap: 2 },
+  repStar: { fontSize: 20 },
+  repCount: { fontSize: 13, color: colors.textMuted, marginTop: 4 },
+  repEmpty: { alignItems: 'flex-start', gap: 8 },
+  repEmptyText: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
   editPetBtn: { padding: 4 },
   emptyPets: { backgroundColor: colors.surface, padding: 24, borderRadius: radii.lg, ...shadows.sm, alignItems: 'center', marginBottom: 24 },
   emptyPetsText: { color: colors.textMuted, fontSize: 14 },
