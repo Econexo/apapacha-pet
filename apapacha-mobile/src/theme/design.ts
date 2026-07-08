@@ -2,48 +2,50 @@ import type { ViewStyle } from 'react-native';
 
 export const radii = {
   sm:   10,
-  md:   14,
-  lg:   20,
-  xl:   28,
+  md:   16,
+  lg:   22,
+  xl:   30,
   full: 999,
 };
 
+// Sombras suaves teñidas de morado (2.0)
 export const shadows: Record<'sm' | 'md' | 'lg', ViewStyle> = {
   sm: {
-    shadowColor: '#1A0A2E',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
+    shadowColor: '#5E2E93',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.07,
+    shadowRadius: 12,
     elevation: 2,
   },
   md: {
-    shadowColor: '#1A0A2E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowColor: '#5E2E93',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.11,
+    shadowRadius: 28,
+    elevation: 5,
   },
   lg: {
-    shadowColor: '#1A0A2E',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.10,
-    shadowRadius: 24,
-    elevation: 8,
+    shadowColor: '#5E2E93',
+    shadowOffset: { width: 0, height: 20 },
+    shadowOpacity: 0.16,
+    shadowRadius: 48,
+    elevation: 10,
   },
 };
 
 export const spacing = {
-  xs:  4,
-  sm:  8,
-  md:  12,
-  lg:  16,
-  xl:  20,
-  xxl: 28,
+  xs:   4,
+  sm:   8,
+  md:   12,
+  lg:   16,
+  xl:   20,
+  xxl:  28,
+  xxxl: 40,
 };
 
 export const label = {
   fontSize: 11,
-  fontWeight: '700' as const,
+  fontWeight: '800' as const,
   textTransform: 'uppercase' as const,
-  letterSpacing: 0.8,
+  letterSpacing: 0.9,
 };
