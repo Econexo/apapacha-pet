@@ -8,7 +8,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
 import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
-import { completeKyc } from '../services/auth.service';
+import { completeKyc, uploadKycDoc } from '../services/auth.service';
 import { useAuth } from '../context/AuthContext';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -21,6 +21,8 @@ export function ClientVerificationScreen() {
   const [agreementSigned, setAgreementSigned] = useState(false);
   const [docFront, setDocFront] = useState(false);
   const [docBack, setDocBack] = useState(false);
+  const frontUri = useRef<string | null>(null);
+  const backUri = useRef<string | null>(null);
   const [scanningSide, setScanningSide] = useState<null | 'front' | 'back'>(null);
   const [bioVerified, setBioVerified] = useState(false);
   const [finishing, setFinishing] = useState(false);
@@ -34,8 +36,9 @@ export function ClientVerificationScreen() {
     }
   }, [bioVerified]);
 
-  const markSide = (side: 'front' | 'back') => {
-    (side === 'front' ? setDocFront : setDocBack)(true);
+  const markSide = (side: 'front' | 'back', uri: string) => {
+    if (side === 'front') { setDocFront(true); frontUri.current = uri; }
+    else { setDocBack(true); backUri.current = uri; }
   };
 
   const pickFromLibrary = async (side: 'front' | 'back') => {
@@ -50,7 +53,7 @@ export function ClientVerificationScreen() {
       mediaTypes: ['images'] as ImagePicker.MediaType[],
       quality: 0.8,
     });
-    if (!result.canceled) markSide(side);
+    if (!result.canceled && result.assets?.[0]?.uri) markSide(side, result.assets[0].uri);
   };
 
   const pickFromCamera = async (side: 'front' | 'back') => {
@@ -60,7 +63,7 @@ export function ClientVerificationScreen() {
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 0.8 });
-    if (!result.canceled) markSide(side);
+    if (!result.canceled && result.assets?.[0]?.uri) markSide(side, result.assets[0].uri);
   };
 
   const handleScanDoc = async (side: 'front' | 'back') => {
@@ -113,7 +116,16 @@ export function ClientVerificationScreen() {
     }
     setFinishing(true);
     try {
-      await completeKyc();
+      // Subida best-effort: si el usuario escaneó la cédula, la persistimos.
+      // No bloquea el registro si la subida falla o si no escaneó nada.
+      const docs: { front?: string; back?: string } = {};
+      try {
+        if (frontUri.current) docs.front = await uploadKycDoc('front', frontUri.current);
+        if (backUri.current)  docs.back  = await uploadKycDoc('back', backUri.current);
+      } catch (upErr) {
+        console.warn('[kyc] doc upload failed (continuing):', upErr);
+      }
+      await completeKyc(docs);
       await refreshProfile();
       navigation.replace('MainTabs');
     } catch (e: any) {
