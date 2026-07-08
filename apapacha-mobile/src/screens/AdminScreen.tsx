@@ -48,6 +48,8 @@ interface AdminUser {
   kyc_status: string;
   is_admin: boolean;
   signed_contract_url?: string | null;
+  kyc_doc_front_url?: string | null;
+  kyc_doc_back_url?: string | null;
   created_at: string;
   spacesCount?: number;
   visitersCount?: number;
@@ -192,7 +194,7 @@ export function AdminScreen() {
   async function loadUsers() {
     setUsersError(null);
     const [profilesRes, spacesRes, visitersRes, bookingsRes] = await Promise.all([
-      supabase.from('profiles').select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, created_at').order('created_at', { ascending: false }),
+      supabase.from('profiles').select('id, full_name, last_name, age, address, bio, role, kyc_status, is_admin, created_at, signed_contract_url, kyc_doc_front_url, kyc_doc_back_url').order('created_at', { ascending: false }),
       supabase.from('spaces').select('host_id'),
       supabase.from('visiters').select('host_id'),
       supabase.from('bookings').select('owner_id'),
@@ -386,8 +388,26 @@ export function AdminScreen() {
   }
 
   async function updateKycStatus(userId: string, status: string) {
-    await supabase.from('profiles').update({ kyc_status: status }).eq('id', userId);
-    loadUsers();
+    const verb: Record<string, string> = {
+      verified: 'verificar la identidad de',
+      rejected: 'rechazar la identidad de',
+      pending: 'resetear a pendiente la identidad de',
+    };
+    const doIt = async () => {
+      const { error } = await supabase.from('profiles').update({ kyc_status: status }).eq('id', userId);
+      if (error) { toast.error('Error', error.message); return; }
+      toast.success('KYC actualizado', status === 'verified' ? 'Identidad verificada ✅' : status === 'rejected' ? 'Identidad rechazada' : 'Estado reseteado');
+      loadUsers();
+    };
+    const msg = `¿Deseas ${verb[status] ?? status} este usuario?`;
+    if (Platform.OS === 'web') {
+      if ((window as any).confirm(msg)) await doIt();
+    } else {
+      Alert.alert('Gestionar KYC', msg, [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Confirmar', onPress: doIt },
+      ]);
+    }
   }
 
   async function deleteProfileUser(userId: string, name: string) {
@@ -973,6 +993,51 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
                   <ActivityIndicator color={colors.primary} style={{ marginVertical: 12 }} />
                 ) : (
                   <>
+                    {/* KYC — cédula de identidad (bucket privado, signed URL) */}
+                    {(u.kyc_doc_front_url || u.kyc_doc_back_url) ? (
+                      <>
+                        <Text style={styles.userDetailLabel}>
+                          <Ionicons name="card-outline" size={12} color={colors.accent} /> Cédula de identidad
+                        </Text>
+                        {u.kyc_doc_front_url && <DocViewer url={u.kyc_doc_front_url} label="Ver frente" bucket="kyc-docs" />}
+                        {u.kyc_doc_back_url && <DocViewer url={u.kyc_doc_back_url} label="Ver reverso" bucket="kyc-docs" />}
+                      </>
+                    ) : (
+                      <Text style={[styles.userDetailEmpty, { marginBottom: 6 }]}>Sin documento de identidad cargado</Text>
+                    )}
+
+                    {/* Decisión de verificación (funciona en web y móvil) */}
+                    <Text style={styles.userDetailLabel}>
+                      <Ionicons name="shield-checkmark-outline" size={12} color={colors.accent} /> Verificación · {u.kyc_status}
+                    </Text>
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+                      {u.kyc_status !== 'verified' && (
+                        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSuccess, { flex: 0, paddingHorizontal: 14 }]} onPress={() => onUpdateKyc(u.id, 'verified')}>
+                          <Ionicons name="checkmark-circle-outline" size={14} color={colors.accent} />
+                          <Text style={styles.actionBtnText}>Verificar</Text>
+                        </TouchableOpacity>
+                      )}
+                      {u.kyc_status !== 'rejected' && (
+                        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger, { flex: 0, paddingHorizontal: 14 }]} onPress={() => onUpdateKyc(u.id, 'rejected')}>
+                          <Ionicons name="close-circle-outline" size={14} color={colors.danger} />
+                          <Text style={styles.actionBtnText}>Rechazar</Text>
+                        </TouchableOpacity>
+                      )}
+                      {u.kyc_status !== 'pending' && (
+                        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary, { flex: 0, paddingHorizontal: 14 }]} onPress={() => onUpdateKyc(u.id, 'pending')}>
+                          <Text style={styles.actionBtnText}>Resetear</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    {/* Signed contract (private bucket, signed URL) */}
+                    {u.signed_contract_url && (
+                      <>
+                        <Text style={styles.userDetailLabel}>
+                          <Ionicons name="document-text-outline" size={12} color={colors.accent} /> Contrato firmado
+                        </Text>
+                        <DocViewer url={u.signed_contract_url} label="Ver contrato" bucket="contracts" />
+                      </>
+                    )}
                     {/* Spaces */}
                     <Text style={styles.userDetailLabel}>
                       <Ionicons name="home-outline" size={12} color={colors.accent} /> Espacios ({detail?.spaces.length ?? 0})
@@ -1029,19 +1094,10 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, u.kyc_status === 'verified' ? styles.actionBtnDanger : styles.actionBtnSuccess]}
-                onPress={() => Alert.alert(
-                  'Gestionar KYC',
-                  `${u.full_name} — estado: ${u.kyc_status}`,
-                  [
-                    { text: 'Cancelar', style: 'cancel' },
-                    ...(u.kyc_status !== 'verified' ? [{ text: '✓ Verificar', onPress: () => onUpdateKyc(u.id, 'verified') }] : []),
-                    ...(u.kyc_status !== 'rejected' ? [{ text: '✗ Rechazar', style: 'destructive' as const, onPress: () => onUpdateKyc(u.id, 'rejected') }] : []),
-                    ...(u.kyc_status !== 'pending'  ? [{ text: 'Resetear', onPress: () => onUpdateKyc(u.id, 'pending') }] : []),
-                  ]
-                )}
+                onPress={() => onUpdateKyc(u.id, u.kyc_status === 'verified' ? 'pending' : 'verified')}
               >
                 <Ionicons name={u.kyc_status === 'verified' ? 'shield-checkmark-outline' : 'shield-outline'} size={13} color={u.kyc_status === 'verified' ? colors.accent : colors.warning} />
-                <Text style={styles.actionBtnText}>KYC</Text>
+                <Text style={styles.actionBtnText}>{u.kyc_status === 'verified' ? 'Revocar' : 'Verificar'}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, { flex: 0, paddingHorizontal: 10, borderColor: `${colors.danger}40`, backgroundColor: `${colors.danger}08` }]}
@@ -1069,7 +1125,7 @@ function extractStoragePath(fullUrl: string, bucket: string): string | null {
   return null;
 }
 
-function DocViewer({ url, label }: { url: string | null | undefined; label: string }) {
+function DocViewer({ url, label, bucket = 'kyc-docs' }: { url: string | null | undefined; label: string; bucket?: string }) {
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -1077,9 +1133,9 @@ function DocViewer({ url, label }: { url: string | null | undefined; label: stri
   const load = async () => {
     if (signedUrl) { setExpanded(e => !e); return; }
     setLoading(true);
-    const path = extractStoragePath(url ?? '', 'kyc-docs');
+    const path = extractStoragePath(url ?? '', bucket);
     if (path) {
-      const { data } = await supabase.storage.from('kyc-docs').createSignedUrl(path, 3600);
+      const { data } = await supabase.storage.from(bucket).createSignedUrl(path, 3600);
       if (data?.signedUrl) { setSignedUrl(data.signedUrl); setExpanded(true); }
     }
     setLoading(false);
@@ -1236,13 +1292,9 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
           </Text>
           <Text style={[styles.cardName, { color: colors.primary, marginTop: 4 }]}>{fmt(p.total_price)}</Text>
           {p.payment_receipt_url ? (
-            <TouchableOpacity
-              style={{ marginTop: 8, backgroundColor: `${colors.primary}10`, borderRadius: 8, padding: 8, borderWidth: 1, borderColor: `${colors.primary}30`, flexDirection: 'row', alignItems: 'center', gap: 6 }}
-              onPress={() => Alert.alert('Comprobante', p.payment_receipt_url ?? '')}
-            >
-              <Ionicons name="attach-outline" size={14} color={colors.primary} />
-              <Text style={{ color: colors.primary, fontWeight: '700', fontSize: 13 }}>Ver comprobante</Text>
-            </TouchableOpacity>
+            <View style={{ marginTop: 8 }}>
+              <DocViewer url={p.payment_receipt_url} label="Ver comprobante" bucket="receipts" />
+            </View>
           ) : null}
           <View style={styles.cardActions}>
             <TouchableOpacity
