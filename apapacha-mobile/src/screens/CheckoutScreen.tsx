@@ -217,7 +217,7 @@ export function CheckoutScreen() {
         <View style={styles.divider} />
 
         <View style={styles.paymentNote}>
-          <Text style={styles.paymentNoteIcon}>💳</Text>
+          <Ionicons name="card-outline" size={22} color={colors.primary} style={{ marginTop: 1 }} />
           <View style={{ flex: 1 }}>
             <Text style={styles.paymentNoteTitle}>Pago por transferencia</Text>
             <Text style={styles.paymentNoteText}>
@@ -233,17 +233,7 @@ export function CheckoutScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.submitBtn, submitting && { opacity: 0.7 }]}
-          onPress={handleConfirm}
-          activeOpacity={0.8}
-          disabled={submitting}
-        >
-          {submitting
-            ? <ActivityIndicator color={colors.surface} />
-            : <Text style={styles.submitBtnText}>Confirmar Reserva</Text>
-          }
-        </TouchableOpacity>
+        <Button label="Confirmar reserva" icon="checkmark-circle" loading={submitting} onPress={handleConfirm} style={{ width: '100%' }} />
       </View>
     </SafeAreaView>
   );
@@ -254,7 +244,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { padding: 8 },
   backBtnText: { fontSize: 24, color: colors.primary },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 19, color: colors.textMain },
   content: { padding: 20, paddingBottom: 80 },
   serviceCard: { flexDirection: 'row', alignItems: 'center', paddingBottom: 24, borderBottomWidth: 1, borderBottomColor: colors.border, marginBottom: 24 },
   serviceImage: { width: 100, height: 80, borderRadius: 8, marginRight: 16 },
@@ -263,7 +253,7 @@ const styles = StyleSheet.create({
   serviceTitle: { fontSize: 16, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
   serviceRating: { fontSize: 12, fontWeight: '600', color: colors.textMain },
   sectionBlock: { marginBottom: 16 },
-  sectionTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain, marginBottom: 16 },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 20, color: colors.textMain, marginBottom: 16, letterSpacing: -0.2 },
   row: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
   rowTitle: { fontSize: 15, fontWeight: '600', color: colors.textMain },
   rowValue: { fontSize: 15, color: colors.textMuted },
