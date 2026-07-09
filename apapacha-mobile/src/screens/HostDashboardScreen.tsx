@@ -9,6 +9,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { radii, shadows, label } from '../theme/design';
+import { fonts } from '../theme/typography';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking, Space, Visiter } from '../types/database';
 import { getMyHostBookings } from '../services/host.service';
@@ -111,7 +112,7 @@ export function HostDashboardScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>🐾 Mi Panel</Text>
+        <Text style={styles.headerTitle}>Mi Panel</Text>
       </View>
 
       {/* Tab bar */}
@@ -904,7 +905,7 @@ function TabResenas({ reviews }: { reviews: Review[] }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 12, backgroundColor: colors.surface },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 24, color: colors.textMain, letterSpacing: -0.3 },
   exitBtn: { padding: 8, backgroundColor: colors.dangerBg, borderRadius: 8 },
   exitBtnText: { color: colors.danger, fontWeight: '700', fontSize: 13 },
 
@@ -945,7 +946,7 @@ const styles = StyleSheet.create({
   infoText: { fontSize: 13, color: colors.primaryDark },
 
   // Section
-  sectionTitle: { fontSize: 11, fontWeight: '800', color: colors.textMuted, marginBottom: 16, textTransform: 'uppercase', letterSpacing: 1 },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 18, color: colors.textMain, marginBottom: 16, letterSpacing: -0.2 },
 
   // Historial
   histCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, marginBottom: 12, ...shadows.md },
