@@ -15,7 +15,8 @@ import type { Pet, Booking } from '../types/database';
 import { getUnreadCount } from '../services/notifications.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { AddPetScreen } from './AddPetScreen';
-import { PawBackground } from '../components/PawBackground';
+import { AppText } from '../components/ui/AppText';
+import { ScreenBackground } from '../components/ui/ScreenBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -126,7 +127,7 @@ export function HomeScreen() {
 
   return (
     <View style={styles.root}>
-      <PawBackground />
+      <ScreenBackground />
       <AppHeader rightElement={bellIcon} />
       <NotificationsModal
         visible={showNotifications}
@@ -137,8 +138,8 @@ export function HomeScreen() {
         <AddPetScreen petId={addPetId} onClose={() => { setShowAddPet(false); loadData(); }} />
       </OverlayModal>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={styles.greeting}>Hola, {firstName} 🐾</Text>
-        <Text style={styles.subGreeting}>¿Cómo están tus compañeros felinos hoy?</Text>
+        <AppText variant="display1" style={{ marginTop: 8, marginBottom: 4 }}>Hola, {firstName}</AppText>
+        <AppText variant="body" color={colors.textMuted} style={{ marginBottom: 8 }}>¿Cómo están tus compañeros felinos hoy?</AppText>
 
         {visibleAlerts.map(alert => {
           const alertColors = {
@@ -168,7 +169,7 @@ export function HomeScreen() {
               </View>
             )}
             <View style={styles.petCardBody}>
-              <Text style={styles.petName}>{firstPet.name}</Text>
+              <AppText variant="title" style={{ fontSize: 19 }}>{firstPet.name}</AppText>
               <Text style={styles.petBreed}>{firstPet.breed || 'Gato'} · {firstPet.age_years} año{firstPet.age_years !== 1 ? 's' : ''}</Text>
 
               {/* Estado — visible cuando hay reserva activa */}
@@ -221,7 +222,7 @@ export function HomeScreen() {
           </View>
         )}
 
-        <Text style={styles.actionsTitle}>Acciones rápidas</Text>
+        <AppText variant="title" style={{ marginTop: 24, marginBottom: 14 }}>Acciones rápidas</AppText>
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionCard} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Explore' })} activeOpacity={0.8}>
             <Ionicons name="search" size={28} color={colors.primary} />
