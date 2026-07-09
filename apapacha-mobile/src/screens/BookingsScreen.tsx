@@ -13,7 +13,8 @@ import { supabase } from '../../supabase';
 import { OverlayModal } from '../components/OverlayModal';
 import { LeaveReviewScreen } from './LeaveReviewScreen';
 import { useToast } from '../components/Toast';
-import { PawBackground } from '../components/PawBackground';
+import { ScreenBackground } from '../components/ui/ScreenBackground';
+import { fonts } from '../theme/typography';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -153,7 +154,7 @@ export function BookingsScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <PawBackground />
+      <ScreenBackground />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Reservas</Text>
       </View>
@@ -309,7 +310,7 @@ export function BookingsScreen() {
           !loading ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconBox}>
-                <Text style={{ fontSize: 36 }}>🐾</Text>
+                <Ionicons name="calendar-outline" size={38} color={colors.primary} />
               </View>
               <Text style={styles.emptyTitle}>Sin reservas aún</Text>
               <Text style={styles.emptyText}>Cuando reserves un espacio o visita, aparecerá aquí.</Text>
@@ -341,10 +342,10 @@ export function BookingsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   header: { paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10, backgroundColor: colors.surface },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
+  headerTitle: { fontFamily: fonts.display, fontSize: 28, color: colors.textMain, letterSpacing: -0.5 },
   scrollContainer: { padding: 20, paddingBottom: 40 },
   emptyContainer: { flexGrow: 1 },
-  sectionTitle: { ...label, color: colors.textMuted, marginBottom: 12 },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.textMain, letterSpacing: -0.2, marginBottom: 12 },
   card: { borderRadius: radii.lg, padding: 18, marginBottom: 14, ...shadows.md },
   cardActive: { backgroundColor: colors.surface },
   cardPast: { backgroundColor: colors.surface },
@@ -369,7 +370,7 @@ const styles = StyleSheet.create({
   reviewDoneText: { fontSize: 13, color: colors.accent, fontWeight: '700' },
   emptyState: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40, gap: 12, paddingHorizontal: 32 },
   emptyIconBox: { width: 88, height: 88, borderRadius: 44, backgroundColor: colors.primaryLight, alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  emptyTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain },
+  emptyTitle: { fontFamily: fonts.display, fontSize: 20, color: colors.textMain },
   emptyText: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 21 },
   emptyBtn: { marginTop: 8, backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: radii.lg },
   emptyBtnText: { color: colors.surface, fontWeight: '800', fontSize: 14 },
