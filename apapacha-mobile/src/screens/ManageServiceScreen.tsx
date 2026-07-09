@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
 import { getMySpace, upsertMySpace, uploadSpacePhoto } from '../services/spaces.service';
 import { getMyVisiter, getVisiterById, upsertMyVisiter, uploadVisiterPhoto } from '../services/visiters.service';
@@ -445,7 +446,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { padding: 8 },
   backBtnText: { fontSize: 24, color: colors.primary },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 18, color: colors.textMain },
   loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   scrollView: { flex: 1 },
   scroll: { padding: 20, paddingBottom: 40 },
