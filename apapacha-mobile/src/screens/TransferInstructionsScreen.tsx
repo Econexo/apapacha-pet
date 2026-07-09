@@ -9,6 +9,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { submitPaymentReceipt } from '../services/bookings.service';
@@ -212,7 +213,7 @@ export function TransferInstructionsScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 19, color: colors.textMain },
   backBtn: { padding: 8 },
   backBtnText: { fontSize: 24, color: colors.primary, fontWeight: '700' },
   content: { padding: 20, paddingBottom: 60 },
