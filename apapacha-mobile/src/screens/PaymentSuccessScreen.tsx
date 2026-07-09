@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import type { RootStackParamList } from '../types/navigation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -45,7 +46,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   container: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 16 },
   icon: { fontSize: 72 },
-  title: { fontSize: 28, fontWeight: '800', color: colors.textMain, textAlign: 'center' },
+  title: { fontFamily: fonts.display, fontSize: 28, color: colors.textMain, textAlign: 'center' },
   subtitle: { fontSize: 16, color: colors.textMuted, textAlign: 'center', marginBottom: 16 },
   primaryBtn: { backgroundColor: colors.primary, paddingVertical: 16, paddingHorizontal: 40, borderRadius: 12, width: '100%', alignItems: 'center' },
   primaryBtnText: { color: colors.surface, fontWeight: '800', fontSize: 16 },
