@@ -8,6 +8,8 @@ import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { radii, shadows } from '../theme/design';
+import { fonts } from '../theme/typography';
+import { Button } from '../components/ui/Button';
 import { useToast } from '../components/Toast';
 import { createReview, getMyReviewForBooking } from '../services/reviews.service';
 
@@ -117,7 +119,7 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, va
   if (submitted || alreadyReviewed) return (
     <SafeAreaView style={[styles.safeArea, { justifyContent: 'center', alignItems: 'center', padding: 32, gap: 16 }]}>
       <View style={styles.successIcon}>
-        <Text style={{ fontSize: 52 }}>{submitted ? '🐾' : '✅'}</Text>
+        <Ionicons name={submitted ? 'heart' : 'checkmark-circle'} size={52} color={submitted ? colors.primary : colors.success} />
       </View>
       <Text style={styles.successTitle}>{submitted ? '¡Gracias por calificar!' : '¡Ya dejaste tu reseña!'}</Text>
       <Text style={styles.successSub}>
@@ -247,19 +249,13 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, va
 
       {/* Footer */}
       <View style={styles.footer}>
-        <TouchableOpacity
-          style={[styles.submitBtn, (saving || rating === 0) && styles.submitBtnDisabled]}
+        <Button
+          label={rating === 0 ? 'Selecciona una calificación' : (!isClient && tip > 0) ? `Enviar reseña + ${fmt(tip)}` : 'Enviar reseña'}
+          loading={saving}
+          disabled={rating === 0}
           onPress={handleSubmit}
-          disabled={saving || rating === 0}
-          activeOpacity={0.8}
-        >
-          {saving
-            ? <ActivityIndicator color={colors.surface} />
-            : <Text style={styles.submitBtnText}>
-                {rating === 0 ? 'Selecciona una calificación' : (!isClient && tip > 0) ? `Enviar reseña + ${fmt(tip)}` : 'Enviar reseña'}
-              </Text>
-          }
-        </TouchableOpacity>
+          style={{ width: '100%' }}
+        />
       </View>
     </SafeAreaView>
   );
@@ -278,7 +274,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.background,
     alignItems: 'center', justifyContent: 'center',
   },
-  headerTitle: { fontSize: 16, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.textMain },
 
   content: { padding: 24, paddingBottom: 20 },
 
