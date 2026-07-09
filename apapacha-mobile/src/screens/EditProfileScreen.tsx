@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile, uploadAvatar } from '../services/profile.service';
@@ -170,7 +171,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { padding: 8 },
   backBtnText: { fontSize: 24, color: colors.primary },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 19, color: colors.textMain },
   content: { padding: 24, paddingBottom: 80, alignItems: 'center' },
   avatarContainer: { marginTop: 8, marginBottom: 8 },
   avatarImage: { width: 100, height: 100, borderRadius: 50 },
