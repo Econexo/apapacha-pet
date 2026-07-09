@@ -6,7 +6,14 @@ import {
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { radii, shadows } from '../theme/design';
+import { AppText } from '../components/ui/AppText';
+import { Button } from '../components/ui/Button';
+import { Chip } from '../components/ui/Chip';
+import { Avatar } from '../components/ui/Avatar';
+import { RatingStars } from '../components/ui/RatingStars';
 import type { RootStackParamList } from '../types/navigation';
 import type { Space } from '../types/database';
 import { getSpaceById } from '../services/spaces.service';
@@ -53,108 +60,88 @@ export function SpaceDetailScreen() {
   }, [id]);
 
   if (loading) return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>
+    <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
   );
 
   if (!space) return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, gap: 12 }}>
-      <Text style={{ fontSize: 48 }}>🏠</Text>
-      <Text style={{ color: colors.textMuted, fontSize: 16 }}>Espacio no encontrado</Text>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={{ color: colors.primary, fontWeight: '700' }}>← Volver</Text>
-      </TouchableOpacity>
+    <View style={[styles.center, { gap: 12 }]}>
+      <Ionicons name="home-outline" size={46} color={colors.textMuted} />
+      <AppText variant="body" color={colors.textMuted}>Espacio no encontrado</AppText>
+      <TouchableOpacity onPress={() => navigation.goBack()}><AppText variant="bodyStrong" color={colors.primary}>← Volver</AppText></TouchableOpacity>
     </View>
   );
 
   const photos = (space.image_urls && space.image_urls.length > 0) ? space.image_urls : [PLACEHOLDER];
-
-  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W));
-  };
+  const handleScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => setPhotoIndex(Math.round(e.nativeEvent.contentOffset.x / SCREEN_W));
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-        {/* Photo carousel */}
         <View style={styles.carouselContainer}>
-          <ScrollView
-            horizontal pagingEnabled showsHorizontalScrollIndicator={false}
-            onScroll={handleScroll} scrollEventThrottle={16}
-          >
-            {photos.map((uri, i) => (
-              <Image key={i} source={{ uri }} style={[styles.heroImage, { width: SCREEN_W }]} />
-            ))}
+          <ScrollView horizontal pagingEnabled showsHorizontalScrollIndicator={false} onScroll={handleScroll} scrollEventThrottle={16}>
+            {photos.map((uri, i) => <Image key={i} source={{ uri }} style={[styles.heroImage, { width: SCREEN_W }]} />)}
           </ScrollView>
           <TouchableOpacity style={[styles.backButton, { top: insets.top + 12 }]} onPress={() => navigation.goBack()}>
-            <Text style={styles.backButtonText}>←</Text>
+            <Ionicons name="arrow-back" size={22} color={colors.textMain} />
           </TouchableOpacity>
           {photos.length > 1 && (
             <View style={styles.dotsRow}>
-              {photos.map((_, i) => (
-                <View key={i} style={[styles.dot, i === photoIndex && styles.dotActive]} />
-              ))}
+              {photos.map((_, i) => <View key={i} style={[styles.dot, i === photoIndex && styles.dotActive]} />)}
             </View>
           )}
           <View style={styles.ratingBadge}>
-            <Text style={styles.ratingText}>
-              {space.rating > 0 ? `⭐ ${space.rating.toFixed(1)}` : '✨ Nuevo'}
-            </Text>
+            <Ionicons name="star" size={13} color={colors.gold} />
+            <Text style={styles.ratingText}>{space.rating > 0 ? space.rating.toFixed(1) : 'Nuevo'}</Text>
           </View>
         </View>
 
         <View style={styles.content}>
-          <Text style={styles.title}>{space.title}</Text>
-          <Text style={styles.location}>📍 {space.location}</Text>
+          <AppText variant="display2">{space.title}</AppText>
+          <View style={styles.locRow}>
+            <Ionicons name="location-outline" size={15} color={colors.textMuted} />
+            <AppText variant="body" color={colors.textMuted}>{space.location}</AppText>
+          </View>
 
           {space.features?.length > 0 && (
             <View style={styles.badgesRow}>
-              {space.features.map((f, i) => (
-                <View key={i} style={styles.badge}><Text style={styles.badgeText}>✓ {f}</Text></View>
-              ))}
+              {space.features.map((f, i) => <Chip key={i} label={f} icon="checkmark-circle" tone="leaf" />)}
             </View>
           )}
 
           <View style={styles.divider} />
 
           <View style={styles.hostRow}>
-            <View style={styles.hostAvatar}>
-              <Text style={styles.hostInitial}>{hostName ? hostName[0].toUpperCase() : '?'}</Text>
-            </View>
+            <Avatar name={hostName} size={48} gradient />
             <View>
-              <Text style={styles.hostName}>Hospedado por {hostName || 'Cuidador'}</Text>
-              <Text style={styles.hostSubtitle}>✓ Identidad Verificada</Text>
+              <AppText variant="bodyStrong">Hospedado por {hostName || 'Cuidador'}</AppText>
+              <View style={styles.verifiedRow}>
+                <Ionicons name="shield-checkmark" size={13} color={colors.success} />
+                <AppText variant="small" color={colors.successText}>Identidad Verificada</AppText>
+              </View>
             </View>
           </View>
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>Sobre este espacio</Text>
-          <Text style={styles.description}>{space.description}</Text>
+          <AppText variant="title" style={{ marginBottom: 12 }}>Sobre este espacio</AppText>
+          <AppText variant="body" color={colors.textMain} style={{ lineHeight: 24, opacity: 0.9 }}>{space.description}</AppText>
 
           <View style={styles.divider} />
 
-          <Text style={styles.sectionTitle}>
-            Reseñas {reviews.length > 0 ? `(${reviews.length})` : ''}
-          </Text>
+          <AppText variant="title" style={{ marginBottom: 14 }}>Reseñas {reviews.length > 0 ? `(${reviews.length})` : ''}</AppText>
           {reviews.length > 0 ? reviews.map(r => (
             <View key={r.id} style={styles.reviewCard}>
               <View style={styles.reviewHeader}>
-                <Text style={styles.reviewerName}>{r.reviewer_name}</Text>
-                <Text style={styles.reviewStars}>{'⭐'.repeat(Math.min(r.rating, 5))}</Text>
+                <AppText variant="bodyStrong" style={{ fontSize: 14 }}>{r.reviewer_name}</AppText>
+                <RatingStars value={r.rating} size={12} showValue={false} />
               </View>
-              {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
-              <Text style={styles.reviewDate}>
-                {r.booking_start
-                  ? new Date(r.booking_start).toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })
-                  : ''}
-              </Text>
+              {r.comment ? <AppText variant="small" color={colors.textMuted} style={{ lineHeight: 20 }}>{r.comment}</AppText> : null}
+              <AppText variant="small" color={colors.textMuted} style={{ fontSize: 11, marginTop: 4 }}>
+                {r.booking_start ? new Date(r.booking_start).toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }) : ''}
+              </AppText>
             </View>
           )) : (
-            <View style={styles.noReviews}>
-              <Text style={styles.noReviewsText}>Sin reseñas aún — ¡sé el primero!</Text>
-            </View>
+            <View style={styles.noReviews}><AppText variant="small" color={colors.textMuted}>Sin reseñas aún — ¡sé el primero!</AppText></View>
           )}
         </View>
       </ScrollView>
@@ -162,15 +149,10 @@ export function SpaceDetailScreen() {
       <SafeAreaView style={styles.footerSafeArea} edges={['bottom']}>
         <View style={styles.footerContainer}>
           <View style={styles.priceContainer}>
-            <Text style={styles.priceValue}>${space.price_per_night.toLocaleString('es-CL')}</Text>
-            <Text style={styles.priceNight}> / noche</Text>
+            <AppText variant="display2" style={{ fontSize: 24 }}>${space.price_per_night.toLocaleString('es-CL')}</AppText>
+            <AppText variant="small" color={colors.textMuted}> /noche</AppText>
           </View>
-          <TouchableOpacity
-            style={styles.bookButton} activeOpacity={0.8}
-            onPress={() => navigation.navigate('Checkout', { id: space.id, type: 'space' })}
-          >
-            <Text style={styles.bookButtonText}>Solicitar Cuidado</Text>
-          </TouchableOpacity>
+          <Button label="Solicitar cuidado" icon="calendar" onPress={() => navigation.navigate('Checkout', { id: space.id, type: 'space' })} />
         </View>
       </SafeAreaView>
     </View>
@@ -178,44 +160,27 @@ export function SpaceDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   container: { flex: 1, backgroundColor: colors.surface },
-  scrollContent: { paddingBottom: 100 },
+  scrollContent: { paddingBottom: 110 },
   carouselContainer: { height: 300, position: 'relative' },
-  heroImage: { height: 300 },
-  backButton: { position: 'absolute', left: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.9)', alignItems: 'center', justifyContent: 'center' },
-  backButtonText: { fontSize: 24, fontWeight: '700', color: colors.textMain },
+  heroImage: { height: 300, backgroundColor: colors.surfaceAlt },
+  backButton: { position: 'absolute', left: 20, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', ...shadows.sm },
   dotsRow: { position: 'absolute', bottom: 12, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', gap: 6 },
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.45)' },
   dotActive: { backgroundColor: '#fff', width: 18 },
-  ratingBadge: { position: 'absolute', top: 12, right: 16, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 20 },
-  ratingText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  ratingBadge: { position: 'absolute', top: 12, right: 16, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.95)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: radii.full },
+  ratingText: { color: colors.textMain, fontWeight: '800', fontSize: 13 },
   content: { padding: 24 },
-  title: { fontSize: 24, fontWeight: '800', color: colors.textMain, marginBottom: 8, letterSpacing: -0.5 },
-  location: { fontSize: 15, color: colors.textMuted, marginBottom: 16 },
-  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 4 },
-  badge: { backgroundColor: colors.infoBg, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: colors.infoBorder },
-  badgeText: { color: colors.info, fontSize: 12, fontWeight: '700' },
-  divider: { height: 1, backgroundColor: colors.border, marginVertical: 24 },
-  hostRow: { flexDirection: 'row', alignItems: 'center', gap: 16 },
-  hostAvatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  hostInitial: { color: colors.surface, fontSize: 18, fontWeight: '800' },
-  hostName: { fontSize: 16, fontWeight: '700', color: colors.textMain },
-  hostSubtitle: { fontSize: 13, color: colors.accent, marginTop: 2, fontWeight: '600' },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain, marginBottom: 12 },
-  description: { fontSize: 15, lineHeight: 24, color: colors.textMain, opacity: 0.85 },
-  reviewCard: { backgroundColor: colors.background, borderRadius: 12, padding: 14, marginBottom: 10 },
+  locRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4, marginBottom: 14 },
+  badgesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  divider: { height: 1, backgroundColor: colors.border, marginVertical: 22 },
+  hostRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  verifiedRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 3 },
+  reviewCard: { backgroundColor: colors.background, borderRadius: radii.md, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  reviewerName: { fontSize: 14, fontWeight: '700', color: colors.textMain },
-  reviewStars: { fontSize: 12 },
-  reviewComment: { fontSize: 14, color: colors.textMuted, lineHeight: 20, marginBottom: 4 },
-  reviewDate: { fontSize: 11, color: colors.textMuted },
-  noReviews: { paddingVertical: 20, alignItems: 'center', backgroundColor: colors.background, borderRadius: 12 },
-  noReviewsText: { fontSize: 14, color: colors.textMuted },
+  noReviews: { paddingVertical: 20, alignItems: 'center', backgroundColor: colors.background, borderRadius: radii.md },
   footerSafeArea: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
-  footerContainer: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 16, alignItems: 'center', justifyContent: 'space-between' },
+  footerContainer: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   priceContainer: { flexDirection: 'row', alignItems: 'baseline' },
-  priceValue: { fontSize: 24, fontWeight: '800', color: colors.textMain },
-  priceNight: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
-  bookButton: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
-  bookButtonText: { color: colors.surface, fontWeight: '800', fontSize: 16 },
 });
