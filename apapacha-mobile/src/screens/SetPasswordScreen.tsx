@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { supabase } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.surface },
   content: { flex: 1, padding: 28, justifyContent: 'center' },
   emoji: { fontSize: 52, textAlign: 'center', marginBottom: 12 },
-  title: { fontSize: 26, fontWeight: '800', color: colors.textMain, textAlign: 'center', marginBottom: 8 },
+  title: { fontFamily: fonts.display, fontSize: 28, color: colors.textMain, textAlign: 'center', marginBottom: 8, letterSpacing: -0.4 },
   subtitle: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 36 },
   label: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 8 },
   input: { backgroundColor: colors.background, borderWidth: 1, borderColor: colors.border, borderRadius: 12, paddingVertical: 13, paddingHorizontal: 16, fontSize: 15, color: colors.textMain, marginBottom: 20 },
