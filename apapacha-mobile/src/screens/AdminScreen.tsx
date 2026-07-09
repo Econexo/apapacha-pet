@@ -8,6 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
@@ -1410,7 +1411,7 @@ const styles = StyleSheet.create({
   backBtn: { padding: 8 },
   headerCenter: { alignItems: 'center', flex: 1 },
   headerIcon: { fontSize: 28, marginBottom: 4 },
-  headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
+  headerTitle: { fontFamily: fonts.display, fontSize: 21, color: '#fff', letterSpacing: 0.2 },
   headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.65)', fontWeight: '600', marginTop: 2, letterSpacing: 0.3 },
 
   // Tab pills
