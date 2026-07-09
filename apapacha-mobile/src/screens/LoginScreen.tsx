@@ -5,7 +5,10 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
+import { Button } from '../components/ui/Button';
 import { signIn, signUp, resetPassword } from '../services/auth.service';
 
 // Paw print decorations — deterministic positions so no hydration mismatch
@@ -89,18 +92,21 @@ export function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <LinearGradient colors={['#4A2070', '#7C4DBB']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
       {/* Decorative paw background */}
       {PAWS.map((p, i) => (
-        <Text
+        <Ionicons
           key={i}
+          name="paw"
+          size={p.size}
+          color="#fff"
           style={[styles.pawDecor, {
             top: p.top as any,
             ...(p.left !== undefined ? { left: p.left as any } : { right: (p as any).right as any }),
-            fontSize: p.size,
             opacity: p.opacity,
             transform: [{ rotate: p.rotate }],
           }]}
-        >🐾</Text>
+        />
       ))}
 
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
@@ -142,7 +148,7 @@ export function LoginScreen() {
             </View>
 
             <Text style={styles.cardTitle}>
-              {mode === 'login' ? 'Bienvenido de vuelta 👋' : 'Únete a ApapachaPet 🐱'}
+              {mode === 'login' ? 'Bienvenido de vuelta' : 'Únete a ApapachaPet'}
             </Text>
             <Text style={styles.cardSub}>
               {mode === 'login' ? 'Ingresa para acceder a tu cuenta' : 'Crea tu cuenta gratuitamente'}
@@ -204,22 +210,13 @@ export function LoginScreen() {
             ) : null}
 
             {/* Submit */}
-            <TouchableOpacity
-              style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+            <Button
+              label={mode === 'login' ? 'Entrar' : 'Crear cuenta'}
+              icon={mode === 'login' ? 'log-in' : 'person-add'}
+              loading={loading}
               onPress={handleSubmit}
-              activeOpacity={0.85}
-              disabled={loading}
-            >
-              {loading
-                ? <ActivityIndicator color={colors.surface} />
-                : <>
-                    <Text style={styles.submitBtnText}>
-                      {mode === 'login' ? 'Entrar' : 'Crear cuenta'}
-                    </Text>
-                    <Ionicons name="arrow-forward" size={18} color={colors.surface} />
-                  </>
-              }
-            </TouchableOpacity>
+              style={{ width: '100%', marginTop: 4 }}
+            />
 
             {mode === 'login' && (
               <TouchableOpacity onPress={handleForgotPassword} activeOpacity={0.7} style={styles.forgotBtn}>
@@ -274,7 +271,7 @@ const styles = StyleSheet.create({
   toggleText: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
   toggleTextActive: { color: colors.primaryDark },
 
-  cardTitle: { fontSize: 20, fontWeight: '800', color: colors.textMain, marginTop: 2 },
+  cardTitle: { fontFamily: fonts.display, fontSize: 22, color: colors.textMain, marginTop: 2, letterSpacing: -0.3 },
   cardSub: { fontSize: 13, color: colors.textMuted, marginTop: -6 },
 
   fieldGroup: { gap: 6 },
