@@ -11,7 +11,7 @@ import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings } from '../services/bookings.service';
 import { supabase } from '../../supabase';
-import { PawBackground } from '../components/PawBackground';
+import { ScreenBackground } from '../components/ui/ScreenBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -99,7 +99,7 @@ export function InboxScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <PawBackground />
+      <ScreenBackground />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mensajes</Text>
         <Text style={styles.headerSub}>
