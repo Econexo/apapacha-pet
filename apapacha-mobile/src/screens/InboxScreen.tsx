@@ -5,6 +5,7 @@ import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { radii, shadows } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
@@ -172,7 +173,7 @@ const styles = StyleSheet.create({
     shadowColor: '#1A0A2E', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
+  headerTitle: { fontFamily: fonts.display, fontSize: 28, color: colors.textMain, letterSpacing: -0.5 },
   headerSub: { fontSize: 12, color: colors.textMuted, marginTop: 2, fontWeight: '500' },
   listContent: { padding: 16, gap: 10 },
   chatCard: {
