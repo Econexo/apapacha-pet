@@ -1,11 +1,15 @@
 import React, { useState, useEffect } from 'react';
-import {
-  View, Text, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator,
-} from 'react-native';
+import { View, StyleSheet, Image, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { radii, shadows } from '../theme/design';
+import { AppText } from '../components/ui/AppText';
+import { Button } from '../components/ui/Button';
+import { Chip } from '../components/ui/Chip';
+import { RatingStars } from '../components/ui/RatingStars';
 import type { RootStackParamList } from '../types/navigation';
 import type { Visiter } from '../types/database';
 import { getVisiterById } from '../services/visiters.service';
@@ -47,109 +51,93 @@ export function VisiterDetailScreen() {
   }, [id]);
 
   if (loading) return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-      <ActivityIndicator size="large" color={colors.primary} />
-    </View>
+    <View style={styles.center}><ActivityIndicator size="large" color={colors.primary} /></View>
   );
 
   if (!visiter) return (
-    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background, gap: 12 }}>
-      <Text style={{ fontSize: 48 }}>🐾</Text>
-      <Text style={{ color: colors.textMuted, fontSize: 16 }}>Cuidador no encontrado</Text>
-      <TouchableOpacity onPress={() => navigation.goBack()}>
-        <Text style={{ color: colors.primary, fontWeight: '700' }}>← Volver</Text>
-      </TouchableOpacity>
+    <View style={[styles.center, { gap: 12 }]}>
+      <Ionicons name="paw-outline" size={46} color={colors.textMuted} />
+      <AppText variant="body" color={colors.textMuted}>Cuidador no encontrado</AppText>
+      <TouchableOpacity onPress={() => navigation.goBack()}><AppText variant="bodyStrong" color={colors.primary}>← Volver</AppText></TouchableOpacity>
     </View>
   );
 
   const displayRating = avgRating > 0 ? avgRating : visiter.rating;
 
+  const metrics: { icon: any; val: string; lab: string }[] = [
+    { icon: 'star', val: displayRating > 0 ? displayRating.toFixed(1) : 'Nuevo', lab: 'Calificación' },
+    { icon: 'paw', val: String(visiter.total_visits), lab: 'Visitas' },
+    { icon: 'chatbubble-ellipses', val: String(reviews.length), lab: 'Reseñas' },
+  ];
+
   return (
     <View style={styles.container}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Atrás</Text>
+          <Ionicons name="arrow-back" size={20} color={colors.primary} />
+          <AppText variant="bodyStrong" color={colors.primary}>Atrás</AppText>
         </TouchableOpacity>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerProfile}>
-          <Image
-            source={{ uri: visiter.image_url ?? PLACEHOLDER }}
-            style={styles.avatarLarge}
-          />
-          <Text style={styles.name}>{visiter.name}</Text>
-          <Text style={styles.profession}>{visiter.profession_title}</Text>
+          <Image source={{ uri: visiter.image_url ?? PLACEHOLDER }} style={styles.avatarLarge} />
+          <AppText variant="display2" style={{ textAlign: 'center' }}>{visiter.name}</AppText>
+          <AppText variant="body" color={colors.textMuted} style={{ marginTop: 2, marginBottom: 14 }}>{visiter.profession_title}</AppText>
           <View style={styles.badgeContainer}>
-            <View style={styles.badge}><Text style={styles.badgeText}>✓ Verificación de Identidad</Text></View>
-            <View style={styles.badge}><Text style={styles.badgeText}>✓ Especialista Felino</Text></View>
+            <Chip label="Identidad verificada" icon="shield-checkmark" tone="leaf" />
+            <Chip label="Especialista felino" icon="paw" tone="brand" />
           </View>
         </View>
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>Métricas de Servicio</Text>
+        <AppText variant="title" style={styles.sectionTitle}>Métricas de servicio</AppText>
         <View style={styles.metricsGrid}>
-          <View style={styles.metricBox}>
-            <Text style={styles.metricVal}>{displayRating > 0 ? `⭐ ${displayRating.toFixed(1)}` : '✨ Nuevo'}</Text>
-            <Text style={styles.metricLab}>Calificación</Text>
-          </View>
-          <View style={styles.metricBox}>
-            <Text style={styles.metricVal}>🐾 {visiter.total_visits}</Text>
-            <Text style={styles.metricLab}>Visitas</Text>
-          </View>
-          <View style={styles.metricBox}>
-            <Text style={styles.metricVal}>💬 {reviews.length}</Text>
-            <Text style={styles.metricLab}>Reseñas</Text>
-          </View>
+          {metrics.map(m => (
+            <View key={m.lab} style={styles.metricBox}>
+              <Ionicons name={m.icon} size={20} color={colors.primary} />
+              <AppText variant="title" style={{ fontSize: 18, marginTop: 6 }}>{m.val}</AppText>
+              <AppText variant="small" color={colors.textMuted}>{m.lab}</AppText>
+            </View>
+          ))}
         </View>
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>Sobre mí</Text>
-        <Text style={styles.bioText}>{visiter.bio}</Text>
+        <AppText variant="title" style={styles.sectionTitle}>Sobre mí</AppText>
+        <AppText variant="body" color={colors.textMain} style={{ marginHorizontal: 24, lineHeight: 24, opacity: 0.9 }}>{visiter.bio}</AppText>
 
         <View style={styles.divider} />
 
-        <Text style={styles.sectionTitle}>
-          Reseñas {reviews.length > 0 ? `(${reviews.length})` : ''}
-        </Text>
+        <AppText variant="title" style={styles.sectionTitle}>Reseñas {reviews.length > 0 ? `(${reviews.length})` : ''}</AppText>
         {reviews.length > 0 ? (
           <View style={{ marginHorizontal: 24 }}>
             {reviews.map(r => (
               <View key={r.id} style={styles.reviewCard}>
                 <View style={styles.reviewHeader}>
-                  <Text style={styles.reviewerName}>{r.reviewer_name}</Text>
-                  <Text style={styles.reviewStars}>{'⭐'.repeat(Math.min(r.rating, 5))}</Text>
+                  <AppText variant="bodyStrong" style={{ fontSize: 14 }}>{r.reviewer_name}</AppText>
+                  <RatingStars value={r.rating} size={12} showValue={false} />
                 </View>
-                {r.comment ? <Text style={styles.reviewComment}>{r.comment}</Text> : null}
-                <Text style={styles.reviewDate}>
-                  {r.booking_start
-                    ? new Date(r.booking_start).toLocaleDateString('es-CL', { month: 'short', year: 'numeric' })
-                    : ''}
-                </Text>
+                {r.comment ? <AppText variant="small" color={colors.textMuted} style={{ lineHeight: 20 }}>{r.comment}</AppText> : null}
+                <AppText variant="small" color={colors.textMuted} style={{ fontSize: 11, marginTop: 4 }}>
+                  {r.booking_start ? new Date(r.booking_start).toLocaleDateString('es-CL', { month: 'short', year: 'numeric' }) : ''}
+                </AppText>
               </View>
             ))}
           </View>
         ) : (
-          <View style={styles.noReviews}>
-            <Text style={styles.noReviewsText}>Sin reseñas aún — ¡sé el primero!</Text>
-          </View>
+          <View style={styles.noReviews}><AppText variant="small" color={colors.textMuted}>Sin reseñas aún — ¡sé el primero!</AppText></View>
         )}
       </ScrollView>
 
       <SafeAreaView style={styles.footerSafeArea} edges={['bottom']}>
         <View style={styles.footerContainer}>
           <View style={styles.priceContainer}>
-            <Text style={styles.priceValue}>${visiter.price_per_visit.toLocaleString('es-CL')}</Text>
-            <Text style={styles.priceNight}> / visita</Text>
+            <AppText variant="display2" style={{ fontSize: 23 }}>${visiter.price_per_visit.toLocaleString('es-CL')}</AppText>
+            <AppText variant="small" color={colors.textMuted}> /visita</AppText>
           </View>
-          <TouchableOpacity
-            style={styles.bookButton} activeOpacity={0.8}
-            onPress={() => navigation.navigate('Checkout', { id: visiter.id, type: 'visiter' })}
-          >
-            <Text style={styles.bookButtonText}>Agendar Visita</Text>
-          </TouchableOpacity>
+          <Button label="Agendar visita" icon="calendar" onPress={() => navigation.navigate('Checkout', { id: visiter.id, type: 'visiter' })} />
         </View>
       </SafeAreaView>
     </View>
@@ -157,38 +145,22 @@ export function VisiterDetailScreen() {
 }
 
 const styles = StyleSheet.create({
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background },
   container: { flex: 1, backgroundColor: colors.surface },
   topBar: { backgroundColor: colors.surface, paddingHorizontal: 20, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: colors.border },
-  backButton: { paddingVertical: 4, alignSelf: 'flex-start' },
-  backButtonText: { fontSize: 16, fontWeight: '700', color: colors.primary },
+  backButton: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: 4, alignSelf: 'flex-start' },
   scrollContent: { paddingBottom: 110 },
   headerProfile: { alignItems: 'center', padding: 24, paddingTop: 20 },
-  avatarLarge: { width: 120, height: 120, borderRadius: 60, marginBottom: 16, borderWidth: 3, borderColor: colors.border },
-  name: { fontSize: 26, fontWeight: '800', color: colors.textMain, marginBottom: 4 },
-  profession: { fontSize: 16, color: colors.textMuted, marginBottom: 16 },
+  avatarLarge: { width: 116, height: 116, borderRadius: 38, marginBottom: 14, borderWidth: 3, borderColor: colors.surface, backgroundColor: colors.surfaceAlt },
   badgeContainer: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 },
-  badge: { backgroundColor: `${colors.primary}10`, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: `${colors.primary}20` },
-  badgeText: { color: colors.primaryDark, fontSize: 12, fontWeight: '700' },
   divider: { height: 1, backgroundColor: colors.border, marginHorizontal: 24, marginVertical: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain, marginHorizontal: 24, marginBottom: 16 },
+  sectionTitle: { marginHorizontal: 24, marginBottom: 14 },
   metricsGrid: { flexDirection: 'row', marginHorizontal: 20, gap: 12 },
-  metricBox: { flex: 1, backgroundColor: colors.background, padding: 16, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
-  metricVal: { fontSize: 16, fontWeight: '800', color: colors.textMain, marginBottom: 4 },
-  metricLab: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
-  bioText: { marginHorizontal: 24, fontSize: 15, lineHeight: 24, color: colors.textMain, opacity: 0.85 },
-  reviewCard: { backgroundColor: colors.background, borderRadius: 12, padding: 14, marginBottom: 10 },
+  metricBox: { flex: 1, backgroundColor: colors.surfaceAlt, padding: 16, borderRadius: radii.md, alignItems: 'center', borderWidth: 1, borderColor: colors.border },
+  reviewCard: { backgroundColor: colors.background, borderRadius: radii.md, padding: 14, marginBottom: 10, borderWidth: 1, borderColor: colors.border },
   reviewHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
-  reviewerName: { fontSize: 14, fontWeight: '700', color: colors.textMain },
-  reviewStars: { fontSize: 12 },
-  reviewComment: { fontSize: 14, color: colors.textMuted, lineHeight: 20, marginBottom: 4 },
-  reviewDate: { fontSize: 11, color: colors.textMuted },
-  noReviews: { marginHorizontal: 24, paddingVertical: 20, alignItems: 'center', backgroundColor: colors.background, borderRadius: 12 },
-  noReviewsText: { fontSize: 14, color: colors.textMuted },
+  noReviews: { marginHorizontal: 24, paddingVertical: 20, alignItems: 'center', backgroundColor: colors.background, borderRadius: radii.md },
   footerSafeArea: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
-  footerContainer: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 16, alignItems: 'center', justifyContent: 'space-between' },
+  footerContainer: { flexDirection: 'row', paddingHorizontal: 24, paddingVertical: 14, alignItems: 'center', justifyContent: 'space-between', gap: 12 },
   priceContainer: { flexDirection: 'row', alignItems: 'baseline' },
-  priceValue: { fontSize: 22, fontWeight: '800', color: colors.textMain },
-  priceNight: { fontSize: 14, color: colors.textMuted, fontWeight: '600' },
-  bookButton: { backgroundColor: colors.primary, paddingHorizontal: 24, paddingVertical: 14, borderRadius: 12 },
-  bookButtonText: { color: colors.surface, fontWeight: '800', fontSize: 16 },
 });
