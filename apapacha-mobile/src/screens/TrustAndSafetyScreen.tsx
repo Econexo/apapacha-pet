@@ -4,6 +4,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import type { RootStackParamList } from '../types/navigation';
 import { InsuranceClaimScreen } from './InsuranceClaimScreen';
 import { OverlayModal } from '../components/OverlayModal';
@@ -138,7 +139,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { padding: 8 },
   backBtnText: { fontSize: 24, color: colors.primary, fontWeight: '800' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 19, color: colors.textMain },
   scrollContainer: { padding: 20, paddingBottom: 60 },
   heroSection: { alignItems: 'center', marginBottom: 24, paddingVertical: 20, backgroundColor: `${colors.primary}10`, borderRadius: 16, borderWidth: 1, borderColor: `${colors.primary}30` },
   heroIcon: { fontSize: 40, marginBottom: 8 },
