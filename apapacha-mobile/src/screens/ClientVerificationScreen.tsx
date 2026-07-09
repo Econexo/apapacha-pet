@@ -9,6 +9,7 @@ import { colors } from '../theme/colors';
 import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { completeKyc, uploadKycDoc } from '../services/auth.service';
+import { fonts } from '../theme/typography';
 import { useAuth } from '../context/AuthContext';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -235,7 +236,7 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', padding: 16 },
   scroll: { padding: 24, paddingBottom: 60 },
-  title: { fontSize: 32, fontWeight: '800', color: colors.textMain, marginBottom: 12, lineHeight: 36, letterSpacing: -1 },
+  title: { fontFamily: fonts.display, fontSize: 32, color: colors.textMain, marginBottom: 12, lineHeight: 38, letterSpacing: -0.8 },
   subtitle: { fontSize: 15, color: colors.textMuted, lineHeight: 22, opacity: 0.9, marginBottom: 32 },
   securityModule: { backgroundColor: colors.surface, padding: 20, borderRadius: 16, borderWidth: 1, borderColor: colors.border, marginBottom: 16 },
   moduleTitle: { fontSize: 16, fontWeight: '800', color: colors.textMain, marginBottom: 8 },
