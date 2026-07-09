@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { submitClaim, type IncidentType } from '../services/claims.service';
@@ -121,7 +122,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 12, backgroundColor: colors.surface, borderBottomWidth: 1, borderBottomColor: colors.border },
   backBtn: { padding: 8 },
   backBtnText: { fontSize: 24, color: colors.primary, fontWeight: '800' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 19, color: colors.textMain },
   content: { padding: 20, paddingBottom: 100 },
   warningBanner: { flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#FEF3C7', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#FCD34D', marginBottom: 24, gap: 10 },
   warningIcon: { fontSize: 20 },
