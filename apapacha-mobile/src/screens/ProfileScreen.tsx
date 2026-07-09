@@ -21,7 +21,8 @@ import { EditProfileScreen } from './EditProfileScreen';
 import { AddPetScreen } from './AddPetScreen';
 import { TrustAndSafetyScreen } from './TrustAndSafetyScreen';
 import { HostOnboardingScreen } from './HostOnboardingScreen';
-import { PawBackground } from '../components/PawBackground';
+import { ScreenBackground } from '../components/ui/ScreenBackground';
+import { fonts } from '../theme/typography';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
@@ -102,7 +103,7 @@ export function ProfileScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <PawBackground />
+      <ScreenBackground />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mi Perfil</Text>
         <TouchableOpacity style={styles.editBtn} onPress={() => setShowEditProfile(true)}>
@@ -369,7 +370,7 @@ export function ProfileScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.background },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 10, backgroundColor: colors.surface },
-  headerTitle: { fontSize: 28, fontWeight: '800', color: colors.textMain, letterSpacing: -0.5 },
+  headerTitle: { fontFamily: fonts.display, fontSize: 28, color: colors.textMain, letterSpacing: -0.5 },
   editBtn: { backgroundColor: colors.primaryLight, paddingHorizontal: 16, paddingVertical: 8, borderRadius: radii.lg },
   editBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 14 },
   scrollContainer: { padding: 20, paddingBottom: 100 },
@@ -378,13 +379,13 @@ const styles = StyleSheet.create({
   avatarPlaceholder: { width: 68, height: 68, borderRadius: 34, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   avatarText: { color: colors.surface, fontSize: 26, fontWeight: '700' },
   ownerInfo: { flex: 1 },
-  ownerName: { fontSize: 20, fontWeight: '800', color: colors.textMain },
+  ownerName: { fontFamily: fonts.display, fontSize: 22, color: colors.textMain, letterSpacing: -0.3 },
   kycRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 4 },
   ownerStatus: { fontSize: 13, color: colors.accent, fontWeight: '700' },
   hostBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 2 },
   hostBadge: { fontSize: 12, color: colors.primary, fontWeight: '700' },
   sectionHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, marginTop: 8 },
-  sectionTitle: { ...label, color: colors.textMuted },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.textMain, letterSpacing: -0.2 },
   addPetBtn: { backgroundColor: colors.primaryLight, paddingHorizontal: 14, paddingVertical: 7, borderRadius: radii.lg },
   addPetBtnText: { color: colors.primaryDark, fontWeight: '700', fontSize: 12 },
   catCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, marginBottom: 24, ...shadows.md },
