@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { radii, shadows } from '../theme/design';
 import { supabase } from '../../supabase';
 import {
@@ -246,7 +247,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 8, elevation: 3,
   },
   backBtn: { padding: 8 },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: colors.textMain },
+  headerTitle: { fontFamily: fonts.display, fontSize: 19, color: colors.textMain },
   unreadBadge: {
     minWidth: 20, height: 20, borderRadius: 10, backgroundColor: colors.primary,
     alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
