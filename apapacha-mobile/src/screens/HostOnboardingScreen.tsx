@@ -6,6 +6,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { colors } from '../theme/colors';
+import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
 import type { RootStackParamList } from '../types/navigation';
 import { applyAsHost } from '../services/auth.service';
@@ -457,7 +458,7 @@ const styles = StyleSheet.create({
   progressText: { fontSize: 12, fontWeight: '700', color: colors.primary, textAlign: 'right' },
   scroll: { padding: 24, paddingBottom: 100 },
   stepContent: { marginTop: 10 },
-  title: { fontSize: 24, fontWeight: '800', color: colors.textMain, marginBottom: 12 },
+  title: { fontFamily: fonts.display, fontSize: 25, color: colors.textMain, marginBottom: 12, letterSpacing: -0.3 },
   description: { fontSize: 15, color: colors.textMuted, lineHeight: 22, marginBottom: 24 },
   uploadBlock: { marginBottom: 24 },
   uploadLabel: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 8 },
