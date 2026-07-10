@@ -1,10 +1,11 @@
 import React from 'react';
-import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, View, ViewStyle } from 'react-native';
+import { TouchableOpacity, Text, ActivityIndicator, StyleSheet, View, ViewStyle, Animated } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, gradients } from '../../theme/colors';
 import { radii, shadows } from '../../theme/design';
 import { fonts } from '../../theme/typography';
+import { usePressScale } from '../../hooks/useMotion';
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function Button({ label, onPress, variant = 'primary', icon, loading, disabled, active, style }: Props) {
+  const { scale, onPressIn, onPressOut } = usePressScale(0.97);
   const fg = variant === 'primary' || (variant === 'pill' && active) ? '#fff' : colors.primary;
   const inner = loading
     ? <ActivityIndicator color={fg} size="small" />
@@ -29,33 +31,38 @@ export function Button({ label, onPress, variant = 'primary', icon, loading, dis
         <Text style={[styles.label, { color: fg }]}>{label}</Text>
       </View>
     );
+  const press = { onPressIn, onPressOut, activeOpacity: 0.9 };
 
   if (variant === 'primary') {
     return (
-      <TouchableOpacity onPress={onPress} disabled={disabled || loading} activeOpacity={0.85}
-        style={[shadows.sm, { borderRadius: radii.md }, disabled && { opacity: 0.5 }, style]}>
-        <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primary}>
-          {inner}
-        </LinearGradient>
-      </TouchableOpacity>
+      <Animated.View style={[{ transform: [{ scale }] }, disabled && { opacity: 0.5 }, style]}>
+        <TouchableOpacity onPress={onPress} disabled={disabled || loading} {...press} style={[shadows.sm, { borderRadius: radii.md }]}>
+          <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.primary}>
+            {inner}
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
     );
   }
 
   if (variant === 'pill' && active) {
     return (
-      <TouchableOpacity onPress={onPress} disabled={disabled} activeOpacity={0.85} style={[{ borderRadius: radii.full }, style]}>
-        <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pill}>
-          {inner}
-        </LinearGradient>
-      </TouchableOpacity>
+      <Animated.View style={[{ transform: [{ scale }] }, style]}>
+        <TouchableOpacity onPress={onPress} disabled={disabled} {...press} style={{ borderRadius: radii.full }}>
+          <LinearGradient colors={gradients.brand} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.pill}>
+            {inner}
+          </LinearGradient>
+        </TouchableOpacity>
+      </Animated.View>
     );
   }
 
   return (
-    <TouchableOpacity onPress={onPress} disabled={disabled || loading} activeOpacity={0.85}
-      style={[variant === 'pill' ? styles.pillIdle : styles.ghost, disabled && { opacity: 0.5 }, style]}>
-      {inner}
-    </TouchableOpacity>
+    <Animated.View style={[{ transform: [{ scale }] }, disabled && { opacity: 0.5 }, style]}>
+      <TouchableOpacity onPress={onPress} disabled={disabled || loading} {...press} style={variant === 'pill' ? styles.pillIdle : styles.ghost}>
+        {inner}
+      </TouchableOpacity>
+    </Animated.View>
   );
 }
 
