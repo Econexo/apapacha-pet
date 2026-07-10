@@ -45,7 +45,7 @@ export function SpaceDetailScreen() {
         const s = await getSpaceById(id);
         setSpace(s);
         const { data: prof, error: profErr } = await supabase
-          .from('profiles').select('full_name').eq('id', s.host_id).single();
+          .from('public_profiles').select('full_name').eq('id', s.host_id).single();
         if (profErr) console.error('[SpaceDetail] host profile:', profErr.message);
         if (prof) setHostName(prof.full_name);
         const rv = await getHostReviews(s.host_id);
