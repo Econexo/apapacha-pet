@@ -61,17 +61,29 @@ export async function getHostReviews(hostId: string): Promise<Review[]> {
     .from('reviews')
     .select(`
       *,
-      profiles!reviewer_id(full_name, last_name),
       bookings!booking_id(start_date, end_date, service_type, pets(name))
     `)
     .eq('host_id', hostId)
     .order('created_at', { ascending: false });
   if (error) throw error;
-  return (data ?? []).map((r: any) => ({
+  const rows = (data ?? []) as any[];
+
+  // Nombres de los autores vía public_profiles (base profiles queda self+admin)
+  const reviewerIds = [...new Set(rows.map(r => r.reviewer_id).filter(Boolean))];
+  const nameMap = new Map<string, string>();
+  if (reviewerIds.length) {
+    const { data: profs } = await supabase
+      .from('public_profiles')
+      .select('id, full_name, last_name')
+      .in('id', reviewerIds);
+    for (const p of (profs ?? []) as any[]) {
+      nameMap.set(p.id, `${p.full_name ?? ''} ${p.last_name ?? ''}`.trim() || 'Cliente');
+    }
+  }
+
+  return rows.map(r => ({
     ...r,
-    reviewer_name: r.profiles
-      ? `${r.profiles.full_name ?? ''} ${r.profiles.last_name ?? ''}`.trim()
-      : 'Cliente',
+    reviewer_name: nameMap.get(r.reviewer_id) ?? 'Cliente',
     booking_start: r.bookings?.start_date,
     booking_end: r.bookings?.end_date,
     booking_service_type: r.bookings?.service_type,
