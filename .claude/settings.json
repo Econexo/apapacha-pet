@@ -2,7 +2,9 @@
   "permissions": {
     "allow": [
       "Bash(supabase secrets *)",
-      "Read(//Users/sebastian/**)"
+      "Read(//Users/sebastian/**)",
+      "Bash(supabase db *)",
+      "Bash(curl -s 'https://mzqvkzjxubuqpdnznigy.supabase.co/rest/v1/public_profiles?select=full_name&limit=3' -H 'apikey: __TRACKED_VAR__')"
     ]
   }
 }
