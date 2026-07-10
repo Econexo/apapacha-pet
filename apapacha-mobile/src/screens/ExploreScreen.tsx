@@ -12,6 +12,7 @@ import { VisiterCard } from '../components/VisiterCard';
 import { SpaceCardSkeleton, VisiterCardSkeleton } from '../components/Skeleton';
 import { AppText } from '../components/ui/AppText';
 import { ScreenBackground } from '../components/ui/ScreenBackground';
+import { FadeInView } from '../components/ui/FadeInView';
 import type { RootStackParamList } from '../types/navigation';
 import type { Space, Visiter } from '../types/database';
 import { getSpaces } from '../services/spaces.service';
@@ -140,21 +141,25 @@ export function ExploreScreen() {
       ) : activeTab === 'SPACES' ? (
         <FlatList
           data={spaces} keyExtractor={item => item.id} contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <SpaceCard id={item.id} title={item.title} location={item.location} pricePerNight={item.price_per_night} rating={item.rating}
-              imageUrl={item.image_urls?.[0] ?? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800'}
-              onPress={id => navigation.navigate('SpaceDetail', { id })} />
+          renderItem={({ item, index }) => (
+            <FadeInView delay={Math.min(index, 8) * 45}>
+              <SpaceCard id={item.id} title={item.title} location={item.location} pricePerNight={item.price_per_night} rating={item.rating}
+                imageUrl={item.image_urls?.[0] ?? 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=800'}
+                onPress={id => navigation.navigate('SpaceDetail', { id })} />
+            </FadeInView>
           )}
           ListEmptyComponent={<EmptyState icon="home-outline" title="Sin espacios disponibles" />}
         />
       ) : (
         <FlatList
           data={visiters} keyExtractor={item => item.id} contentContainerStyle={styles.listContainer} showsVerticalScrollIndicator={false}
-          renderItem={({ item }) => (
-            <VisiterCard id={item.id} name={item.name} professionTitle={item.profession_title} pricePerVisit={item.price_per_visit}
-              rating={item.rating} totalVisits={item.total_visits}
-              imageUrl={item.image_url ?? 'https://images.unsplash.com/photo-1537368910025-7028ba0a464a?w=800'}
-              onPress={id => navigation.navigate('VisiterDetail', { id })} />
+          renderItem={({ item, index }) => (
+            <FadeInView delay={Math.min(index, 8) * 45}>
+              <VisiterCard id={item.id} name={item.name} professionTitle={item.profession_title} pricePerVisit={item.price_per_visit}
+                rating={item.rating} totalVisits={item.total_visits}
+                imageUrl={item.image_url ?? 'https://images.unsplash.com/photo-1537368910025-7028ba0a464a?w=800'}
+                onPress={id => navigation.navigate('VisiterDetail', { id })} />
+            </FadeInView>
           )}
           ListEmptyComponent={<EmptyState icon="paw-outline" title="Sin cuidadores disponibles" />}
         />
