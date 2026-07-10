@@ -6,3 +6,4 @@ export { Avatar } from './Avatar';
 export { Banner } from './Banner';
 export { StatTile } from './StatTile';
 export { ScreenBackground } from './ScreenBackground';
+export { FadeInView } from './FadeInView';
