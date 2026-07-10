@@ -54,7 +54,7 @@ export async function insertNotificationsForAdmins(
   data?: Record<string, any>,
 ): Promise<void> {
   const { data: admins, error } = await supabase
-    .from('profiles')
+    .from('public_profiles')
     .select('id')
     .eq('is_admin', true);
   if (error || !admins?.length) return;
