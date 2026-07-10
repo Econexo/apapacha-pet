@@ -228,23 +228,42 @@ export function BookingsScreen() {
                   </View>
                 )}
 
-                {/* Payment status for active/pending */}
-                {isActive && payStatus && (
-                  <View style={[styles.paymentRow, { backgroundColor: `${payStatus.color}12` }]}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
-                      <Ionicons name={payStatus.icon} size={13} color={payStatus.color} />
-                      <Text style={[styles.paymentText, { color: payStatus.color }]}>{payStatus.text}</Text>
-                    </View>
-                    {item.payment_status === 'pending' && (
-                      <TouchableOpacity
-                        onPress={() => navigation.navigate('TransferInstructions', { bookingId: item.id, amount: item.total_price })}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={[styles.paymentAction, { color: payStatus.color }]}>Ver instrucciones →</Text>
+                {/* CTA contextual: aceptación del cuidador → pago → confirmación */}
+                {isActive && (() => {
+                  if (item.host_response === 'pending') {
+                    return (
+                      <View style={[styles.infoRow, { backgroundColor: `${colors.warning}12` }]}>
+                        <Ionicons name="hourglass-outline" size={14} color={colors.warning} />
+                        <Text style={[styles.infoRowText, { color: colors.warningText }]}>Esperando que el cuidador acepte tu solicitud</Text>
+                      </View>
+                    );
+                  }
+                  const paid = item.payment_status === 'paid' || item.status === 'active';
+                  const submitted = item.payment_status === 'receipt_submitted';
+                  if (!paid && !submitted) {
+                    return (
+                      <TouchableOpacity style={styles.payCta} activeOpacity={0.9}
+                        onPress={() => navigation.navigate('TransferInstructions', { bookingId: item.id, amount: item.total_price })}>
+                        <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                        <Text style={styles.payCtaText}>Subir comprobante de pago</Text>
                       </TouchableOpacity>
-                    )}
-                  </View>
-                )}
+                    );
+                  }
+                  if (submitted) {
+                    return (
+                      <View style={[styles.infoRow, { backgroundColor: `${colors.info}12` }]}>
+                        <Ionicons name="time-outline" size={14} color={colors.info} />
+                        <Text style={[styles.infoRowText, { color: colors.info }]}>Comprobante en revisión por el equipo</Text>
+                      </View>
+                    );
+                  }
+                  return (
+                    <View style={[styles.infoRow, { backgroundColor: `${colors.success}12` }]}>
+                      <Ionicons name="checkmark-circle-outline" size={14} color={colors.success} />
+                      <Text style={[styles.infoRowText, { color: colors.successText }]}>Pago confirmado</Text>
+                    </View>
+                  );
+                })()}
 
                 {/* Actions */}
                 <View style={styles.actionsRow}>
@@ -361,6 +380,10 @@ const styles = StyleSheet.create({
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: radii.md, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 10 },
   paymentText: { fontSize: 12, fontWeight: '700' },
   paymentAction: { fontSize: 12, fontWeight: '700' },
+  infoRow: { flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: radii.md, paddingHorizontal: 11, paddingVertical: 9, marginBottom: 10 },
+  infoRowText: { flex: 1, fontSize: 12.5, fontWeight: '700' },
+  payCta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: colors.primary, borderRadius: radii.md, paddingVertical: 13, marginBottom: 10, ...shadows.sm },
+  payCtaText: { color: '#fff', fontSize: 14, fontWeight: '800' },
   actionsRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   actionBtn: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radii.md, backgroundColor: colors.background, flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionBtnDanger: { backgroundColor: `${colors.danger}08` },
