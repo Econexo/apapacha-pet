@@ -812,6 +812,12 @@ const STATUS_COLOR: Record<string, string> = {
   cancelled: colors.danger,
 };
 
+const KYC_LABEL: Record<string, string> = {
+  pending: 'Pendiente', under_review: 'En revisión', verified: 'Verificado', rejected: 'Rechazado',
+};
+const SERVICE_LABEL: Record<string, string> = { space: 'Alojamiento', visiter: 'Visita' };
+const svcLabel = (t: string) => SERVICE_LABEL[t] ?? t;
+
 // ─── Users Tab ────────────────────────────────────────────────────────────────
 
 interface UserDetail {
@@ -980,24 +986,25 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
 
                     {/* Decisión de verificación (funciona en web y móvil) */}
                     <Text style={styles.userDetailLabel}>
-                      <Ionicons name="shield-checkmark-outline" size={12} color={colors.accent} /> Verificación · {u.kyc_status}
+                      <Ionicons name="shield-checkmark-outline" size={12} color={colors.accent} /> Verificación · {KYC_LABEL[u.kyc_status] ?? u.kyc_status}
                     </Text>
                     <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
                       {u.kyc_status !== 'verified' && (
-                        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSuccess, { flex: 0, paddingHorizontal: 14 }]} onPress={() => onUpdateKyc(u.id, 'verified')}>
-                          <Ionicons name="checkmark-circle-outline" size={14} color={colors.accent} />
-                          <Text style={styles.actionBtnText}>Verificar</Text>
+                        <TouchableOpacity style={[styles.kycDecisionBtn, { backgroundColor: colors.successBg, borderColor: colors.success }]} onPress={() => onUpdateKyc(u.id, 'verified')}>
+                          <Ionicons name="checkmark-circle" size={15} color={colors.successText} />
+                          <Text style={[styles.kycDecisionText, { color: colors.successText }]}>Verificar</Text>
                         </TouchableOpacity>
                       )}
                       {u.kyc_status !== 'rejected' && (
-                        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnDanger, { flex: 0, paddingHorizontal: 14 }]} onPress={() => onUpdateKyc(u.id, 'rejected')}>
-                          <Ionicons name="close-circle-outline" size={14} color={colors.danger} />
-                          <Text style={styles.actionBtnText}>Rechazar</Text>
+                        <TouchableOpacity style={[styles.kycDecisionBtn, { backgroundColor: colors.dangerBg, borderColor: colors.danger }]} onPress={() => onUpdateKyc(u.id, 'rejected')}>
+                          <Ionicons name="close-circle" size={15} color={colors.dangerText} />
+                          <Text style={[styles.kycDecisionText, { color: colors.dangerText }]}>Rechazar</Text>
                         </TouchableOpacity>
                       )}
                       {u.kyc_status !== 'pending' && (
-                        <TouchableOpacity style={[styles.actionBtn, styles.actionBtnSecondary, { flex: 0, paddingHorizontal: 14 }]} onPress={() => onUpdateKyc(u.id, 'pending')}>
-                          <Text style={styles.actionBtnText}>Resetear</Text>
+                        <TouchableOpacity style={[styles.kycDecisionBtn, { backgroundColor: colors.surfaceAlt, borderColor: colors.border }]} onPress={() => onUpdateKyc(u.id, 'pending')}>
+                          <Ionicons name="refresh" size={15} color={colors.textMuted} />
+                          <Text style={[styles.kycDecisionText, { color: colors.textMuted }]}>Resetear</Text>
                         </TouchableOpacity>
                       )}
                     </View>
@@ -1047,7 +1054,7 @@ function UsersTab({ users, search, onSearch, onToggleAdmin, onUpdateKyc, onDelet
                       : detail!.bookings.map(b => (
                         <View key={b.id} style={styles.userDetailRow}>
                           <View style={[styles.statusDot, { backgroundColor: STATUS_COLOR[b.status] ?? colors.textMuted }]} />
-                          <Text style={styles.userDetailText}>{b.service_type} · {b.start_date}</Text>
+                          <Text style={styles.userDetailText}>{svcLabel(b.service_type)} · {b.start_date}</Text>
                           <Text style={styles.userDetailMeta}>${b.total_price.toLocaleString('es-CL')}</Text>
                         </View>
                       ))
@@ -1260,7 +1267,7 @@ function PaymentsTab({ payments, onConfirm }: { payments: PendingPayment[]; onCo
         <View key={p.id} style={[styles.card, { borderColor: colors.warning, borderWidth: 1.5 }]}>
           <Text style={styles.cardName}>{p.profiles?.full_name ?? 'Usuario'}</Text>
           <Text style={styles.cardMeta}>
-            {p.service_type} · {p.start_date} → {p.end_date}
+            {svcLabel(p.service_type)} · {p.start_date} → {p.end_date}
           </Text>
           <Text style={[styles.cardName, { color: colors.primary, marginTop: 4 }]}>{fmt(p.total_price)}</Text>
           {p.payment_receipt_url ? (
@@ -1315,7 +1322,7 @@ function BookingsTab({ bookings, onUpdateStatus, onConfirmPayment }: {
             <View style={{ flex: 1 }}>
               <Text style={styles.cardName}>{b.profiles?.full_name ?? 'Usuario'}</Text>
               <Text style={styles.cardMeta}>
-                {b.service_type} · {b.start_date} → {b.end_date}
+                {svcLabel(b.service_type)} · {b.start_date} → {b.end_date}
               </Text>
               <Text style={styles.cardMeta}>
                 ${b.total_price.toLocaleString('es-CL')} CLP
@@ -1504,6 +1511,8 @@ const styles = StyleSheet.create({
   actionBtnDanger: { backgroundColor: `${colors.danger}10`, borderWidth: 1, borderColor: colors.danger },
   actionBtnSecondary: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },
   actionBtnText: { fontSize: 12, fontWeight: '700', color: colors.textMain },
+  kycDecisionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 9, paddingHorizontal: 15, borderRadius: 10, borderWidth: 1 },
+  kycDecisionText: { fontSize: 13, fontWeight: '800' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, alignSelf: 'flex-start' },
   statusText: { fontSize: 11, fontWeight: '700' },
   emptyState: { backgroundColor: colors.surface, borderRadius: 14, padding: 24, alignItems: 'center', borderWidth: 1, borderColor: colors.border, gap: 8 },
