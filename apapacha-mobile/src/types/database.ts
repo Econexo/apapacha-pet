@@ -73,6 +73,7 @@ export interface Booking {
   start_date: string;
   end_date: string;
   status: BookingStatus;
+  host_response: 'pending' | 'accepted' | 'rejected';
   service_phase: ServicePhase;
   total_price: number;
   insurance_included: boolean;
