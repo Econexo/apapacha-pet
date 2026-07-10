@@ -15,6 +15,8 @@ const TYPE_ICON: Record<string, { icon: IoniconName; color: string }> = {
   booking_created:       { icon: 'calendar-outline',        color: colors.primary },
   receipt_submitted:     { icon: 'card-outline',             color: colors.warning },
   booking_confirmed:     { icon: 'checkmark-circle-outline', color: colors.success },
+  booking_accepted:      { icon: 'checkmark-circle-outline', color: colors.success },
+  booking_rejected:      { icon: 'close-circle-outline',     color: colors.danger  },
   application_approved:  { icon: 'ribbon-outline',           color: colors.accent  },
   application_submitted: { icon: 'document-text-outline',    color: colors.warning },
   service_started:       { icon: 'play-circle-outline',      color: colors.primary },
