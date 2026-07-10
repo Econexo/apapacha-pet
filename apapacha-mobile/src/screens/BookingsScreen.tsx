@@ -83,7 +83,7 @@ export function BookingsScreen() {
       // Separate profiles lookup — avoids ambiguous FK embed that can fail silently
       const spaceHostIds = [...new Set((spacesRes.data ?? []).map((s: any) => s.host_id).filter(Boolean))];
       const profilesRes = spaceHostIds.length
-        ? await supabase.from('profiles').select('id, full_name, last_name').in('id', spaceHostIds)
+        ? await supabase.from('public_profiles').select('id, full_name, last_name').in('id', spaceHostIds)
         : { data: [] as any[] };
       const profileMap = new Map((profilesRes.data ?? []).map((p: any) => [p.id, p]));
 
