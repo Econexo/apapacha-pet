@@ -90,7 +90,9 @@ export function CheckoutScreen() {
         end_date: endDate,
         total_price: grandTotal,
       });
-      navigation.navigate('TransferInstructions', { bookingId: booking.id, amount: grandTotal });
+      // El pago ocurre DESPUÉS de que el cuidador acepte la solicitud.
+      toast.success('¡Solicitud enviada!', 'El cuidador debe aceptar tu reserva. Te avisaremos para que subas tu comprobante de pago.');
+      navigation.navigate('MainTabs', { screen: 'Bookings' } as any);
     } catch (e: any) {
       toast.error('Error', e.message ?? 'No se pudo confirmar la reserva');
     } finally {
@@ -219,9 +221,9 @@ export function CheckoutScreen() {
         <View style={styles.paymentNote}>
           <Ionicons name="card-outline" size={22} color={colors.primary} style={{ marginTop: 1 }} />
           <View style={{ flex: 1 }}>
-            <Text style={styles.paymentNoteTitle}>Pago por transferencia</Text>
+            <Text style={styles.paymentNoteTitle}>Solicitud → aceptación → pago</Text>
             <Text style={styles.paymentNoteText}>
-              Al confirmar, recibirás las instrucciones de pago por email. El servicio se activa una vez confirmada la transferencia.
+              Enviaremos tu solicitud al cuidador. Cuando la acepte, te avisaremos para que subas tu comprobante de transferencia desde Reservas. El servicio se activa al confirmar el pago.
             </Text>
           </View>
         </View>
@@ -233,7 +235,7 @@ export function CheckoutScreen() {
       </ScrollView>
 
       <View style={styles.footer}>
-        <Button label="Confirmar reserva" icon="checkmark-circle" loading={submitting} onPress={handleConfirm} style={{ width: '100%' }} />
+        <Button label="Enviar solicitud" icon="paper-plane" loading={submitting} onPress={handleConfirm} style={{ width: '100%' }} />
       </View>
     </SafeAreaView>
   );
