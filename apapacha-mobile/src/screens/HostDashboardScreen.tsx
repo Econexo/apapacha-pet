@@ -22,7 +22,7 @@ import {
   getProgressToNextLevel,
   type HostStats, type Review, type MonthlyEarning,
 } from '../services/reviews.service';
-import { completeBookingAsHost, startService } from '../services/host.service';
+import { completeBookingAsHost, startService, respondToBooking } from '../services/host.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { ManageServiceScreen } from './ManageServiceScreen';
 import { useToast } from '../components/Toast';
@@ -619,6 +619,18 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
         const daysPassed   = totalDays - daysLeft;
         const isPending    = b.status === 'pending';
         const isInProgress = b.service_phase === 'in_progress';
+        const needsResponse   = b.host_response === 'pending';
+        const awaitingPayment = b.host_response === 'accepted' && b.status !== 'active';
+
+        const doRespond = (accept: boolean) => respondToBooking(b.id, accept).then(onReload).catch(e => console.error(e));
+        const confirmRespond = (accept: boolean) => {
+          const msg = accept ? '¿Aceptar esta reserva? El cliente podrá proceder al pago.' : '¿Rechazar esta reserva? Se cancelará.';
+          if (Platform.OS === 'web') { if ((window as any).confirm(msg)) doRespond(accept); }
+          else Alert.alert(accept ? 'Aceptar solicitud' : 'Rechazar solicitud', msg, [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: accept ? 'Aceptar' : 'Rechazar', style: accept ? 'default' : 'destructive', onPress: () => doRespond(accept) },
+          ]);
+        };
 
         const doStart = () => startService(b.id).then(onReload).catch(console.error);
         const doComplete = () => completeBookingAsHost(b.id).then(onReload).catch(console.error);
@@ -652,12 +664,13 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
             {/* Header */}
             <View style={styles.histHeader}>
               <Text style={styles.histService}>{b.service_type === 'space' ? '🏠 Alojamiento' : '🚗 Visita'}</Text>
-              <Text style={[styles.histBadge, {
-                color: isPending ? colors.warning : isInProgress ? colors.successText : colors.primaryDark,
-                backgroundColor: isPending ? `${colors.warning}18` : isInProgress ? colors.successBg : colors.primaryLight,
-              }]}>
-                {isPending ? '🕐 Pendiente' : isInProgress ? '🟢 En curso' : '⏳ Por iniciar'}
-              </Text>
+              {(() => {
+                const badge = needsResponse ? { t: 'Nueva solicitud', c: colors.warning, bg: `${colors.warning}18` }
+                  : awaitingPayment ? { t: 'Esperando pago', c: colors.info, bg: colors.infoBg }
+                  : isInProgress ? { t: 'En curso', c: colors.successText, bg: colors.successBg }
+                  : { t: 'Por iniciar', c: colors.primaryDark, bg: colors.primaryLight };
+                return <Text style={[styles.histBadge, { color: badge.c, backgroundColor: badge.bg }]}>{badge.t}</Text>;
+              })()}
             </View>
 
             {/* Fechas + duración */}
@@ -682,8 +695,26 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
               </View>
             )}
 
-            {/* Stepper de flujo */}
-            <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
+            {/* Paso 1: aceptar/rechazar · Paso 2: esperar pago · Paso 3: flujo de servicio */}
+            {needsResponse ? (
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <TouchableOpacity style={[styles.respondBtn, { backgroundColor: colors.successBg, borderColor: colors.success }]} onPress={() => confirmRespond(true)} activeOpacity={0.85}>
+                  <Ionicons name="checkmark-circle" size={16} color={colors.successText} />
+                  <Text style={[styles.respondBtnText, { color: colors.successText }]}>Aceptar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[styles.respondBtn, { backgroundColor: colors.dangerBg, borderColor: colors.danger }]} onPress={() => confirmRespond(false)} activeOpacity={0.85}>
+                  <Ionicons name="close-circle" size={16} color={colors.dangerText} />
+                  <Text style={[styles.respondBtnText, { color: colors.dangerText }]}>Rechazar</Text>
+                </TouchableOpacity>
+              </View>
+            ) : awaitingPayment ? (
+              <View style={styles.awaitingPay}>
+                <Ionicons name="hourglass-outline" size={15} color={colors.info} />
+                <Text style={styles.awaitingPayText}>Solicitud aceptada — esperando que el cliente realice el pago.</Text>
+              </View>
+            ) : (
+              <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
+            )}
 
             {/* Footer */}
             <View style={styles.histFooter}>
@@ -963,6 +994,10 @@ const styles = StyleSheet.create({
   histRateText: { fontSize: 12, fontWeight: '800', color: colors.primary },
   histReviewedTag: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: colors.successBg, borderRadius: radii.full, paddingHorizontal: 12, paddingVertical: 7 },
   histReviewedText: { fontSize: 12, fontWeight: '700', color: colors.successText },
+  respondBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
+  respondBtnText: { fontSize: 14, fontWeight: '800' },
+  awaitingPay: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.infoBg, borderRadius: 10, padding: 12, marginTop: 12 },
+  awaitingPayText: { flex: 1, fontSize: 12.5, color: colors.info, fontWeight: '600' },
   histDuracion: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
   durationPill: { backgroundColor: `${colors.primary}15`, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 10 },
   durationPillText: { fontSize: 11, color: colors.primaryDark, fontWeight: '700' },
