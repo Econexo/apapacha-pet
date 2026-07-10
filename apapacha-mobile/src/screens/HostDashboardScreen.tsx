@@ -78,7 +78,7 @@ export function HostDashboardScreen() {
     const ownerIds = [...new Set(b.filter(bk => bk.status === 'completed').map(bk => bk.owner_id).filter(Boolean))];
     const [ownersRes, myReviewsRes] = await Promise.all([
       ownerIds.length
-        ? supabase.from('profiles').select('id, full_name, last_name').in('id', ownerIds)
+        ? supabase.from('public_profiles').select('id, full_name, last_name').in('id', ownerIds)
         : Promise.resolve({ data: [] as any[] }),
       supabase.from('reviews').select('booking_id').eq('reviewer_id', hostId),
     ]);
