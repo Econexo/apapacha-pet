@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, StyleSheet, Image, TouchableOpacity, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { usePressScale } from '../hooks/useMotion';
 import { colors } from '../theme/colors';
 import { radii, shadows } from '../theme/design';
 import { AppText } from './ui/AppText';
@@ -19,8 +20,10 @@ interface VisiterCardProps {
 }
 
 export function VisiterCard({ id, name, professionTitle, pricePerVisit, rating, totalVisits, imageUrl, onPress }: VisiterCardProps) {
+  const { scale, onPressIn, onPressOut } = usePressScale(0.98);
   return (
-    <TouchableOpacity activeOpacity={0.92} style={styles.card} onPress={() => onPress(id)}>
+    <Animated.View style={{ transform: [{ scale }] }}>
+    <TouchableOpacity activeOpacity={0.95} style={styles.card} onPress={() => onPress(id)} onPressIn={onPressIn} onPressOut={onPressOut}>
       <View style={styles.contentRow}>
         <Image source={{ uri: imageUrl }} style={styles.avatar} />
         <View style={styles.info}>
@@ -43,6 +46,7 @@ export function VisiterCard({ id, name, professionTitle, pricePerVisit, rating, 
         </View>
       </View>
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
