@@ -46,6 +46,46 @@ export async function approveHostApplication(userId: string): Promise<void> {
   if (error) throw error;
 }
 
+// El cuidador acepta o rechaza una solicitud de reserva (paso previo al pago).
+export async function respondToBooking(bookingId: string, accept: boolean): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not authenticated');
+
+  const [spacesRes, visitersRes] = await Promise.all([
+    supabase.from('spaces').select('id').eq('host_id', user.id),
+    supabase.from('visiters').select('id').eq('host_id', user.id),
+  ]);
+  const myServiceIds = [
+    ...(spacesRes.data ?? []).map((s: any) => s.id),
+    ...(visitersRes.data ?? []).map((v: any) => v.id),
+  ];
+
+  const update = accept
+    ? { host_response: 'accepted' }
+    : { host_response: 'rejected', status: 'cancelled' };
+
+  const { data: booking, error } = await supabase
+    .from('bookings')
+    .update(update)
+    .eq('id', bookingId)
+    .in('service_id', myServiceIds)
+    .select('owner_id')
+    .single();
+  if (error) throw error;
+
+  if (booking?.owner_id) {
+    await insertNotification(
+      booking.owner_id,
+      accept ? 'booking_accepted' : 'booking_rejected',
+      accept ? '¡Tu solicitud fue aceptada! 🎉' : 'Solicitud no aceptada',
+      accept
+        ? 'El cuidador aceptó tu reserva. Ya puedes subir tu comprobante de pago desde la pestaña Reservas.'
+        : 'El cuidador no pudo aceptar tu reserva. Puedes buscar otro cuidador.',
+      { booking_id: bookingId },
+    );
+  }
+}
+
 export async function startService(bookingId: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
