@@ -153,7 +153,7 @@ export function InboxScreen() {
           !loading ? (
             <View style={styles.emptyState}>
               <View style={styles.emptyIconBox}>
-                <Text style={styles.emptyEmoji}>💬</Text>
+                <Ionicons name="chatbubbles-outline" size={34} color={colors.primary} />
               </View>
               <Text style={styles.emptyTitle}>Sin mensajes aún</Text>
               <Text style={styles.emptyText}>Cuando reserves un servicio y comiences a chatear con tu cuidador, la conversación aparecerá aquí.</Text>
