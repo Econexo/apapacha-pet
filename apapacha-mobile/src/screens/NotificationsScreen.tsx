@@ -21,7 +21,7 @@ type FilterKey = 'all' | 'bookings' | 'services' | 'application';
 
 const FILTERS: { key: FilterKey; label: string; icon: IoniconName; types: string[] }[] = [
   { key: 'all',         label: 'Todas',        icon: 'notifications-outline', types: []                                                          },
-  { key: 'bookings',    label: 'Reservas',      icon: 'calendar-outline',      types: ['booking_created', 'receipt_submitted', 'booking_confirmed'] },
+  { key: 'bookings',    label: 'Reservas',      icon: 'calendar-outline',      types: ['booking_created', 'booking_accepted', 'booking_rejected', 'receipt_submitted', 'booking_confirmed'] },
   { key: 'services',    label: 'Servicios',     icon: 'paw-outline',           types: ['service_started', 'service_completed']                     },
   { key: 'application', label: 'Aplicación',    icon: 'ribbon-outline',        types: ['application_approved', 'application_rejected']             },
 ];
@@ -30,6 +30,8 @@ const TYPE_META: Record<string, { icon: IoniconName; color: string; bg: string }
   booking_created:      { icon: 'calendar-outline',          color: colors.primary,  bg: `${colors.primary}15`  },
   receipt_submitted:    { icon: 'card-outline',               color: colors.warning,  bg: `${colors.warning}15`  },
   booking_confirmed:    { icon: 'checkmark-circle-outline',   color: colors.success,  bg: `${colors.success}15`  },
+  booking_accepted:     { icon: 'checkmark-circle-outline',   color: colors.success,  bg: `${colors.success}15`  },
+  booking_rejected:     { icon: 'close-circle-outline',       color: colors.danger,   bg: `${colors.danger}10`   },
   application_approved: { icon: 'ribbon-outline',             color: colors.accent,   bg: `${colors.accent}15`   },
   application_rejected: { icon: 'close-circle-outline',       color: colors.danger,   bg: `${colors.danger}10`   },
   service_started:      { icon: 'play-circle-outline',        color: colors.primary,  bg: `${colors.primary}15`  },
