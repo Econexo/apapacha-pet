@@ -99,6 +99,8 @@ interface AdminBooking {
   service_phase: 'not_started' | 'in_progress';
   total_price: number;
   created_at: string;
+  payment_status: string | null;
+  payment_receipt_url: string | null;
   profiles: { full_name: string } | null;
 }
 
@@ -267,7 +269,7 @@ export function AdminScreen() {
   async function loadBookings() {
     const { data, error } = await supabase
       .from('bookings')
-      .select('id, service_type, start_date, end_date, status, service_phase, total_price, created_at, profiles(full_name)')
+      .select('id, service_type, start_date, end_date, status, service_phase, total_price, created_at, payment_status, payment_receipt_url, profiles(full_name)')
       .order('created_at', { ascending: false })
       .limit(50);
     if (error) { console.error('[Admin] loadBookings:', error.message); return; }
@@ -1387,16 +1389,29 @@ function BookingsTab({ bookings, onUpdateStatus, onConfirmPayment }: {
               )}
             </View>
           </View>
+          {/* Comprobante de pago (si el cliente lo subió) — visible antes de confirmar */}
+          {b.status === 'pending' && (
+            b.payment_receipt_url ? (
+              <View style={{ marginTop: 10 }}>
+                <DocViewer url={b.payment_receipt_url} label="Ver comprobante de pago" bucket="receipts" />
+              </View>
+            ) : (
+              <View style={styles.noReceiptRow}>
+                <Ionicons name="alert-circle-outline" size={15} color={colors.warningText} />
+                <Text style={styles.noReceiptText}>El cliente aún no sube comprobante de pago.</Text>
+              </View>
+            )
+          )}
           {(b.status === 'pending' || b.status === 'active') && (
             <View style={[styles.cardActions, { marginTop: 10 }]}>
-              {b.status === 'pending' && (
+              {b.status === 'pending' && b.payment_receipt_url && (
                 <TouchableOpacity
                   style={[styles.actionBtn, styles.actionBtnSuccess]}
                   onPress={() => {
                     if (Platform.OS === 'web') {
-                      if ((window as any).confirm('¿Activar esta reserva y marcar el pago como confirmado?')) onConfirmPayment(b.id);
+                      if ((window as any).confirm('¿Confirmaste el comprobante? Se activará la reserva y el pago quedará como confirmado.')) onConfirmPayment(b.id);
                     } else {
-                      Alert.alert('Confirmar reserva', '¿Activar esta reserva y marcar el pago como confirmado?', [
+                      Alert.alert('Confirmar pago', '¿Confirmaste el comprobante? Se activará la reserva y el pago quedará como confirmado.', [
                         { text: 'Cancelar', style: 'cancel' },
                         { text: 'Confirmar', onPress: () => onConfirmPayment(b.id) },
                       ]);
@@ -1565,6 +1580,8 @@ const styles = StyleSheet.create({
   actionBtnDanger: { backgroundColor: `${colors.danger}10`, borderWidth: 1, borderColor: colors.danger },
   actionBtnSecondary: { backgroundColor: colors.primaryLight, borderWidth: 1, borderColor: colors.primary },
   actionBtnText: { fontSize: 12, fontWeight: '700', color: colors.textMain },
+  noReceiptRow: { flexDirection: 'row', alignItems: 'center', gap: 7, marginTop: 10, backgroundColor: colors.warningBg, borderRadius: 8, borderWidth: 1, borderColor: colors.warningBorder, paddingHorizontal: 10, paddingVertical: 8 },
+  noReceiptText: { flex: 1, fontSize: 12, fontWeight: '600', color: colors.warningText },
   kycDecisionBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start', paddingVertical: 9, paddingHorizontal: 15, borderRadius: 10, borderWidth: 1 },
   kycDecisionText: { fontSize: 13, fontWeight: '800' },
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 20, borderWidth: 1, alignSelf: 'flex-start' },
