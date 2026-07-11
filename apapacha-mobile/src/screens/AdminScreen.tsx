@@ -2,7 +2,7 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   ActivityIndicator, Alert, TextInput, RefreshControl, Platform, Dimensions,
-  Image, Linking,
+  Image, Linking, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -14,6 +14,9 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { confirmBookingPayment } from '../services/bookings.service';
 import { insertNotification } from '../services/notifications.service';
+import { FadeInView } from '../components/ui/FadeInView';
+import { AnimatedNumber } from '../components/ui/AnimatedNumber';
+import { usePressScale } from '../hooks/useMotion';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -585,6 +588,7 @@ export function AdminScreen() {
             visiters={visiters}
             bookings={bookings}
             applications={applications}
+            pendingPaymentsCount={pendingPayments.length}
             onTabChange={setActiveTab}
             onToggleSpace={toggleSpaceActive}
             onDeleteSpace={deleteSpace}
@@ -624,13 +628,35 @@ export function AdminScreen() {
 
 type CardKey = 'users' | 'spaces' | 'visiters' | 'bookings' | 'active' | 'pending';
 
-function DashboardTab({ stats, users, spaces, visiters, bookings, applications, onTabChange, onToggleSpace, onDeleteSpace, onToggleVisiter, onDeleteVisiter }: {
+function KpiCard({ label, value, icon, color, onPress }: { label: string; value: number; icon: IoniconName; color: string; onPress?: () => void }) {
+  const { scale, onPressIn, onPressOut } = usePressScale(0.97);
+  return (
+    <Animated.View style={{ width: '47.5%', transform: [{ scale }] }}>
+      <TouchableOpacity
+        style={[styles.statCard, { width: '100%', borderTopColor: color }]}
+        activeOpacity={0.85}
+        onPress={onPress}
+        onPressIn={onPressIn}
+        onPressOut={onPressOut}
+      >
+        <View style={[styles.statIconBox, { backgroundColor: `${color}18` }]}>
+          <Ionicons name={icon} size={20} color={color} />
+        </View>
+        <AnimatedNumber value={value} style={styles.statValue} />
+        <Text style={styles.statLabel}>{label}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
+function DashboardTab({ stats, users, spaces, visiters, bookings, applications, pendingPaymentsCount, onTabChange, onToggleSpace, onDeleteSpace, onToggleVisiter, onDeleteVisiter }: {
   stats: Stats | null;
   users: AdminUser[];
   spaces: AdminSpace[];
   visiters: AdminVisiter[];
   bookings: AdminBooking[];
   applications: Application[];
+  pendingPaymentsCount: number;
   onTabChange: (tab: Tab) => void;
   onToggleSpace: (id: string, current: boolean) => void;
   onDeleteSpace: (id: string, title: string) => void;
@@ -645,21 +671,27 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
 
   // ── KPIs de navegación (sin duplicar: cada uno salta a su pestaña) ──
   const kpis: { label: string; value: number; icon: IoniconName; color: string; tab?: Tab }[] = [
-    { label: 'Usuarios',        value: stats.totalUsers,          icon: 'people-outline',   color: colors.primary, tab: 'users' },
-    { label: 'Reservas',        value: stats.totalBookings,       icon: 'calendar-outline', color: colors.info,    tab: 'bookings' },
-    { label: 'Activas',         value: stats.activeBookings,      icon: 'flash-outline',    color: colors.success, tab: 'bookings' },
-    { label: 'Postul. pend.',   value: stats.pendingApplications, icon: 'time-outline',     color: colors.warning, tab: 'applications' },
+    { label: 'Usuarios',          value: stats.totalUsers,          icon: 'people-outline',        color: colors.primary, tab: 'users' },
+    { label: 'Reservas',          value: stats.totalBookings,       icon: 'calendar-outline',      color: colors.info,    tab: 'bookings' },
+    { label: 'Pagos x confirmar', value: pendingPaymentsCount,      icon: 'card-outline',          color: colors.warning, tab: 'payments' },
+    { label: 'Postulaciones',     value: stats.pendingApplications, icon: 'document-text-outline', color: colors.accent,  tab: 'applications' },
   ];
 
   // ── Ingresos (según reservas cargadas: activas + completadas) ──
   const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const now = new Date();
   const thisMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
+  const lastMonthD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMonthKey = `${lastMonthD.getFullYear()}-${lastMonthD.getMonth()}`;
   const paidBookings = bookings.filter(b => b.status === 'active' || b.status === 'completed');
   const revenue = paidBookings.reduce((s, b) => s + (b.total_price || 0), 0);
-  const monthRevenue = paidBookings
-    .filter(b => { const d = new Date(b.created_at); return `${d.getFullYear()}-${d.getMonth()}` === thisMonthKey; })
-    .reduce((s, b) => s + (b.total_price || 0), 0);
+  const mKey = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth()}`; };
+  const monthRevenue     = paidBookings.filter(b => mKey(b.created_at) === thisMonthKey).reduce((s, b) => s + (b.total_price || 0), 0);
+  const lastMonthRevenue = paidBookings.filter(b => mKey(b.created_at) === lastMonthKey).reduce((s, b) => s + (b.total_price || 0), 0);
+  // Delta ingresos mes vs mes anterior (semántico: verde sube, rojo baja). null si no hay base.
+  const deltaPct = lastMonthRevenue > 0 ? Math.round(((monthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100) : null;
+  // Valor promedio por reserva confirmada
+  const avgBooking = paidBookings.length ? Math.round(revenue / paidBookings.length) : 0;
 
   // ── Serie mensual de reservas (últimos 6 meses) ──
   const monthly: { key: string; month: string; count: number }[] = [];
@@ -687,63 +719,77 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
   return (
     <View>
       {/* ── Ingresos (hero) ── */}
-      <View style={styles.revenueCard}>
-        <View style={styles.revenueTop}>
-          <View>
-            <Text style={styles.revenueLabel}>Ingresos (reservas confirmadas)</Text>
-            <Text style={styles.revenueValue}>{fmt$(revenue)}</Text>
+      <FadeInView delay={0}>
+        <View style={styles.revenueCard}>
+          <View style={styles.revenueTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.revenueLabel}>Ingresos (reservas confirmadas)</Text>
+              <View style={styles.revenueValueRow}>
+                <AnimatedNumber value={revenue} format={fmt$} style={styles.revenueValue} />
+                {deltaPct !== null && (
+                  <View style={[styles.deltaBadge, deltaPct >= 0 ? styles.deltaUp : styles.deltaDown]}>
+                    <Ionicons name={deltaPct >= 0 ? 'arrow-up' : 'arrow-down'} size={11} color="#fff" />
+                    <Text style={styles.deltaText}>{Math.abs(deltaPct)}%</Text>
+                  </View>
+                )}
+              </View>
+            </View>
+            <View style={styles.revenueIconBox}><Ionicons name="cash-outline" size={26} color="#fff" /></View>
           </View>
-          <View style={styles.revenueIconBox}><Ionicons name="cash-outline" size={26} color="#fff" /></View>
+          <View style={styles.revenueChips}>
+            <View style={styles.revenueChip}><Text style={styles.revenueChipText}>{fmt$(monthRevenue)} este mes</Text></View>
+            <View style={styles.revenueChip}><Text style={styles.revenueChipText}>{activeBookings.length} activas ahora</Text></View>
+            <View style={styles.revenueChip}><Text style={styles.revenueChipText}>Prom. {fmt$(avgBooking)}</Text></View>
+          </View>
         </View>
-        <View style={styles.revenueChips}>
-          <View style={styles.revenueChip}><Text style={styles.revenueChipText}>{fmt$(monthRevenue)} este mes</Text></View>
-          <View style={styles.revenueChip}><Text style={styles.revenueChipText}>{activeBookings.length} activas ahora</Text></View>
-        </View>
-      </View>
+      </FadeInView>
 
       {/* ── KPIs (navegan a su pestaña) ── */}
-      <View style={styles.statsGrid}>
-        {kpis.map(k => (
-          <TouchableOpacity key={k.label} style={[styles.statCard, { borderTopColor: k.color }]} onPress={() => k.tab && onTabChange(k.tab)} activeOpacity={0.8}>
-            <View style={[styles.statIconBox, { backgroundColor: `${k.color}18` }]}>
-              <Ionicons name={k.icon} size={20} color={k.color} />
-            </View>
-            <Text style={[styles.statValue, { color: k.color }]}>{k.value}</Text>
-            <Text style={styles.statLabel}>{k.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* ── Actividad: reservas por mes ── */}
-      <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Reservas — últimos 6 meses</Text>
-        <View style={styles.barChart}>
-          {monthly.map(m => (
-            <View key={m.key} style={styles.barCol}>
-              <Text style={styles.barValue}>{m.count || ''}</Text>
-              <View style={[styles.bar, { height: Math.max(4, (m.count / maxMonthly) * 96) }]} />
-              <Text style={styles.barLabel}>{m.month}</Text>
-            </View>
+      <FadeInView delay={60}>
+        <View style={styles.statsGrid}>
+          {kpis.map(k => (
+            <KpiCard key={k.label} label={k.label} value={k.value} icon={k.icon} color={k.color} onPress={() => k.tab && onTabChange(k.tab)} />
           ))}
         </View>
-      </View>
+      </FadeInView>
+
+      {/* ── Actividad: reservas por mes (mes actual enfatizado) ── */}
+      <FadeInView delay={120}>
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Reservas — últimos 6 meses</Text>
+          <View style={styles.barChart}>
+            {monthly.map((m, i) => {
+              const isCurrent = i === monthly.length - 1;
+              return (
+                <View key={m.key} style={styles.barCol}>
+                  <Text style={[styles.barValue, isCurrent && styles.barValueActive]}>{m.count || ''}</Text>
+                  <View style={[styles.bar, { height: Math.max(4, (m.count / maxMonthly) * 96) }, !isCurrent && styles.barMuted]} />
+                  <Text style={[styles.barLabel, isCurrent && styles.barLabelActive]}>{m.month}</Text>
+                </View>
+              );
+            })}
+          </View>
+        </View>
+      </FadeInView>
 
       {/* ── Reservas por estado ── */}
-      <View style={styles.chartCard}>
-        <Text style={styles.chartTitle}>Reservas por estado</Text>
-        {statusOrder.map(s => {
-          const count = statusCounts[s] ?? 0;
-          return (
-            <View key={s} style={styles.statusBarRow}>
-              <Text style={styles.statusBarLabel}>{statusLabel[s]}</Text>
-              <View style={styles.statusBarTrack}>
-                <View style={[styles.statusBarFill, { width: `${(count / statusTotal) * 100}%`, backgroundColor: STATUS_COLOR[s] }]} />
+      <FadeInView delay={180}>
+        <View style={styles.chartCard}>
+          <Text style={styles.chartTitle}>Reservas por estado</Text>
+          {statusOrder.map(s => {
+            const count = statusCounts[s] ?? 0;
+            return (
+              <View key={s} style={styles.statusBarRow}>
+                <Text style={styles.statusBarLabel}>{statusLabel[s]}</Text>
+                <View style={styles.statusBarTrack}>
+                  <View style={[styles.statusBarFill, { width: `${(count / statusTotal) * 100}%`, backgroundColor: STATUS_COLOR[s] }]} />
+                </View>
+                <Text style={styles.statusBarCount}>{count}</Text>
               </View>
-              <Text style={styles.statusBarCount}>{count}</Text>
-            </View>
-          );
-        })}
-      </View>
+            );
+          })}
+        </View>
+      </FadeInView>
 
       {/* ── Gestión de servicios (sin pestaña propia) ── */}
       <TouchableOpacity style={styles.servicesHeader} onPress={() => setServicesOpen(o => !o)} activeOpacity={0.7}>
@@ -1442,14 +1488,19 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
   statIconBox: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginBottom: 10 },
-  statValue: { fontSize: 28, fontWeight: '900', lineHeight: 32, marginBottom: 4 },
+  statValue: { fontSize: 28, fontWeight: '900', lineHeight: 32, marginBottom: 4, color: colors.textMain, fontVariant: ['tabular-nums'] },
   statLabel: { fontSize: 12, color: colors.textMuted, fontWeight: '600' },
 
   // Dashboard rediseñado
   revenueCard: { backgroundColor: colors.primary, borderRadius: 16, padding: 18, marginBottom: 14 },
   revenueTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   revenueLabel: { fontSize: 12, color: '#fff', opacity: 0.85, fontWeight: '700' },
-  revenueValue: { fontSize: 30, fontWeight: '900', color: '#fff', marginTop: 2 },
+  revenueValueRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 2 },
+  revenueValue: { fontSize: 30, fontWeight: '900', color: '#fff', fontVariant: ['tabular-nums'] },
+  deltaBadge: { flexDirection: 'row', alignItems: 'center', gap: 2, borderRadius: 10, paddingHorizontal: 7, paddingVertical: 3 },
+  deltaUp: { backgroundColor: colors.success },
+  deltaDown: { backgroundColor: colors.danger },
+  deltaText: { color: '#fff', fontSize: 11, fontWeight: '800', fontVariant: ['tabular-nums'] },
   revenueIconBox: { width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center' },
   revenueChips: { flexDirection: 'row', gap: 8, marginTop: 14, flexWrap: 'wrap' },
   revenueChip: { backgroundColor: 'rgba(255,255,255,0.18)', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6 },
@@ -1458,14 +1509,17 @@ const styles = StyleSheet.create({
   chartTitle: { fontSize: 14, fontWeight: '800', color: colors.textMain },
   barChart: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', height: 130, marginTop: 14, gap: 6 },
   barCol: { flex: 1, alignItems: 'center' },
-  barValue: { fontSize: 11, fontWeight: '700', color: colors.textMuted, marginBottom: 4, height: 14 },
+  barValue: { fontSize: 11, fontWeight: '700', color: colors.textMuted, marginBottom: 4, height: 14, fontVariant: ['tabular-nums'] },
+  barValueActive: { color: colors.primary, fontWeight: '900' },
   bar: { width: '62%', backgroundColor: colors.primary, borderRadius: 5, minHeight: 4 },
+  barMuted: { backgroundColor: `${colors.primary}2E` },
   barLabel: { fontSize: 10, color: colors.textMuted, marginTop: 6, fontWeight: '600' },
+  barLabelActive: { color: colors.textMain, fontWeight: '800' },
   statusBarRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 12 },
   statusBarLabel: { fontSize: 12, color: colors.textMain, fontWeight: '600', width: 88 },
   statusBarTrack: { flex: 1, height: 10, borderRadius: 5, backgroundColor: colors.background, overflow: 'hidden' },
   statusBarFill: { height: 10, borderRadius: 5 },
-  statusBarCount: { fontSize: 12, fontWeight: '800', color: colors.textMain, width: 28, textAlign: 'right' },
+  statusBarCount: { fontSize: 12, fontWeight: '800', color: colors.textMain, width: 28, textAlign: 'right', fontVariant: ['tabular-nums'] },
   servicesHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 20, marginBottom: 4, paddingVertical: 6 },
   servicesSubhead: { fontSize: 13, fontWeight: '800', color: colors.textMain, marginBottom: 6 },
 
