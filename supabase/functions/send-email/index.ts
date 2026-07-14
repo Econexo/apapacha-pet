@@ -220,6 +220,36 @@ function bookingResponseHtml(name: string, serviceName: string, serviceType: str
     </div>`);
 }
 
+function bookingCancelledHtml(name: string, serviceName: string, serviceType: string, toHost: boolean, refund: number, percent: number): string {
+  const icon = serviceType === 'space' ? '🏠' : '🚗';
+  if (toHost) {
+    return baseLayout(`
+      <div class="hero" style="background:linear-gradient(135deg,#7B1D1D,#B45309)">
+        <div class="hero-icon">📅</div>
+        <h1>Una reserva fue cancelada</h1>
+        <p>Las fechas quedaron disponibles de nuevo</p>
+      </div>
+      <div class="body">
+        <p>Hola <strong>${name}</strong>, te avisamos que el cliente canceló su reserva de <strong>${icon} ${serviceName}</strong>. Esas fechas volvieron a quedar libres en tu calendario.</p>
+        <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Ver mi panel →</span></a></div>
+      </div>`);
+  }
+  const refundBlock = refund > 0
+    ? `<div class="highlight"><p style="font-weight:800;color:#6B35A0">💸 Reembolso</p><p>Se procesará un reembolso de <strong>$${refund.toLocaleString('es-CL')} CLP</strong> (${percent}% de la tarifa del cuidador). El Seguro Zero Trust y la tarifa de servicio no son reembolsables.</p></div>`
+    : `<div class="highlight"><p>Según la política de cancelación, esta reserva no genera reembolso de la tarifa del cuidador.</p></div>`;
+  return baseLayout(`
+    <div class="hero" style="background:linear-gradient(135deg,#7B1D1D,#B45309)">
+      <div class="hero-icon">📅</div>
+      <h1>Tu reserva fue cancelada</h1>
+      <p>Aquí está el detalle</p>
+    </div>
+    <div class="body">
+      <p>Hola <strong>${name}</strong>, confirmamos la cancelación de tu reserva de <strong>${icon} ${serviceName}</strong>.</p>
+      ${refundBlock}
+      <p style="font-size:13px;color:#7B6B8D">¿Dudas? Escríbenos a <a href="mailto:apapachapet.app@gmail.com" style="color:#6B35A0">apapachapet.app@gmail.com</a></p>
+    </div>`);
+}
+
 // ─── Email dispatch ───────────────────────────────────────────────────────────
 
 type EmailPayload =
@@ -230,7 +260,8 @@ type EmailPayload =
   | { type: 'application_rejected'; to: string; name: string; service_type: string; reason?: string }
   | { type: 'payment_confirmed'; to: string; name: string; service_name: string; service_type: string }
   | { type: 'booking_accepted'; to: string; name: string; service_name: string; service_type: string }
-  | { type: 'booking_rejected'; to: string; name: string; service_name: string; service_type: string };
+  | { type: 'booking_rejected'; to: string; name: string; service_name: string; service_type: string }
+  | { type: 'booking_cancelled'; to: string; name: string; service_name: string; service_type: string; to_host: boolean; refund_amount: number; refund_percent: number };
 
 async function sendEmail(payload: EmailPayload) {
   let subject: string;
@@ -268,6 +299,12 @@ async function sendEmail(payload: EmailPayload) {
     case 'booking_rejected':
       subject = `📋 Actualización de tu reserva — ${payload.service_name}`;
       html = bookingResponseHtml(payload.name, payload.service_name, payload.service_type, false);
+      break;
+    case 'booking_cancelled':
+      subject = payload.to_host
+        ? `📅 Una reserva fue cancelada — ${payload.service_name}`
+        : `📅 Tu reserva fue cancelada — ${payload.service_name}`;
+      html = bookingCancelledHtml(payload.name, payload.service_name, payload.service_type, payload.to_host, payload.refund_amount, payload.refund_percent);
       break;
   }
 
@@ -379,6 +416,36 @@ async function handleTrigger(
     const ctx = await resolveBookingCtx(supabase, record);
     if (!ctx) return;
     await sendEmail({ type, to: ctx.email, name: ctx.name, service_name: ctx.serviceName, service_type: ctx.serviceType });
+  }
+
+  if (type === 'booking_cancelled') {
+    const notifyHost = body.notify_host === true;
+    const refund = Number(body.refund_amount ?? 0);
+    const percent = Number(body.refund_percent ?? 0);
+    if (notifyHost) {
+      // Avisar al cuidador (dueño del servicio)
+      const serviceType = record.service_type as string;
+      const serviceId = record.service_id as string;
+      let hostId: string | undefined;
+      let serviceName = serviceType === 'space' ? 'tu alojamiento' : 'tu servicio';
+      if (serviceType === 'space') {
+        const { data } = await supabase.from('spaces').select('host_id, title').eq('id', serviceId).single();
+        hostId = data?.host_id as string | undefined; if (data?.title) serviceName = data.title as string;
+      } else {
+        const { data } = await supabase.from('visiters').select('host_id, name').eq('id', serviceId).single();
+        hostId = data?.host_id as string | undefined; if (data?.name) serviceName = data.name as string;
+      }
+      if (!hostId) return;
+      const { data: authUser } = await supabase.auth.admin.getUserById(hostId);
+      const email = authUser?.user?.email;
+      if (!email) return;
+      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', hostId).single();
+      await sendEmail({ type: 'booking_cancelled', to: email, name: (profile?.full_name as string) ?? 'Cuidador', service_name: serviceName, service_type: serviceType, to_host: true, refund_amount: refund, refund_percent: percent });
+    } else {
+      const ctx = await resolveBookingCtx(supabase, record);
+      if (!ctx) return;
+      await sendEmail({ type: 'booking_cancelled', to: ctx.email, name: ctx.name, service_name: ctx.serviceName, service_type: ctx.serviceType, to_host: false, refund_amount: refund, refund_percent: percent });
+    }
   }
 }
 
