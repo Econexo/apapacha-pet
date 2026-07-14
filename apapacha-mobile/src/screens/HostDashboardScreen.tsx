@@ -23,6 +23,7 @@ import {
   type HostStats, type Review, type MonthlyEarning,
 } from '../services/reviews.service';
 import { completeBookingAsHost, startService, respondToBooking } from '../services/host.service';
+import { cancelBooking } from '../services/bookings.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { ManageServiceScreen } from './ManageServiceScreen';
 import { useToast } from '../components/Toast';
@@ -632,6 +633,20 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
           ]);
         };
 
+        const doHostCancel = (reason?: string) => cancelBooking(b.id, reason).then(onReload).catch(e => console.error(e));
+        const confirmHostCancel = () => {
+          const msg = 'Cancelar por fuerza mayor reembolsa el 100% al cliente y libera las fechas. ¿Continuar?';
+          if (Platform.OS === 'web') {
+            const r = (window as any).prompt(`${msg}\nMotivo (opcional):`);
+            if (r !== null) doHostCancel(r || undefined);
+          } else {
+            Alert.prompt('Cancelar reserva', msg, [
+              { text: 'Volver', style: 'cancel' },
+              { text: 'Cancelar reserva', style: 'destructive', onPress: (reason?: string) => doHostCancel(reason || undefined) },
+            ], 'plain-text');
+          }
+        };
+
         const doStart = () => startService(b.id).then(onReload).catch(console.error);
         const doComplete = () => completeBookingAsHost(b.id).then(onReload).catch(console.error);
         const confirmStart = () => {
@@ -713,7 +728,15 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
                 <Text style={styles.awaitingPayText}>Solicitud aceptada — esperando que el cliente realice el pago.</Text>
               </View>
             ) : (
-              <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
+              <>
+                <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
+                {b.status === 'active' && (
+                  <TouchableOpacity style={styles.forceCancelBtn} onPress={confirmHostCancel} activeOpacity={0.7}>
+                    <Ionicons name="alert-circle-outline" size={14} color={colors.textMuted} />
+                    <Text style={styles.forceCancelText}>Cancelar por fuerza mayor</Text>
+                  </TouchableOpacity>
+                )}
+              </>
             )}
 
             {/* Footer */}
@@ -996,6 +1019,8 @@ const styles = StyleSheet.create({
   histReviewedText: { fontSize: 12, fontWeight: '700', color: colors.successText },
   respondBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
   respondBtnText: { fontSize: 14, fontWeight: '800' },
+  forceCancelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 10, paddingVertical: 8 },
+  forceCancelText: { fontSize: 12.5, color: colors.textMuted, fontWeight: '700', textDecorationLine: 'underline' },
   awaitingPay: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.infoBg, borderRadius: 10, padding: 12, marginTop: 12 },
   awaitingPayText: { flex: 1, fontSize: 12.5, color: colors.info, fontWeight: '600' },
   histDuracion: { fontSize: 11, color: colors.textMuted, marginTop: 2 },
