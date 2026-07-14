@@ -22,6 +22,7 @@ interface DateRangePickerProps {
   checkOut: Date | null;
   onChangeCheckIn: (d: Date) => void;
   onChangeCheckOut: (d: Date) => void;
+  isDateBlocked?: (d: Date) => boolean; // fechas no disponibles (fuera de disponibilidad u ocupadas)
 }
 
 type ActivePicker = 'checkIn' | 'checkOut' | null;
@@ -29,7 +30,7 @@ type ActivePicker = 'checkIn' | 'checkOut' | null;
 const fmt = (d: Date | null) =>
   d ? d.toLocaleDateString('es-CL', { day: 'numeric', month: 'short', year: 'numeric' }) : 'Añadir fecha';
 
-export function DateRangePicker({ checkIn, checkOut, onChangeCheckIn, onChangeCheckOut }: DateRangePickerProps) {
+export function DateRangePicker({ checkIn, checkOut, onChangeCheckIn, onChangeCheckOut, isDateBlocked }: DateRangePickerProps) {
   const [active, setActive] = useState<ActivePicker>(null);
   const [viewDate, setViewDate] = useState<Date>(() => {
     const d = new Date();
@@ -161,7 +162,8 @@ export function DateRangePicker({ checkIn, checkOut, onChangeCheckIn, onChangeCh
             <View style={styles.grid}>
               {cells.map((day, idx) => {
                 if (!day) return <View key={idx} style={{ width: CELL, height: CELL }} />;
-                const disabled = startOfDay(day) < minDate;
+                const blocked = isDateBlocked ? isDateBlocked(day) : false;
+                const disabled = startOfDay(day) < minDate || blocked;
                 const isStart = checkIn ? sameDay(day, checkIn) : false;
                 const isEnd = checkOut ? sameDay(day, checkOut) : false;
                 const inRange = !!(checkIn && checkOut && day > checkIn && day < checkOut);
@@ -180,6 +182,7 @@ export function DateRangePicker({ checkIn, checkOut, onChangeCheckIn, onChangeCh
                     <Text style={[
                       styles.cellText,
                       disabled && styles.cellTextDisabled,
+                      blocked && styles.cellTextBlocked,
                       (isStart || isEnd) && styles.cellTextSelected,
                     ]}>
                       {day.getDate()}
@@ -233,6 +236,7 @@ const styles = StyleSheet.create({
   cellSelected: { backgroundColor: colors.primary },
   cellText: { fontSize: 14, fontWeight: '600', color: colors.textMain },
   cellTextDisabled: { color: colors.border },
+  cellTextBlocked: { color: colors.border, textDecorationLine: 'line-through' },
   cellTextSelected: { color: colors.surface, fontWeight: '800' },
 
   sheetFooter: { paddingHorizontal: 20, paddingTop: 8 },
