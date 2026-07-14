@@ -1,3 +1,6 @@
+import type { Availability } from '../lib/availability';
+export type { Availability };
+
 export type UserRole = 'owner' | 'host';
 export type KycStatus = 'pending' | 'under_review' | 'verified' | 'rejected';
 export type ServiceType = 'space' | 'visiter';
@@ -48,6 +51,7 @@ export interface Space {
   features: string[];
   active: boolean;
   created_at: string;
+  availability?: Availability;
 }
 
 export interface Visiter {
@@ -62,6 +66,7 @@ export interface Visiter {
   image_url: string | null;
   active: boolean;
   created_at: string;
+  availability?: Availability;
 }
 
 export interface Booking {
@@ -80,6 +85,11 @@ export interface Booking {
   payment_receipt_url: string | null;
   payment_status: PaymentStatus;
   created_at: string;
+  cancelled_by?: 'owner' | 'host' | 'admin' | null;
+  cancelled_at?: string | null;
+  cancellation_reason?: string | null;
+  refund_percent?: number | null;
+  refund_amount?: number | null;
 }
 
 export interface Message {
