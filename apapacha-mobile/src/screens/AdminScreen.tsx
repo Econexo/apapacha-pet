@@ -298,35 +298,13 @@ export function AdminScreen() {
     }
   }
 
-  async function sendResultEmail(type: 'application_approved' | 'application_rejected', userId: string, serviceType: string, reason?: string) {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const { data: authUser } = await supabase.auth.admin.getUserById(userId);
-      const email = authUser?.user?.email;
-      if (!email) return;
-      const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', userId).single();
-      const name = profile?.full_name ?? 'Postulante';
-      await fetch(`${SUPABASE_FUNCTIONS_URL}/send-email`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session?.access_token}`,
-          apikey: supabaseAnonKey,
-        },
-        body: JSON.stringify({ type, to: email, name, service_type: serviceType, reason }),
-      });
-    } catch (e) {
-      console.warn('[Admin] sendResultEmail error:', e);
-    }
-  }
-
   async function approveApplication(id: string, userId: string, serviceType: string) {
     const { error } = await supabase.rpc('approve_host', { target_user_id: userId });
     if (error) { toast.error('Error', error.message); return; }
+    // El correo de aprobación lo dispara el trigger de BD on_application_result_email
+    // (status → 'approved'); no se envía desde el cliente porque auth.admin requiere service_role.
     const { error: appErr } = await supabase.from('host_applications').update({ status: 'approved' }).eq('id', id);
     if (appErr) console.error('[Admin] approveApplication update:', appErr.message);
-
-    await sendResultEmail('application_approved', userId, serviceType);
 
     try {
       await insertNotification(
@@ -349,7 +327,7 @@ export function AdminScreen() {
         .update({ status: 'rejected', rejection_reason: reason ?? null })
         .eq('id', id);
       if (error) { toast.error('Error', error.message); return; }
-      await sendResultEmail('application_rejected', userId, serviceType, reason);
+      // El correo de rechazo lo dispara el trigger de BD on_application_result_email (status → 'rejected').
       try {
         await insertNotification(
           userId,
