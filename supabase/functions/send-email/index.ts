@@ -162,6 +162,64 @@ function applicationResultHtml(name: string, serviceType: string, approved: bool
   }
 }
 
+function paymentConfirmedHtml(name: string, serviceName: string, serviceType: string): string {
+  const icon = serviceType === 'space' ? '🏠' : '🚗';
+  return baseLayout(`
+    <div class="hero">
+      <div class="hero-icon">✅</div>
+      <h1>¡Pago confirmado!</h1>
+      <p>Tu reserva está activa y protegida</p>
+    </div>
+    <div class="body">
+      <div class="badge">Reserva activa 🐾</div>
+      <p>Hola <strong>${name}</strong>, confirmamos la recepción de tu pago. Tu reserva de <strong>${icon} ${serviceName}</strong> ya está <strong>activa</strong>.</p>
+      <div class="highlight">
+        <p style="font-weight:800;color:#6B35A0">🛡️ Malla de Seguro Zero Trust</p>
+        <p>Tu reserva incluye <strong>cobertura veterinaria</strong> durante todo el servicio. Si ocurre una emergencia de salud mientras tu gato está al cuidado, respaldamos la atención hasta el límite de la póliza.</p>
+      </div>
+      <div class="steps">
+        <p style="font-weight:800;margin:0 0 14px;color:#6B35A0">¿Y ahora?</p>
+        <div class="step"><div class="step-n">1</div><p>Coordina la entrega con tu cuidador desde la sección <strong>Mensajes</strong>.</p></div>
+        <div class="step"><div class="step-n">2</div><p>Al finalizar el servicio, califica la experiencia para ayudar a la comunidad.</p></div>
+      </div>
+      <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Ver mi reserva →</span></a></div>
+    </div>`);
+}
+
+function bookingResponseHtml(name: string, serviceName: string, serviceType: string, accepted: boolean): string {
+  const icon = serviceType === 'space' ? '🏠' : '🚗';
+  if (accepted) {
+    return baseLayout(`
+      <div class="hero">
+        <div class="hero-icon">🎉</div>
+        <h1>¡El cuidador aceptó tu reserva!</h1>
+        <p>Solo falta un paso para confirmarla</p>
+      </div>
+      <div class="body">
+        <p>Hola <strong>${name}</strong>, buenas noticias: el cuidador aceptó tu solicitud para <strong>${icon} ${serviceName}</strong>. Para confirmar la reserva, realiza el pago y sube tu comprobante desde la app.</p>
+        <div class="steps">
+          <p style="font-weight:800;margin:0 0 14px;color:#6B35A0">Cómo confirmar tu reserva</p>
+          <div class="step"><div class="step-n">1</div><p>Abre la reserva en <strong>Mis Reservas</strong> y toca <strong>Subir comprobante de pago</strong>.</p></div>
+          <div class="step"><div class="step-n">2</div><p>Realiza la transferencia por el monto indicado y adjunta la captura.</p></div>
+          <div class="step"><div class="step-n">3</div><p>Validamos el pago y tu reserva queda activa. Te avisaremos por correo.</p></div>
+        </div>
+        <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Subir comprobante →</span></a></div>
+      </div>`);
+  }
+  return baseLayout(`
+    <div class="hero" style="background:linear-gradient(135deg,#7B1D1D,#B45309)">
+      <div class="hero-icon">📋</div>
+      <h1>Tu reserva no pudo confirmarse</h1>
+      <p>El cuidador no está disponible para esas fechas</p>
+    </div>
+    <div class="body">
+      <div class="badge badge-danger">Reserva no aceptada</div>
+      <p>Hola <strong>${name}</strong>, lamentablemente el cuidador no pudo aceptar tu reserva de <strong>${icon} ${serviceName}</strong>. No te preocupes: <strong>no se realizó ningún cobro</strong>.</p>
+      <p>Te invitamos a explorar otros cuidadores verificados disponibles para tus fechas.</p>
+      <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Explorar cuidadores →</span></a></div>
+    </div>`);
+}
+
 // ─── Email dispatch ───────────────────────────────────────────────────────────
 
 type EmailPayload =
@@ -169,7 +227,10 @@ type EmailPayload =
   | { type: 'booking_confirm'; to: string; name: string; service_name: string; start_date: string; end_date: string; service_type: string }
   | { type: 'application_received'; to: string; name: string; service_type: string }
   | { type: 'application_approved'; to: string; name: string; service_type: string }
-  | { type: 'application_rejected'; to: string; name: string; service_type: string; reason?: string };
+  | { type: 'application_rejected'; to: string; name: string; service_type: string; reason?: string }
+  | { type: 'payment_confirmed'; to: string; name: string; service_name: string; service_type: string }
+  | { type: 'booking_accepted'; to: string; name: string; service_name: string; service_type: string }
+  | { type: 'booking_rejected'; to: string; name: string; service_name: string; service_type: string };
 
 async function sendEmail(payload: EmailPayload) {
   let subject: string;
@@ -196,12 +257,48 @@ async function sendEmail(payload: EmailPayload) {
       subject = '📋 Actualización de tu solicitud — ApapachaPet';
       html = applicationResultHtml(payload.name, payload.service_type, false, payload.reason);
       break;
+    case 'payment_confirmed':
+      subject = `✅ Pago confirmado — ${payload.service_name}`;
+      html = paymentConfirmedHtml(payload.name, payload.service_name, payload.service_type);
+      break;
+    case 'booking_accepted':
+      subject = `🎉 El cuidador aceptó tu reserva — ${payload.service_name}`;
+      html = bookingResponseHtml(payload.name, payload.service_name, payload.service_type, true);
+      break;
+    case 'booking_rejected':
+      subject = `📋 Actualización de tu reserva — ${payload.service_name}`;
+      html = bookingResponseHtml(payload.name, payload.service_name, payload.service_type, false);
+      break;
   }
 
   await transporter.sendMail({ from: FROM, to: payload.to, subject, html });
 }
 
 // ─── Internal trigger handler (called by pg_net / DB triggers) ───────────────
+
+// Resuelve email + nombre del dueño y el nombre del servicio a partir de una reserva
+async function resolveBookingCtx(
+  supabase: ReturnType<typeof createClient>,
+  record: Record<string, unknown>,
+): Promise<{ email: string; name: string; serviceName: string; serviceType: string } | null> {
+  const ownerId = record.owner_id as string;
+  const { data: authUser } = await supabase.auth.admin.getUserById(ownerId);
+  const email = authUser?.user?.email;
+  if (!email) return null;
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', ownerId).single();
+  const name = (profile?.full_name as string) ?? 'Cliente';
+  const serviceType = record.service_type as string;
+  const serviceId = record.service_id as string;
+  let serviceName = serviceType === 'space' ? 'Alojamiento' : 'Visita Básica';
+  if (serviceType === 'space') {
+    const { data: sp } = await supabase.from('spaces').select('title').eq('id', serviceId).single();
+    if (sp?.title) serviceName = sp.title as string;
+  } else {
+    const { data: vi } = await supabase.from('visiters').select('name').eq('id', serviceId).single();
+    if (vi?.name) serviceName = vi.name as string;
+  }
+  return { email, name, serviceName, serviceType };
+}
 
 async function handleTrigger(
   supabase: ReturnType<typeof createClient>,
@@ -270,6 +367,18 @@ async function handleTrigger(
     } else {
       await sendEmail({ type: 'application_rejected', to: email, name, service_type: record.service_type as string, reason: record.rejection_reason as string | undefined });
     }
+  }
+
+  if (type === 'payment_confirmed') {
+    const ctx = await resolveBookingCtx(supabase, record);
+    if (!ctx) return;
+    await sendEmail({ type: 'payment_confirmed', to: ctx.email, name: ctx.name, service_name: ctx.serviceName, service_type: ctx.serviceType });
+  }
+
+  if (type === 'booking_accepted' || type === 'booking_rejected') {
+    const ctx = await resolveBookingCtx(supabase, record);
+    if (!ctx) return;
+    await sendEmail({ type, to: ctx.email, name: ctx.name, service_name: ctx.serviceName, service_type: ctx.serviceType });
   }
 }
 
