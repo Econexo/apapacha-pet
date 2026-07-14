@@ -9,6 +9,7 @@ import { radii, shadows, label } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings, cancelBooking } from '../services/bookings.service';
+import { refundPreview, fmtCLP } from '../lib/cancellation';
 import { supabase } from '../../supabase';
 import { OverlayModal } from '../components/OverlayModal';
 import { LeaveReviewScreen } from './LeaveReviewScreen';
@@ -126,10 +127,20 @@ export function BookingsScreen() {
     }
   }
 
-  async function handleCancel(bookingId: string) {
+  async function handleCancel(booking: Booking) {
+    const paid = booking.payment_status === 'paid' || booking.status === 'active';
+    const preview = refundPreview({ startDate: booking.start_date, totalPrice: booking.total_price, paid });
+    const refundLine = !paid
+      ? 'Aún no has pagado, no se realizó ningún cobro.'
+      : preview.amount > 0
+        ? `Reembolso estimado: ${fmtCLP(preview.amount)} (${preview.percent}% de la tarifa del cuidador). El Seguro Zero Trust y la tarifa de servicio no se reembolsan.`
+        : 'Según la política de cancelación, no corresponde reembolso de la tarifa del cuidador.';
+    const msg = `${refundLine}\n\n¿Confirmas la cancelación?`;
+
     const doCancel = async () => {
       try {
-        await cancelBooking(bookingId);
+        const res = await cancelBooking(booking.id);
+        toast.success('Reserva cancelada', res.refund_amount > 0 ? `Reembolso de ${fmtCLP(res.refund_amount)} en proceso.` : 'Cancelación registrada.');
         loadAll();
       } catch (e: any) {
         toast.error('Error', e.message);
@@ -137,11 +148,9 @@ export function BookingsScreen() {
     };
 
     if (Platform.OS === 'web') {
-      if ((window as any).confirm('El seguro Zero Trust no es reembolsable. ¿Confirmas la cancelación?')) {
-        await doCancel();
-      }
+      if ((window as any).confirm(msg)) await doCancel();
     } else {
-      Alert.alert('Cancelar reserva', 'El seguro Zero Trust no es reembolsable. ¿Confirmas la cancelación?', [
+      Alert.alert('Cancelar reserva', msg, [
         { text: 'Volver', style: 'cancel' },
         { text: 'Cancelar reserva', style: 'destructive', onPress: doCancel },
       ]);
@@ -215,6 +224,19 @@ export function BookingsScreen() {
                 {/* Price */}
                 <Text style={styles.priceLabel}>${item.total_price.toLocaleString('es-CL')} CLP</Text>
 
+                {/* Reembolso en reservas canceladas */}
+                {item.status === 'cancelled' && item.refund_amount != null && (
+                  <View style={styles.refundRow}>
+                    <Ionicons name="cash-outline" size={14} color={item.refund_amount > 0 ? colors.accent : colors.textMuted} />
+                    <Text style={styles.refundText}>
+                      {item.refund_amount > 0
+                        ? `Reembolso: ${fmtCLP(item.refund_amount)} (${item.refund_percent}%)`
+                        : 'Sin reembolso de la tarifa del cuidador'}
+                      {item.cancelled_by === 'host' ? ' · cancelada por el cuidador' : ''}
+                    </Text>
+                  </View>
+                )}
+
                 {/* Service phase pill — only for active bookings */}
                 {item.status === 'active' && (
                   <View style={[
@@ -277,10 +299,10 @@ export function BookingsScreen() {
                         <Ionicons name="chatbubble-outline" size={14} color={colors.textMain} />
                         <Text style={styles.actionBtnText}>Chat</Text>
                       </TouchableOpacity>
-                      {item.status === 'pending' && (
+                      {(item.status === 'pending' || item.status === 'active') && (
                         <TouchableOpacity
                           style={[styles.actionBtn, styles.actionBtnDanger]}
-                          onPress={() => handleCancel(item.id)}
+                          onPress={() => handleCancel(item)}
                           activeOpacity={0.8}
                         >
                           <Ionicons name="close-outline" size={14} color={colors.danger} />
@@ -377,6 +399,8 @@ const styles = StyleSheet.create({
   serviceTitle: { fontSize: 16, fontWeight: '700', color: colors.textMain },
   serviceSubLabel: { fontSize: 12, color: colors.textMuted, marginTop: 1 },
   priceLabel: { fontSize: 13, color: colors.textMuted, marginBottom: 10 },
+  refundRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 10, marginTop: -2 },
+  refundText: { flex: 1, fontSize: 12.5, color: colors.textMain, fontWeight: '600' },
   paymentRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderRadius: radii.md, paddingHorizontal: 10, paddingVertical: 7, marginBottom: 10 },
   paymentText: { fontSize: 12, fontWeight: '700' },
   paymentAction: { fontSize: 12, fontWeight: '700' },
