@@ -1,5 +1,6 @@
 import { supabase } from '../../supabase';
 import type { Space } from '../types/database';
+import type { Availability } from '../lib/availability';
 
 export async function uploadSpacePhoto(localUri: string): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -68,6 +69,7 @@ export async function upsertMySpace(input: {
   features: string[];
   active: boolean;
   image_urls?: string[];
+  availability?: Availability;
 }): Promise<Space> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -80,6 +82,7 @@ export async function upsertMySpace(input: {
     active: input.active,
     host_id: user.id,
     ...(input.image_urls !== undefined && { image_urls: input.image_urls }),
+    ...(input.availability !== undefined && { availability: input.availability }),
   };
   if (input.id) {
     const { data, error } = await supabase
