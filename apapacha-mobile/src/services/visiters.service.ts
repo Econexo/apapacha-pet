@@ -1,5 +1,6 @@
 import { supabase } from '../../supabase';
 import type { Visiter } from '../types/database';
+import type { Availability } from '../lib/availability';
 
 export async function uploadVisiterPhoto(localUri: string): Promise<string> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -80,6 +81,7 @@ export async function upsertMyVisiter(input: {
   price_per_visit: number;
   active: boolean;
   image_url?: string | null;
+  availability?: Availability;
 }): Promise<Visiter> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
@@ -91,6 +93,7 @@ export async function upsertMyVisiter(input: {
     active: input.active,
     host_id: user.id,
     ...(input.image_url !== undefined && { image_url: input.image_url }),
+    ...(input.availability !== undefined && { availability: input.availability }),
   };
   if (input.id) {
     const { data, error } = await supabase
