@@ -18,12 +18,13 @@ import { getVisiterById } from '../services/visiters.service';
 import { getMyPets } from '../services/pets.service';
 import { createBooking } from '../services/bookings.service';
 import { DateRangePicker } from '../components/DateRangePicker';
+import { supabase } from '../../supabase';
+import { normalizeAvailability, isDayAvailable, toISODate, parseISODate } from '../lib/availability';
+import { APP_FEE, INSURANCE_FEE } from '../lib/cancellation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'Checkout'>;
 
-const INSURANCE_FEE = 2500;
-const APP_FEE = 4500;
 const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
 
 export function CheckoutScreen() {
@@ -45,6 +46,7 @@ export function CheckoutScreen() {
 
   const [checkIn, setCheckIn]   = useState<Date>(defaultCheckIn);
   const [checkOut, setCheckOut] = useState<Date>(defaultCheckOut);
+  const [occupied, setOccupied] = useState<Set<string>>(new Set());
 
   const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
   const startDate = checkIn.toISOString().split('T')[0];
@@ -63,6 +65,26 @@ export function CheckoutScreen() {
       .catch(console.error)
       .finally(() => setLoading(false));
   }, [id, type]);
+
+  // Fechas ya ocupadas (solo alojamiento: reserva exclusiva). RPC expone solo rangos, sin PII.
+  useEffect(() => {
+    if (type !== 'space') return;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_service_booked_dates', { p_service_type: type, p_service_id: id });
+      if (error) { console.error(error); return; }
+      const set = new Set<string>();
+      for (const r of (data ?? []) as { start_date: string; end_date: string }[]) {
+        for (const d = parseISODate(r.start_date); d < parseISODate(r.end_date); d.setDate(d.getDate() + 1)) {
+          set.add(toISODate(d));
+        }
+      }
+      setOccupied(set);
+    })();
+  }, [id, type]);
+
+  const availability = normalizeAvailability((service as any)?.availability);
+  const isDateBlocked = (d: Date) =>
+    !isDayAvailable(availability, d) || (type === 'space' && occupied.has(toISODate(d)));
 
   const basePrice = service
     ? type === 'space'
@@ -142,6 +164,7 @@ export function CheckoutScreen() {
             checkOut={checkOut}
             onChangeCheckIn={setCheckIn}
             onChangeCheckOut={setCheckOut}
+            isDateBlocked={isDateBlocked}
           />
 
           {/* Pet selector */}
