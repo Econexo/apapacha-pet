@@ -93,15 +93,22 @@ export async function submitPaymentReceipt(bookingId: string, localUri: string):
   // La notificación a admins la emite el trigger DB trg_admin_receipt_submitted
 }
 
-export async function cancelBooking(bookingId: string): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  const { error } = await supabase
-    .from('bookings')
-    .update({ status: 'cancelled' })
-    .eq('id', bookingId)
-    .eq('owner_id', user.id);
+export interface CancelResult {
+  actor: 'owner' | 'host' | 'admin';
+  refund_percent: number;
+  refund_amount: number;
+  paid: boolean;
+}
+
+// Cancela vía RPC: el servidor valida al actor, calcula el reembolso (fuente de
+// verdad), notifica a la contraparte y envía correo. Sirve para cliente y cuidador.
+export async function cancelBooking(bookingId: string, reason?: string): Promise<CancelResult> {
+  const { data, error } = await supabase.rpc('cancel_booking', {
+    p_booking_id: bookingId,
+    p_reason: reason ?? null,
+  });
   if (error) throw error;
+  return data as CancelResult;
 }
 
 export async function confirmBookingPayment(bookingId: string): Promise<void> {
