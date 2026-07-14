@@ -12,6 +12,8 @@ import { useToast } from '../components/Toast';
 import { getMySpace, upsertMySpace, uploadSpacePhoto } from '../services/spaces.service';
 import { getMyVisiter, getVisiterById, upsertMyVisiter, uploadVisiterPhoto } from '../services/visiters.service';
 import type { Space, Visiter } from '../types/database';
+import { AvailabilityEditor } from '../components/AvailabilityEditor';
+import { Availability, defaultAvailability, normalizeAvailability } from '../lib/availability';
 
 const SPACE_FEATURES = [
   'Mallas certificadas', 'Sin otros animales', 'Rascadores', 'Comederos inclinados',
@@ -58,6 +60,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
 
   // Shared
   const [active, setActive]     = useState(true);
+  const [availability, setAvailability] = useState<Availability>(defaultAvailability());
 
   useEffect(() => {
     const load = async () => {
@@ -73,6 +76,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
             setFeatures(s.features ?? []);
             setActive(s.active);
             setExistingUrls(s.image_urls ?? []);
+            setAvailability(normalizeAvailability(s.availability));
           }
         } else {
           const v = serviceId
@@ -86,6 +90,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
             setPriceVisit(String(v.price_per_visit));
             setActive(v.active);
             setVisiterExistingUrl(v.image_url ?? null);
+            setAvailability(normalizeAvailability(v.availability));
           }
         }
       } catch (e) {
@@ -142,6 +147,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
           features,
           active,
           image_urls: allImageUrls,
+          availability,
         });
       } else {
         let finalImageUrl = visiterExistingUrl;
@@ -156,6 +162,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
           price_per_visit: Number(priceVisit),
           active,
           image_url: finalImageUrl,
+          availability,
         });
       }
       const alertMsg = existingId ? 'Tu servicio fue actualizado.' : 'Tu servicio ya está visible en Explorar.';
@@ -216,6 +223,19 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
             }}
             onRemoveImage={() => { setVisiterImageUri(null); setVisiterExistingUrl(null); }}
           />}
+
+          {/* Disponibilidad / agendamiento */}
+          <View style={styles.availabilityBlock}>
+            <Text style={styles.availabilityTitle}>📅 Disponibilidad</Text>
+            <Text style={styles.availabilitySub}>Define qué días y horarios aceptas reservas. Los clientes solo podrán agendar dentro de esta disponibilidad.</Text>
+            <AvailabilityEditor
+              value={availability}
+              onChange={setAvailability}
+              hourLabels={isSpace
+                ? { from: 'Check-in desde', to: 'Check-out hasta' }
+                : { from: 'Visitas desde', to: 'Visitas hasta' }}
+            />
+          </View>
 
           {/* Active toggle */}
           <View style={styles.toggleRow}>
@@ -470,6 +490,9 @@ const styles = StyleSheet.create({
   photoAddBtn: { width: 100, height: 80, borderRadius: 10, borderWidth: 2, borderColor: colors.border, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', backgroundColor: colors.background, gap: 4 },
   photoAddIcon: { fontSize: 22 },
   photoAddText: { fontSize: 11, color: colors.textMuted, fontWeight: '700' },
+  availabilityBlock: { marginTop: 24, paddingTop: 20, borderTopWidth: 1, borderTopColor: colors.border },
+  availabilityTitle: { fontSize: 16, fontWeight: '800', color: colors.textMain },
+  availabilitySub: { fontSize: 12, color: colors.textMuted, marginTop: 4, lineHeight: 17 },
   toggleRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: colors.background, borderRadius: 12, padding: 16, borderWidth: 1, borderColor: colors.border, marginTop: 24 },
   toggleLabel: { fontSize: 15, fontWeight: '700', color: colors.textMain },
   toggleSub: { fontSize: 12, color: colors.textMuted, marginTop: 2 },
