@@ -226,15 +226,15 @@ export function HomeScreen() {
         <View style={styles.actionsGrid}>
           <TouchableOpacity style={styles.actionCard} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Explore' })} activeOpacity={0.8}>
             <Ionicons name="search" size={28} color={colors.primary} />
-            <Text style={styles.actionLabel}>Reservar</Text>
+            <Text selectable={false} style={styles.actionLabel}>Reservar</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionCard} onPress={() => (navigation as any).navigate('MainTabs', { screen: 'Bookings' })} activeOpacity={0.8}>
             <Ionicons name="calendar-outline" size={28} color={colors.primary} />
-            <Text style={styles.actionLabel}>Historial</Text>
+            <Text selectable={false} style={styles.actionLabel}>Historial</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionCard} onPress={() => { setAddPetId(firstPet?.id); setShowAddPet(true); }} activeOpacity={0.8}>
             <Ionicons name="paw-outline" size={28} color={colors.primary} />
-            <Text style={styles.actionLabel}>{firstPet ? firstPet.name : 'Mi gato'}</Text>
+            <Text selectable={false} style={styles.actionLabel}>{firstPet ? firstPet.name : 'Mi gato'}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.actionCard, styles.actionCardDanger]}
@@ -244,7 +244,7 @@ export function HomeScreen() {
             activeOpacity={0.8}
           >
             <Ionicons name="warning-outline" size={28} color={colors.dangerText} />
-            <Text style={[styles.actionLabel, styles.actionLabelDanger]}>Emergencia</Text>
+            <Text selectable={false} style={[styles.actionLabel, styles.actionLabelDanger]}>Emergencia</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
