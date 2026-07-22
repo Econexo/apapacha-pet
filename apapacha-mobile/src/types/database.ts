@@ -85,8 +85,9 @@ export interface Booking {
   payment_receipt_url: string | null;
   payment_status: PaymentStatus;
   created_at: string;
-  visit_dates?: string[] | null;   // visitas: fechas puntuales (permite día por medio)
-  start_time?: string | null;      // visitas: hora 'HH:MM'
+  visit_dates?: string[] | null;        // visitas: fechas puntuales (permite día por medio)
+  time_block?: 'am' | 'pm' | null;      // visitas: tramo AM (06–12) / PM (13–21)
+  start_time?: string | null;           // legado: hora puntual (ya no se agenda desde la app)
   cancelled_by?: 'owner' | 'host' | 'admin' | null;
   cancelled_at?: string | null;
   cancellation_reason?: string | null;
