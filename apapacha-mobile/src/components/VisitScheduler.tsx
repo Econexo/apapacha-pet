@@ -11,10 +11,15 @@ const DAY_HEAD = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
 const startOfDay = (d: Date) => { const c = new Date(d); c.setHours(0,0,0,0); return c; };
 const hourOf = (hhmm?: string) => (hhmm ? parseInt(hhmm.split(':')[0], 10) : NaN);
 
-// Slots horarios dentro de la ventana declarada por el cuidador (por defecto 09–18).
+// Jornada por defecto: AM 06:00–12:00 · PM 13:00–21:00
+export const DAY_START = 6;
+export const DAY_END = 21;
+export const PM_START = 13;
+
+// Slots horarios dentro de la ventana declarada por el cuidador.
 export function buildSlots(av: Availability): string[] {
-  const from = Number.isNaN(hourOf(av.from)) ? 9 : hourOf(av.from);
-  const to   = Number.isNaN(hourOf(av.to)) ? 18 : hourOf(av.to);
+  const from = Number.isNaN(hourOf(av.from)) ? DAY_START : hourOf(av.from);
+  const to   = Number.isNaN(hourOf(av.to)) ? DAY_END : hourOf(av.to);
   const out: string[] = [];
   for (let h = from; h <= to; h++) out.push(`${String(h).padStart(2, '0')}:00`);
   return out;
@@ -33,6 +38,8 @@ export function VisitScheduler({ availability, selectedDates, selectedTime, take
   const [viewDate, setViewDate] = useState<Date>(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const today = startOfDay(new Date());
   const slots = buildSlots(availability);
+  const amSlots = slots.filter(t => hourOf(t) < PM_START);   // 06:00 – 12:00
+  const pmSlots = slots.filter(t => hourOf(t) >= PM_START);  // 13:00 – 21:00
 
   const toggleDate = (iso: string) => {
     const set = new Set(selectedDates);
@@ -97,27 +104,43 @@ export function VisitScheduler({ availability, selectedDates, selectedTime, take
       <Text style={styles.label}>Hora de la visita</Text>
       <Text style={styles.hint}>
         {availability.from || availability.to
-          ? `El cuidador atiende de ${availability.from ?? '09:00'} a ${availability.to ?? '18:00'}.`
+          ? `El cuidador atiende de ${availability.from ?? '06:00'} a ${availability.to ?? '21:00'}.`
           : 'Elige el horario que prefieras.'}
       </Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotRow}>
-        {slots.map(t => {
-          const taken = slotTaken(t);
-          const on = selectedTime === t;
-          return (
-            <TouchableOpacity
-              key={t}
-              style={[styles.slot, on && styles.slotOn, taken && styles.slotTaken]}
-              disabled={taken}
-              onPress={() => onChangeTime(on ? null : t)}
-              activeOpacity={0.7}
-            >
-              <Text style={[styles.slotText, on && styles.slotTextOn, taken && styles.slotTextTaken]}>{t}</Text>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-      {selectedDates.length > 0 && slots.every(slotTaken) && (
+
+      {([
+        { key: 'am', title: 'AM · Mañana', range: '06:00 – 12:00', items: amSlots },
+        { key: 'pm', title: 'PM · Tarde',  range: '13:00 – 21:00', items: pmSlots },
+      ] as const).map(group => (
+        group.items.length > 0 && (
+          <View key={group.key} style={styles.group}>
+            <View style={styles.groupHead}>
+              <Ionicons name={group.key === 'am' ? 'sunny-outline' : 'partly-sunny-outline'} size={14} color={colors.textMuted} />
+              <Text style={styles.groupTitle}>{group.title}</Text>
+              <Text style={styles.groupRange}>{group.range}</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.slotRow}>
+              {group.items.map(t => {
+                const taken = slotTaken(t);
+                const on = selectedTime === t;
+                return (
+                  <TouchableOpacity
+                    key={t}
+                    style={[styles.slot, on && styles.slotOn, taken && styles.slotTaken]}
+                    disabled={taken}
+                    onPress={() => onChangeTime(on ? null : t)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={[styles.slotText, on && styles.slotTextOn, taken && styles.slotTextTaken]}>{t}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )
+      ))}
+
+      {selectedDates.length > 0 && slots.length > 0 && slots.every(slotTaken) && (
         <Text style={styles.noSlots}>No quedan horarios libres en esas fechas. Prueba con otro día.</Text>
       )}
     </View>
@@ -142,6 +165,10 @@ const styles = StyleSheet.create({
   cellDisabled: { color: colors.border },
   summary: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: colors.primaryLight, borderRadius: radii.sm, paddingHorizontal: 12, paddingVertical: 8, marginTop: 10 },
   summaryText: { fontSize: 13, fontWeight: '700', color: colors.primaryDark },
+  group: { marginTop: 10 },
+  groupHead: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  groupTitle: { fontSize: 12.5, fontWeight: '800', color: colors.textMain },
+  groupRange: { fontSize: 11.5, color: colors.textMuted, fontWeight: '600' },
   slotRow: { gap: 8, paddingVertical: 2 },
   slot: { paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
   slotOn: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
