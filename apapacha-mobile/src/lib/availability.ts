@@ -44,6 +44,21 @@ export function parseISODate(s: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
+// Resumen legible del agendamiento de una visita: fechas puntuales + hora.
+export function formatVisitSchedule(
+  dates: string[] | null | undefined,
+  time?: string | null,
+  fallbackStart?: string,
+): string {
+  const ds = dates && dates.length ? dates : fallbackStart ? [fallbackStart] : [];
+  const f = (iso: string) => parseISODate(iso).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  const label = ds.length === 0 ? ''
+    : ds.length === 1 ? f(ds[0])
+    : `${ds.length} visitas · ${f(ds[0])} – ${f(ds[ds.length - 1])}`;
+  const hh = time ? time.slice(0, 5) : '';
+  return hh ? `${label} · ${hh}` : label;
+}
+
 // ¿El cuidador acepta este día? (día de semana permitido y no bloqueado)
 export function isDayAvailable(av: Availability | null | undefined, d: Date): boolean {
   if (!av) return true;
