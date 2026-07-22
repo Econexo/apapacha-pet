@@ -693,7 +693,7 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
               <Text style={styles.histDates}>
                 {b.service_type === 'visiter'
-                  ? formatVisitSchedule(b.visit_dates, b.start_time, b.start_date)
+                  ? formatVisitSchedule(b.visit_dates, b.time_block, b.start_date)
                   : `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`}
               </Text>
               {isMultiDay && b.service_type === 'space' && (
