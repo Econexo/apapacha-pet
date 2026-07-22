@@ -85,6 +85,8 @@ export interface Booking {
   payment_receipt_url: string | null;
   payment_status: PaymentStatus;
   created_at: string;
+  visit_dates?: string[] | null;   // visitas: fechas puntuales (permite día por medio)
+  start_time?: string | null;      // visitas: hora 'HH:MM'
   cancelled_by?: 'owner' | 'host' | 'admin' | null;
   cancelled_at?: string | null;
   cancellation_reason?: string | null;
