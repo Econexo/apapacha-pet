@@ -10,6 +10,7 @@ import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings, cancelBooking } from '../services/bookings.service';
 import { refundPreview, fmtCLP } from '../lib/cancellation';
+import { formatVisitSchedule } from '../lib/availability';
 import { supabase } from '../../supabase';
 import { OverlayModal } from '../components/OverlayModal';
 import { LeaveReviewScreen } from './LeaveReviewScreen';
@@ -204,7 +205,11 @@ export function BookingsScreen() {
                     <Ionicons name={statusCfg.icon} size={12} color={statusCfg.color} />
                     <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
                   </View>
-                  <Text style={styles.dates}>{fmt(item.start_date)} — {fmt(item.end_date)}</Text>
+                  <Text style={styles.dates}>
+                    {item.service_type === 'visiter'
+                      ? formatVisitSchedule(item.visit_dates, item.start_time, item.start_date)
+                      : `${fmt(item.start_date)} — ${fmt(item.end_date)}`}
+                  </Text>
                 </View>
 
                 {/* Service type + name */}
