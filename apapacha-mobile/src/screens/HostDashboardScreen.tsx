@@ -24,6 +24,7 @@ import {
 } from '../services/reviews.service';
 import { completeBookingAsHost, startService, respondToBooking } from '../services/host.service';
 import { cancelBooking } from '../services/bookings.service';
+import { formatVisitSchedule } from '../lib/availability';
 import { OverlayModal } from '../components/OverlayModal';
 import { ManageServiceScreen } from './ManageServiceScreen';
 import { useToast } from '../components/Toast';
@@ -690,8 +691,12 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
 
             {/* Fechas + duración */}
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-              <Text style={styles.histDates}>{fmtDate(b.start_date)} → {fmtDate(b.end_date)}</Text>
-              {isMultiDay && (
+              <Text style={styles.histDates}>
+                {b.service_type === 'visiter'
+                  ? formatVisitSchedule(b.visit_dates, b.start_time, b.start_date)
+                  : `${fmtDate(b.start_date)} → ${fmtDate(b.end_date)}`}
+              </Text>
+              {isMultiDay && b.service_type === 'space' && (
                 <View style={styles.durationPill}>
                   <Text style={styles.durationPillText}>{totalDays} noches</Text>
                 </View>
