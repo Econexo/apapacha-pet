@@ -18,6 +18,7 @@ import { getVisiterById } from '../services/visiters.service';
 import { getMyPets } from '../services/pets.service';
 import { createBooking } from '../services/bookings.service';
 import { DateRangePicker } from '../components/DateRangePicker';
+import { VisitScheduler } from '../components/VisitScheduler';
 import { supabase } from '../../supabase';
 import { normalizeAvailability, isDayAvailable, toISODate, parseISODate } from '../lib/availability';
 import { APP_FEE, INSURANCE_FEE } from '../lib/cancellation';
@@ -47,6 +48,11 @@ export function CheckoutScreen() {
   const [checkIn, setCheckIn]   = useState<Date>(defaultCheckIn);
   const [checkOut, setCheckOut] = useState<Date>(defaultCheckOut);
   const [occupied, setOccupied] = useState<Set<string>>(new Set());
+
+  // Visitas: fechas puntuales + hora (no un rango de noches)
+  const [visitDates, setVisitDates] = useState<string[]>([]);
+  const [visitTime, setVisitTime]   = useState<string | null>(null);
+  const [takenSlots, setTakenSlots] = useState<Set<string>>(new Set());
 
   const nights = Math.max(1, Math.round((checkOut.getTime() - checkIn.getTime()) / 86400000));
   const startDate = checkIn.toISOString().split('T')[0];
@@ -82,6 +88,20 @@ export function CheckoutScreen() {
     })();
   }, [id, type]);
 
+  // Slots ya tomados del cuidador (solo visitas). RPC expone solo fecha+hora, sin PII.
+  useEffect(() => {
+    if (type !== 'visiter') return;
+    (async () => {
+      const { data, error } = await supabase.rpc('get_visiter_taken_slots', { p_visiter_id: id });
+      if (error) { console.error(error); return; }
+      const set = new Set<string>();
+      for (const r of (data ?? []) as { slot_date: string; slot_time: string }[]) {
+        if (r.slot_time) set.add(`${r.slot_date}|${r.slot_time.slice(0, 5)}`);
+      }
+      setTakenSlots(set);
+    })();
+  }, [id, type]);
+
   const availability = normalizeAvailability((service as any)?.availability);
   const isDateBlocked = (d: Date) =>
     !isDayAvailable(availability, d) || (type === 'space' && occupied.has(toISODate(d)));
@@ -89,14 +109,25 @@ export function CheckoutScreen() {
   const basePrice = service
     ? type === 'space'
       ? (service as Space).price_per_night * nights
-      : (service as Visiter).price_per_visit
+      : (service as Visiter).price_per_visit * visitDates.length
     : 0;
   const grandTotal = basePrice + APP_FEE + INSURANCE_FEE;
 
   const handleConfirm = async () => {
-    if (checkOut <= checkIn) {
-      toast.warning('Fechas inválidas', 'La fecha de salida debe ser posterior a la de llegada.');
-      return;
+    if (type === 'space') {
+      if (checkOut <= checkIn) {
+        toast.warning('Fechas inválidas', 'La fecha de salida debe ser posterior a la de llegada.');
+        return;
+      }
+    } else {
+      if (visitDates.length === 0) {
+        toast.warning('Falta la fecha', 'Selecciona al menos un día para la visita.');
+        return;
+      }
+      if (!visitTime) {
+        toast.warning('Falta la hora', 'Selecciona el horario de la visita.');
+        return;
+      }
     }
     if (!selectedPet) {
       toast.warning('Mascota requerida', 'Añade una mascota en tu perfil antes de reservar.');
@@ -104,13 +135,16 @@ export function CheckoutScreen() {
     }
     setSubmitting(true);
     try {
+      // Visitas: start/end = min/max de las fechas elegidas (compatibilidad de listados)
+      const sorted = [...visitDates].sort();
       const booking = await createBooking({
         pet_id: selectedPet.id,
         service_type: type,
         service_id: id,
-        start_date: startDate,
-        end_date: endDate,
+        start_date: type === 'space' ? startDate : sorted[0],
+        end_date:   type === 'space' ? endDate   : sorted[sorted.length - 1],
         total_price: grandTotal,
+        ...(type === 'visiter' && { visit_dates: sorted, start_time: visitTime! }),
       });
       // El pago ocurre DESPUÉS de que el cuidador acepte la solicitud.
       toast.success('¡Solicitud enviada!', 'El cuidador debe aceptar tu reserva. Te avisaremos para que subas tu comprobante de pago.');
@@ -159,13 +193,24 @@ export function CheckoutScreen() {
 
         <View style={styles.sectionBlock}>
           <Text style={styles.sectionTitle}>Tu Reserva</Text>
-          <DateRangePicker
-            checkIn={checkIn}
-            checkOut={checkOut}
-            onChangeCheckIn={setCheckIn}
-            onChangeCheckOut={setCheckOut}
-            isDateBlocked={isDateBlocked}
-          />
+          {type === 'space' ? (
+            <DateRangePicker
+              checkIn={checkIn}
+              checkOut={checkOut}
+              onChangeCheckIn={setCheckIn}
+              onChangeCheckOut={setCheckOut}
+              isDateBlocked={isDateBlocked}
+            />
+          ) : (
+            <VisitScheduler
+              availability={availability}
+              selectedDates={visitDates}
+              selectedTime={visitTime}
+              takenSlots={takenSlots}
+              onChangeDates={setVisitDates}
+              onChangeTime={setVisitTime}
+            />
+          )}
 
           {/* Pet selector */}
           <Text style={[styles.rowTitle, { marginTop: 16, marginBottom: 10 }]}>Huésped</Text>
@@ -199,7 +244,7 @@ export function CheckoutScreen() {
             <Text style={styles.priceConcept}>
               {type === 'space'
                 ? `${fmt((service as Space)?.price_per_night ?? 0)} x ${nights} noches`
-                : 'Visita domiciliaria'}
+                : `${fmt((service as Visiter)?.price_per_visit ?? 0)} x ${visitDates.length} visita${visitDates.length === 1 ? '' : 's'}${visitTime ? ` · ${visitTime}` : ''}`}
             </Text>
             <Text style={styles.priceNumber}>{fmt(basePrice)}</Text>
           </View>
