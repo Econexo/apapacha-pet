@@ -44,10 +44,15 @@ export function parseISODate(s: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
-// Resumen legible del agendamiento de una visita: fechas puntuales + hora.
+export const BLOCK_LABEL: Record<string, string> = {
+  am: 'AM (06:00 a 12:00)',
+  pm: 'PM (13:00 a 21:00)',
+};
+
+// Resumen legible del agendamiento de una visita: fechas puntuales + tramo AM/PM.
 export function formatVisitSchedule(
   dates: string[] | null | undefined,
-  time?: string | null,
+  block?: string | null,
   fallbackStart?: string,
 ): string {
   const ds = dates && dates.length ? dates : fallbackStart ? [fallbackStart] : [];
@@ -55,8 +60,8 @@ export function formatVisitSchedule(
   const label = ds.length === 0 ? ''
     : ds.length === 1 ? f(ds[0])
     : `${ds.length} visitas · ${f(ds[0])} – ${f(ds[ds.length - 1])}`;
-  const hh = time ? time.slice(0, 5) : '';
-  return hh ? `${label} · ${hh}` : label;
+  const b = block ? BLOCK_LABEL[block] ?? block.toUpperCase() : '';
+  return b ? `${label} · ${b}` : label;
 }
 
 // ¿El cuidador acepta este día? (día de semana permitido y no bloqueado)
