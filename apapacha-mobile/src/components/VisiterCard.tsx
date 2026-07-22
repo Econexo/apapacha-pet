@@ -24,7 +24,9 @@ export function VisiterCard({ id, name, professionTitle, pricePerVisit, rating, 
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
     <TouchableOpacity activeOpacity={0.95} style={styles.card} onPress={() => onPress(id)} onPressIn={onPressIn} onPressOut={onPressOut}>
-      <View style={styles.contentRow}>
+      {/* pointerEvents none: en RN Web el texto seleccionable se come el primer
+          toque; así toda la tarjeta es un solo target y responde a la primera. */}
+      <View style={styles.contentRow} pointerEvents="none">
         <Image source={{ uri: imageUrl }} style={styles.avatar} />
         <View style={styles.info}>
           <View style={styles.headerRow}>
@@ -38,7 +40,7 @@ export function VisiterCard({ id, name, professionTitle, pricePerVisit, rating, 
           </View>
         </View>
       </View>
-      <View style={styles.footerRow}>
+      <View style={styles.footerRow} pointerEvents="none">
         <AppText variant="small" color={colors.textMuted}>Tarifa base</AppText>
         <View style={{ flexDirection: 'row', alignItems: 'baseline' }}>
           <AppText variant="h" style={{ fontSize: 17 }}>${pricePerVisit.toLocaleString('es-CL')}</AppText>
