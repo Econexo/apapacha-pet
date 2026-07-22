@@ -21,8 +21,8 @@ export async function createBooking(bookingData: {
   start_date: string;
   end_date: string;
   total_price: number;
-  visit_dates?: string[];  // visitas: fechas puntuales
-  start_time?: string;     // visitas: hora 'HH:MM'
+  visit_dates?: string[];        // visitas: fechas puntuales
+  time_block?: 'am' | 'pm';      // visitas: tramo AM / PM
 }): Promise<Booking> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
