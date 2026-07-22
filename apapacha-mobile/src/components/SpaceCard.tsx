@@ -23,14 +23,16 @@ export function SpaceCard({ id, title, location, pricePerNight, rating, imageUrl
   return (
     <Animated.View style={{ transform: [{ scale }] }}>
     <TouchableOpacity activeOpacity={0.95} style={styles.card} onPress={() => onPress(id)} onPressIn={onPressIn} onPressOut={onPressOut}>
-      <View style={styles.imageContainer}>
+      {/* pointerEvents none: en RN Web el texto seleccionable se come el primer
+          toque; así toda la tarjeta es un solo target y responde a la primera. */}
+      <View style={styles.imageContainer} pointerEvents="none">
         <Image source={{ uri: imageUrl }} style={styles.image} />
         <View style={styles.typeChip}>
           <Ionicons name="home" size={11} color={colors.primary} />
           <AppText variant="label" color={colors.primary} style={{ fontSize: 10 }}>Alojamiento</AppText>
         </View>
       </View>
-      <View style={styles.info}>
+      <View style={styles.info} pointerEvents="none">
         <AppText variant="title" numberOfLines={1} style={{ fontSize: 18 }}>{title}</AppText>
         <View style={styles.locRow}>
           <Ionicons name="location-outline" size={13} color={colors.textMuted} />
