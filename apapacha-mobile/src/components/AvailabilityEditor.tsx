@@ -61,6 +61,28 @@ export function AvailabilityEditor({ value, onChange, hourLabels }: Props) {
         })}
       </View>
 
+      {/* Presets de jornada */}
+      <Text style={styles.label}>Jornada</Text>
+      <View style={styles.presetRow}>
+        {([
+          { label: 'Todo el día', from: '06:00', to: '21:00' },
+          { label: 'Solo AM',     from: '06:00', to: '12:00' },
+          { label: 'Solo PM',     from: '13:00', to: '21:00' },
+        ] as const).map(p => {
+          const on = value.from === p.from && value.to === p.to;
+          return (
+            <TouchableOpacity
+              key={p.label}
+              style={[styles.presetChip, on && styles.presetChipOn]}
+              onPress={() => onChange({ ...value, from: p.from, to: p.to })}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.presetText, on && styles.presetTextOn]}>{p.label}</Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
       {/* Horario */}
       <Text style={styles.label}>{labels.from}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hourRow}>
@@ -127,6 +149,11 @@ const styles = StyleSheet.create({
   dayChipOn: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
   dayChipText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
   dayChipTextOn: { color: colors.primaryDark, fontWeight: '800' },
+  presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  presetChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
+  presetChipOn: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
+  presetText: { fontSize: 13, fontWeight: '700', color: colors.textMuted },
+  presetTextOn: { color: colors.primaryDark, fontWeight: '800' },
   hourRow: { gap: 8, paddingVertical: 2 },
   hourChip: { paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.background },
   hourChipOn: { borderColor: colors.primary, backgroundColor: colors.primaryLight },
