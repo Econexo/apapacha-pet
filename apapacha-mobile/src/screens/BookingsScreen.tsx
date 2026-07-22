@@ -207,7 +207,7 @@ export function BookingsScreen() {
                   </View>
                   <Text style={styles.dates}>
                     {item.service_type === 'visiter'
-                      ? formatVisitSchedule(item.visit_dates, item.start_time, item.start_date)
+                      ? formatVisitSchedule(item.visit_dates, item.time_block, item.start_date)
                       : `${fmt(item.start_date)} — ${fmt(item.end_date)}`}
                   </Text>
                 </View>
