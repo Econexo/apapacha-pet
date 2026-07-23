@@ -1,6 +1,7 @@
 import { supabase } from '../../supabase';
 import type { Booking, BookingStatus, ServiceType } from '../types/database';
 import { insertNotification } from './notifications.service';
+import { purgeChatMedia } from './messages.service';
 
 export async function getMyBookings(): Promise<Booking[]> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -110,6 +111,8 @@ export async function cancelBooking(bookingId: string, reason?: string): Promise
     p_reason: reason ?? null,
   });
   if (error) throw error;
+  // Borra las fotos del chat (el chat termina con la reserva). Best-effort.
+  try { await purgeChatMedia(bookingId); } catch (e) { console.warn('[bookings] purgeChatMedia:', e); }
   return data as CancelResult;
 }
 
