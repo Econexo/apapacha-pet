@@ -48,13 +48,13 @@ export function InboxScreen() {
     const [spacesRes, visitersRes, msgsRes] = await Promise.all([
       spaceIds.length ? supabase.from('spaces').select('id, title').in('id', spaceIds) : Promise.resolve({ data: [] }),
       visiterIds.length ? supabase.from('visiters').select('id, name').in('id', visiterIds) : Promise.resolve({ data: [] }),
-      supabase.from('messages').select('booking_id, content, created_at').in('booking_id', bookingIds).order('created_at', { ascending: false }),
+      supabase.from('messages').select('booking_id, content, created_at, image_url').in('booking_id', bookingIds).order('created_at', { ascending: false }),
     ]);
 
     // Build last-message map (first occurrence per booking_id = most recent)
     const msgMap: Record<string, LastMessage> = {};
     for (const m of (msgsRes.data ?? []) as any[]) {
-      if (!msgMap[m.booking_id]) msgMap[m.booking_id] = { content: m.content, created_at: m.created_at };
+      if (!msgMap[m.booking_id]) msgMap[m.booking_id] = { content: m.content?.trim() ? m.content : (m.image_url ? '📷 Foto' : ''), created_at: m.created_at };
     }
 
     // Only keep bookings that have at least one message
