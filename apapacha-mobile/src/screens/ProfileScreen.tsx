@@ -338,7 +338,7 @@ export function ProfileScreen() {
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={() => setShowTrust(true)}>
-            <Text style={styles.menuItemText}>Políticas de Seguridad y Seguros</Text>
+            <Text style={styles.menuItemText}>Políticas de Seguridad y Confianza</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
           <TouchableOpacity style={[styles.menuItem, styles.menuItemLast]} onPress={signOut}>
