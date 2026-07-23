@@ -6,7 +6,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
+import { useNavigation } from '@react-navigation/native';
 import { getMyNotifications, markAsRead, markAllAsRead } from '../services/notifications.service';
+import { notificationTarget } from '../lib/notificationRoute';
 import type { Notification } from '../types/database';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -42,6 +44,7 @@ interface Props {
 }
 
 export function NotificationsModal({ visible, onClose, onUnreadChange }: Props) {
+  const navigation = useNavigation<any>();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -72,6 +75,11 @@ export function NotificationsModal({ visible, onClose, onUnreadChange }: Props) 
       await markAsRead(n.id);
       setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
       onUnreadChange?.(notifications.filter(x => !x.read && x.id !== n.id).length);
+    }
+    const target = notificationTarget(n);
+    if (target) {
+      onClose();
+      navigation.navigate(target.screen, target.params);
     }
   };
 
