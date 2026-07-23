@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx expo export --platform web",
+  "buildCommand": "npx expo export --platform web && node scripts/pwa-postbuild.js",
   "outputDirectory": "dist",
   "installCommand": "npm install",
   "rewrites": [
