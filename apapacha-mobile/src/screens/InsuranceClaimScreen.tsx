@@ -37,7 +37,7 @@ export function InsuranceClaimScreen({ onClose }: { onClose?: () => void } = {})
     setSubmitting(true);
     try {
       await submitClaim({ incident_type: selectedType!, description: description.trim() });
-      toast.success('Siniestro Reportado', 'Recibimos tu reporte. Un agente revisará tu caso en 1-2 días hábiles y te contactará por email.');
+      toast.success('Incidente reportado', 'Recibimos tu reporte. Nuestro equipo revisará el caso en 1-2 días hábiles y te contactará por email.');
       close();
     } catch (e: any) {
       toast.error('Error', e.message ?? 'No se pudo enviar el reporte');
@@ -52,7 +52,7 @@ export function InsuranceClaimScreen({ onClose }: { onClose?: () => void } = {})
         <TouchableOpacity style={styles.backBtn} onPress={close}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Reportar Siniestro</Text>
+        <Text style={styles.headerTitle}>Reportar Incidente</Text>
         <View style={{ width: 40 }} />
       </View>
 
@@ -109,7 +109,7 @@ export function InsuranceClaimScreen({ onClose }: { onClose?: () => void } = {})
         >
           {submitting
             ? <ActivityIndicator color={colors.surface} />
-            : <Text style={styles.submitBtnText}>Enviar Reporte de Siniestro</Text>
+            : <Text style={styles.submitBtnText}>Enviar reporte</Text>
           }
         </TouchableOpacity>
       </View>
