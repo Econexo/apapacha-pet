@@ -42,6 +42,7 @@ import { AdminScreen } from './src/screens/AdminScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
+import { linking } from './src/linking';
 import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
