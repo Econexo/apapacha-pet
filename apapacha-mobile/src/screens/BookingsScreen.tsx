@@ -130,11 +130,11 @@ export function BookingsScreen() {
 
   async function handleCancel(booking: Booking) {
     const paid = booking.payment_status === 'paid' || booking.status === 'active';
-    const preview = refundPreview({ startDate: booking.start_date, totalPrice: booking.total_price, paid });
+    const preview = refundPreview({ startDate: booking.start_date, totalPrice: booking.total_price, paid, hadInsurance: booking.insurance_included });
     const refundLine = !paid
       ? 'Aún no has pagado, no se realizó ningún cobro.'
       : preview.amount > 0
-        ? `Reembolso estimado: ${fmtCLP(preview.amount)} (${preview.percent}% de la tarifa del cuidador). El Seguro Zero Trust y la tarifa de servicio no se reembolsan.`
+        ? `Reembolso estimado: ${fmtCLP(preview.amount)} (${preview.percent}% de la tarifa del cuidador). La tarifa de servicio de ApapachaPet no se reembolsa.`
         : 'Según la política de cancelación, no corresponde reembolso de la tarifa del cuidador.';
     const msg = `${refundLine}\n\n¿Confirmas la cancelación?`;
 
