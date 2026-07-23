@@ -38,6 +38,15 @@ export async function uploadChatImage(bookingId: string, localUri: string): Prom
   return supabase.storage.from('chat-media').getPublicUrl(path).data.publicUrl;
 }
 
+// Borra los archivos de fotos del chat de una reserva (al completar/cancelar).
+// Best-effort: si falla, el trigger igual desvincula las fotos (image_url = NULL).
+export async function purgeChatMedia(bookingId: string): Promise<void> {
+  const { data } = await supabase.storage.from('chat-media').list(bookingId);
+  if (data && data.length) {
+    await supabase.storage.from('chat-media').remove(data.map(f => `${bookingId}/${f.name}`));
+  }
+}
+
 export function subscribeToMessages(
   bookingId: string,
   callback: (msg: Message) => void
