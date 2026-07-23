@@ -1,6 +1,7 @@
 import { supabase } from '../../supabase';
 import type { HostApplication, Booking } from '../types/database';
 import { insertNotification, insertNotificationsForAdmins } from './notifications.service';
+import { purgeChatMedia } from './messages.service';
 
 export async function getMyApplication(): Promise<HostApplication | null> {
   const { data: { user } } = await supabase.auth.getUser();
@@ -162,4 +163,7 @@ export async function completeBookingAsHost(bookingId: string): Promise<void> {
       { booking_id: bookingId },
     ),
   ]);
+
+  // El chat termina con el servicio: se borran las fotos. Best-effort.
+  try { await purgeChatMedia(bookingId); } catch (e) { console.warn('[host] purgeChatMedia:', e); }
 }
