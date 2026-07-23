@@ -256,17 +256,21 @@ export function BookingsScreen() {
                   </View>
                 )}
 
-                {/* Service phase pill — only for active bookings */}
+                {/* Estado del servicio — tocar para contactar al cuidador por chat */}
                 {item.status === 'active' && (
-                  <View style={[
-                    styles.phasePill,
-                    item.service_phase === 'in_progress' ? styles.phasePillActive : styles.phasePillWaiting,
-                  ]}>
+                  <TouchableOpacity
+                    style={[styles.phasePill, item.service_phase === 'in_progress' ? styles.phasePillActive : styles.phasePillWaiting]}
+                    onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
+                    activeOpacity={0.85}
+                  >
                     <View style={[styles.phaseDot, item.service_phase === 'in_progress' ? styles.phaseDotActive : styles.phaseDotWaiting]} />
                     <Text style={[styles.phaseText, item.service_phase === 'in_progress' ? styles.phaseTextActive : styles.phaseTextWaiting]}>
-                      {item.service_phase === 'in_progress' ? 'Servicio en curso' : 'Esperando inicio del servicio'}
+                      {item.service_phase === 'in_progress' ? 'Cuidado en curso' : 'Reserva activa · por iniciar'}
                     </Text>
-                  </View>
+                    <View style={{ flex: 1 }} />
+                    <Ionicons name="chatbubble-ellipses-outline" size={15} color={item.service_phase === 'in_progress' ? colors.successText : colors.primary} />
+                    <Text style={[styles.phaseContact, { color: item.service_phase === 'in_progress' ? colors.successText : colors.primary }]}>Contactar</Text>
+                  </TouchableOpacity>
                 )}
 
                 {/* CTA contextual: aceptación del cuidador → pago → confirmación */}
@@ -450,6 +454,7 @@ const styles = StyleSheet.create({
   phaseDotActive: { backgroundColor: colors.successText },
   phaseDotWaiting: { backgroundColor: colors.primary },
   phaseText: { fontSize: 12, fontWeight: '700' },
+  phaseContact: { fontSize: 12, fontWeight: '800' },
   phaseTextActive: { color: colors.successText },
   phaseTextWaiting: { color: colors.primaryDark },
 });
