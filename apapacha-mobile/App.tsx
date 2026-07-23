@@ -218,7 +218,12 @@ export default function App() {
       <StatusBar style="auto" />
       <ToastProvider>
         <AuthProvider>
-          <NavigationContainer>
+          <NavigationContainer
+            linking={linking}
+            documentTitle={{
+              formatter: (options) => (options?.title ? `${options.title} · ApapachaPet` : 'ApapachaPet'),
+            }}
+          >
             <RootNavigator />
           </NavigationContainer>
         </AuthProvider>
