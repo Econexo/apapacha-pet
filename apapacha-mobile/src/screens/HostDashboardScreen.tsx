@@ -92,6 +92,17 @@ export function HostDashboardScreen() {
 
   useEffect(() => { reload(); }, [hostId]);
 
+  // En vivo: nuevas solicitudes y cambios de estado de reservas de mis servicios.
+  // RLS filtra: solo llegan eventos de reservas visibles para este cuidador.
+  useEffect(() => {
+    if (!hostId) return;
+    const channel = supabase
+      .channel('bookings_host_live')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings' }, () => { reload(); })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [hostId]);
+
   // Refresh services when returning from ManageService modal
   useFocusEffect(useCallback(() => {
     if (!hostId) return;
