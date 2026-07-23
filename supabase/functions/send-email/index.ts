@@ -70,9 +70,8 @@ function welcomeHtml(name: string): string {
         <div class="step"><div class="step-n">3</div><p><strong>Reserva con confianza</strong> — todos nuestros cuidadores pasan por verificación de identidad y seguridad.</p></div>
       </div>
       <div class="highlight">
-        <p style="font-weight:800;color:#6B35A0">🛡️ Malla de Seguro Zero Trust</p>
-        <p>Cada reserva incluye una <strong>cobertura veterinaria</strong> que protege a tu gato durante todo el servicio. Si ocurre una emergencia de salud mientras está al cuidado, respaldamos la atención veterinaria hasta el límite de la póliza.</p>
-        <p>Se cobra por separado del cuidador porque <strong>no es parte de su tarifa</strong>: ApapachaPet contrata esta protección directamente por cada reserva, así el 100% de ese monto va al respaldo de tu mascota.</p>
+        <p style="font-weight:800;color:#6B35A0">🛡️ Cuidadores verificados</p>
+        <p>Cada cuidador pasa por <strong>verificación de identidad</strong> y revisión de su espacio antes de publicar. Además, coordinas todo desde la app y el pago se confirma recién cuando el cuidador acepta tu reserva.</p>
       </div>
       <div class="cta-wrap"><a class="cta" href="${APP_URL}" style="color:#fff !important;text-decoration:none !important"><span style="color:#fff !important">Ir a la App →</span></a></div>
     </div>`);
@@ -174,8 +173,8 @@ function paymentConfirmedHtml(name: string, serviceName: string, serviceType: st
       <div class="badge">Reserva activa 🐾</div>
       <p>Hola <strong>${name}</strong>, confirmamos la recepción de tu pago. Tu reserva de <strong>${icon} ${serviceName}</strong> ya está <strong>activa</strong>.</p>
       <div class="highlight">
-        <p style="font-weight:800;color:#6B35A0">🛡️ Malla de Seguro Zero Trust</p>
-        <p>Tu reserva incluye <strong>cobertura veterinaria</strong> durante todo el servicio. Si ocurre una emergencia de salud mientras tu gato está al cuidado, respaldamos la atención hasta el límite de la póliza.</p>
+        <p style="font-weight:800;color:#6B35A0">🛡️ Todo coordinado por la app</p>
+        <p>Mantén la comunicación con tu cuidador dentro de ApapachaPet: ahí queda el registro del servicio y puedes pedir apoyo si algo no sale como esperabas.</p>
       </div>
       <div class="steps">
         <p style="font-weight:800;margin:0 0 14px;color:#6B35A0">¿Y ahora?</p>
@@ -235,7 +234,7 @@ function bookingCancelledHtml(name: string, serviceName: string, serviceType: st
       </div>`);
   }
   const refundBlock = refund > 0
-    ? `<div class="highlight"><p style="font-weight:800;color:#6B35A0">💸 Reembolso</p><p>Se procesará un reembolso de <strong>$${refund.toLocaleString('es-CL')} CLP</strong> (${percent}% de la tarifa del cuidador). El Seguro Zero Trust y la tarifa de servicio no son reembolsables.</p></div>`
+    ? `<div class="highlight"><p style="font-weight:800;color:#6B35A0">💸 Reembolso</p><p>Se procesará un reembolso de <strong>$${refund.toLocaleString('es-CL')} CLP</strong> (${percent}% de la tarifa del cuidador). La tarifa de servicio no es reembolsable.</p></div>`
     : `<div class="highlight"><p>Según la política de cancelación, esta reserva no genera reembolso de la tarifa del cuidador.</p></div>`;
   return baseLayout(`
     <div class="hero" style="background:linear-gradient(135deg,#7B1D1D,#B45309)">
