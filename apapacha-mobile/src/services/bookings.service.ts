@@ -32,7 +32,7 @@ export async function createBooking(bookingData: {
       ...bookingData,
       owner_id: user.id,
       status: 'pending',
-      insurance_included: true,
+      insurance_included: false,   // Seguro Zero Trust descontinuado
     })
     .select()
     .single();
