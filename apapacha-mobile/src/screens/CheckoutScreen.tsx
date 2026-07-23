@@ -21,7 +21,7 @@ import { DateRangePicker } from '../components/DateRangePicker';
 import { VisitScheduler, type TimeBlock } from '../components/VisitScheduler';
 import { supabase } from '../../supabase';
 import { normalizeAvailability, isDayAvailable, toISODate, parseISODate } from '../lib/availability';
-import { APP_FEE, INSURANCE_FEE } from '../lib/cancellation';
+import { APP_FEE } from '../lib/cancellation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 type Route = RouteProp<RootStackParamList, 'Checkout'>;
@@ -39,7 +39,6 @@ export function CheckoutScreen() {
   const [selectedPet, setSelectedPet] = useState<Pet | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [insuranceOpen, setInsuranceOpen] = useState(false);
 
   const defaultCheckIn = new Date(); defaultCheckIn.setHours(0,0,0,0);
   defaultCheckIn.setDate(defaultCheckIn.getDate() + 1);
@@ -96,7 +95,7 @@ export function CheckoutScreen() {
       ? (service as Space).price_per_night * nights
       : (service as Visiter).price_per_visit * visitDates.length
     : 0;
-  const grandTotal = basePrice + APP_FEE + INSURANCE_FEE;
+  const grandTotal = basePrice + APP_FEE;
 
   const handleConfirm = async () => {
     if (type === 'space') {
@@ -236,31 +235,6 @@ export function CheckoutScreen() {
             <Text style={styles.priceConcept}>Tarifa de Servicio (ApapachaPet)</Text>
             <Text style={styles.priceNumber}>{fmt(APP_FEE)}</Text>
           </View>
-          <TouchableOpacity
-            style={styles.priceRow}
-            onPress={() => setInsuranceOpen(o => !o)}
-            activeOpacity={0.7}
-          >
-            <Text style={[styles.priceConcept, { color: colors.accent, fontWeight: '600' }]}>
-              Malla de Seguro Zero Trust  {insuranceOpen ? 'ⓘ ▲' : 'ⓘ ▼'}
-            </Text>
-            <Text style={styles.priceNumber}>{fmt(INSURANCE_FEE)}</Text>
-          </TouchableOpacity>
-
-          {insuranceOpen && (
-            <View style={styles.insuranceInfo}>
-              <Text style={styles.insuranceInfoTitle}>🛡️ ¿Qué es y por qué se cobra aparte?</Text>
-              <Text style={styles.insuranceInfoText}>
-                La Malla de Seguro Zero Trust es una <Text style={{ fontWeight: '700' }}>cobertura veterinaria</Text> que protege a tu gato durante todo el servicio. Si ocurre un accidente o emergencia de salud mientras está al cuidado, cubrimos la atención veterinaria hasta el límite de la póliza.
-              </Text>
-              <Text style={styles.insuranceInfoText}>
-                Se cobra por separado del cuidador porque <Text style={{ fontWeight: '700' }}>no es parte de su tarifa</Text>: es una protección que ApapachaPet contrata directamente por cada reserva. Así el 100% de este monto va al respaldo de tu mascota, no al cuidador.
-              </Text>
-              <Text style={styles.insuranceInfoBullet}>• Cubre urgencias veterinarias durante el servicio</Text>
-              <Text style={styles.insuranceInfoBullet}>• Válida solo si la información médica de tu gato es real</Text>
-              <Text style={styles.insuranceInfoBullet}>• No es reembolsable en caso de cancelación</Text>
-            </View>
-          )}
 
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total (CLP)</Text>
@@ -281,8 +255,12 @@ export function CheckoutScreen() {
         </View>
 
         <View style={styles.sectionBlock}>
-          <Text style={styles.sectionTitle}>Política de Cancelación Estricta</Text>
-          <Text style={styles.policyText}>El Seguro Zero Trust no es reembolsable.</Text>
+          <Text style={styles.sectionTitle}>Política de cancelación</Text>
+          <Text style={styles.policyText}>
+            Cancelando con más de 7 días de anticipación se reembolsa el 100% de la tarifa del cuidador;
+            entre 48 horas y 7 días, el 50%; con menos de 48 horas o ya iniciado el servicio, no hay reembolso.
+            La tarifa de servicio de ApapachaPet no es reembolsable.
+          </Text>
         </View>
       </ScrollView>
 
@@ -323,10 +301,6 @@ const styles = StyleSheet.create({
   paymentNoteTitle: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 4 },
   paymentNoteText: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
   policyText: { fontSize: 14, lineHeight: 20, color: colors.textMuted },
-  insuranceInfo: { backgroundColor: colors.infoBg, borderRadius: 12, padding: 14, borderWidth: 1, borderColor: colors.infoBorder, marginTop: 4, marginBottom: 8, gap: 8 },
-  insuranceInfoTitle: { fontSize: 14, fontWeight: '800', color: colors.textMain },
-  insuranceInfoText: { fontSize: 13, color: colors.textMuted, lineHeight: 19 },
-  insuranceInfoBullet: { fontSize: 13, color: colors.textMuted, lineHeight: 18 },
   footer: { backgroundColor: colors.surface, padding: 20, borderTopWidth: 1, borderTopColor: colors.border },
   submitBtn: { backgroundColor: colors.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   submitBtnText: { color: colors.surface, fontWeight: '800', fontSize: 16 },
