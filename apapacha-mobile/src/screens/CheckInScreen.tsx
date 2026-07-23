@@ -14,7 +14,7 @@ type Route = RouteProp<RootStackParamList, 'CheckIn'>;
 
 const CHECKLIST = [
   { id: '1', label: 'Verificación de Identidad Fotográfica — El cuidador coincide con el perfil.' },
-  { id: '2', label: 'Entrega de Seguro (Transportadora) — Gato entregado en caja asegurada.' },
+  { id: '2', label: 'Entrega segura (Transportadora) — Gato entregado en caja cerrada.' },
   { id: '3', label: 'Revisión Mallas Anti-Escape — Balcón y ventanas reforzados.' },
   { id: '4', label: 'Confirmación Dieta Cero-Pollo — Cuidador entiende la alergia estricta.' },
 ];
@@ -59,7 +59,7 @@ export function CheckInScreen() {
         <View style={styles.warningCard}>
           <Text style={styles.warningTitle}>⚠️ Acción Irreversible</Text>
           <Text style={styles.warningText}>
-            Al iniciar el Check-In, transfieres la custodia temporal bajo la póliza Zero Trust.
+            Al iniciar el Check-In, transfieres la custodia temporal del gato al cuidador y queda registrado en la plataforma.
             Ambas partes deben estar presentes.
           </Text>
         </View>
