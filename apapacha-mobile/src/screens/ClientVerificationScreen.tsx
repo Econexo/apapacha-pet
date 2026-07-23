@@ -196,7 +196,7 @@ export function ClientVerificationScreen() {
 
         <View style={styles.agreementModule}>
           <Text style={styles.agreementTitle}>3. Responsabilidad (Liability)</Text>
-          <Text style={styles.agreementText}>Declaro que la información que subiré sobre mis mascotas es médicamente real y acepto que falsificar información anulará la cobertura del Seguro Veterinario durante cualquier incidente.</Text>
+          <Text style={styles.agreementText}>Declaro que la información que subiré sobre mis mascotas es médicamente real y entiendo que omitir o falsear datos médicos me hace responsable de lo que ocurra durante el servicio.</Text>
           <TouchableOpacity
             style={[styles.checkboxRow, agreementSigned && styles.checkboxRowActive]}
             onPress={() => setAgreementSigned(!agreementSigned)}
