@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { View, Text, StyleSheet, FlatList, TouchableOpacity, Alert, RefreshControl, Platform } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
@@ -59,6 +59,20 @@ export function BookingsScreen() {
     await loadAll();
     setRefreshing(false);
   };
+
+  // En vivo: cualquier cambio en mis reservas (aceptación, pago, estado) se refleja sin refrescar.
+  useEffect(() => {
+    let channel: ReturnType<typeof supabase.channel> | null = null;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      channel = supabase
+        .channel('bookings_client_live')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'bookings', filter: `owner_id=eq.${user.id}` }, () => { loadAll(); })
+        .subscribe();
+    })();
+    return () => { if (channel) supabase.removeChannel(channel); };
+  }, []);
 
   async function loadAll(cancelled = false) {
     try {
