@@ -15,9 +15,13 @@ interface Props {
   value: Availability;
   onChange: (a: Availability) => void;
   hourLabels?: { from: string; to: string };
+  // 'visiter' → solo tramos AM/PM (la hora exacta se coordina por chat)
+  // 'space'   → horas de check-in / check-out
+  mode?: 'space' | 'visiter';
 }
 
-export function AvailabilityEditor({ value, onChange, hourLabels }: Props) {
+export function AvailabilityEditor({ value, onChange, hourLabels, mode = 'space' }: Props) {
+  const isVisiter = mode === 'visiter';
   const labels = hourLabels ?? { from: 'Desde', to: 'Hasta' };
   const [viewDate, setViewDate] = useState<Date>(() => { const d = new Date(); return new Date(d.getFullYear(), d.getMonth(), 1); });
   const today = startOfDay(new Date());
@@ -61,8 +65,10 @@ export function AvailabilityEditor({ value, onChange, hourLabels }: Props) {
         })}
       </View>
 
-      {/* Presets de jornada */}
+      {/* Jornada: solo tramos AM/PM (visitas). La hora exacta se coordina por chat. */}
+      {isVisiter && <>
       <Text style={styles.label}>Jornada</Text>
+      <Text style={styles.sublabel}>Indica el tramo en que puedes asistir. La hora exacta la acuerdas con el cliente por chat.</Text>
       <View style={styles.presetRow}>
         {([
           { label: 'Todo el día', from: '06:00', to: '21:00' },
@@ -82,8 +88,10 @@ export function AvailabilityEditor({ value, onChange, hourLabels }: Props) {
           );
         })}
       </View>
+      </>}
 
-      {/* Horario */}
+      {/* Horas de check-in / check-out (solo alojamiento) */}
+      {!isVisiter && <>
       <Text style={styles.label}>{labels.from}</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.hourRow}>
         {HOURS.map(h => (
@@ -100,6 +108,7 @@ export function AvailabilityEditor({ value, onChange, hourLabels }: Props) {
           </TouchableOpacity>
         ))}
       </ScrollView>
+      </>}
 
       {/* Fechas bloqueadas */}
       <Text style={styles.label}>Bloquear fechas puntuales</Text>
