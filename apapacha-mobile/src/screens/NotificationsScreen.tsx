@@ -14,6 +14,7 @@ import {
   getMyNotifications, markAsRead, markAllAsRead,
 } from '../services/notifications.service';
 import type { Notification } from '../types/database';
+import { notificationTarget } from '../lib/notificationRoute';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
@@ -147,6 +148,8 @@ export function NotificationsScreen() {
       await markAsRead(n.id);
       setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
     }
+    const target = notificationTarget(n);
+    if (target) navigation.navigate(target.screen, target.params);
   };
 
   const handleMarkAll = async () => {
