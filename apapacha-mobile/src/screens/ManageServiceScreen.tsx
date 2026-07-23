@@ -231,9 +231,8 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
             <AvailabilityEditor
               value={availability}
               onChange={setAvailability}
-              hourLabels={isSpace
-                ? { from: 'Check-in desde', to: 'Check-out hasta' }
-                : { from: 'Visitas desde', to: 'Visitas hasta' }}
+              mode={isSpace ? 'space' : 'visiter'}
+              hourLabels={{ from: 'Check-in desde', to: 'Check-out hasta' }}
             />
           </View>
 
