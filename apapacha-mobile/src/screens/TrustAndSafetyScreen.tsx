@@ -31,15 +31,15 @@ const POLICIES: PolicySection[] = [
   },
   {
     id: '2',
-    title: '2. Malla de Seguro y Siniestros',
+    title: '2. Reporte de Incidentes',
     icon: '🛡️',
-    body: 'El cargo de seguro obligatorio cobrado en el Checkout cubre gastos de emergencia clínica hasta $1.500.000 CLP, exclusivamente si el incidente ocurre dentro de un domicilio con "Mallas Anti-Escape" validadas por la plataforma.\n\nPara reportar un siniestro, utiliza el botón "Reportar Siniestro" más abajo. Los reportes se procesan en 1-2 días hábiles.',
+    body: 'ApapachaPet no comercializa ni intermedia seguros veterinarios. Los gastos veterinarios que se originen durante un servicio son de responsabilidad de las partes según lo establecido en estas políticas.\n\nSi ocurre un escape, lesión u otro incidente durante un servicio, repórtalo con el botón "Reportar Incidente" más abajo. Revisamos cada caso en 1-2 días hábiles y mediamos entre las partes; si corresponde, aplicamos sanciones o la suspensión del cuidador.',
   },
   {
     id: '3',
     title: '3. Verificación de Identidad (KYC) y Pagos',
     icon: '🔒',
-    body: 'Todos los usuarios pasan por verificación de identidad antes de acceder al marketplace. Evadir las pasarelas de pago de ApapachaPet anula instantáneamente la póliza de seguro y resulta en la expulsión definitiva.\n\nLos pagos se coordinan directamente con el equipo ApapachaPet mediante transferencia bancaria o los medios acordados al confirmar el servicio. Ante cualquier duda de pago escribe a apapachapet.app@gmail.com.',
+    body: 'Todos los usuarios pasan por verificación de identidad antes de acceder al marketplace. Evadir las pasarelas de pago de ApapachaPet deja la reserva sin respaldo de la plataforma y resulta en la expulsión definitiva.\n\nLos pagos se coordinan directamente con el equipo ApapachaPet mediante transferencia bancaria o los medios acordados al confirmar el servicio. Ante cualquier duda de pago escribe a apapachapet.app@gmail.com.',
   },
   {
     id: '4',
@@ -51,7 +51,7 @@ const POLICIES: PolicySection[] = [
     id: '5',
     title: '5. Cancelaciones y Reembolsos',
     icon: '🔄',
-    body: 'El cargo de seguro Zero Trust ($2.500 CLP) no es reembolsable bajo ninguna circunstancia.\n\nLa tarifa de servicio ($4.500 CLP) se reembolsa si la cancelación ocurre con más de 48 horas de anticipación al inicio del servicio.\n\nEl monto del servicio se reembolsa íntegramente si la cancelación es iniciada por el Cuidador.',
+    body: 'El reembolso aplica sobre la tarifa del cuidador: 100% si cancelas con más de 7 días de anticipación, 50% entre 48 horas y 7 días, y 0% con menos de 48 horas o con el servicio ya iniciado.\n\nLa tarifa de servicio de ApapachaPet ($4.500 CLP) no es reembolsable.\n\nSi la cancelación la inicia el Cuidador (fuerza mayor), se reembolsa el 100% de la tarifa del cuidador y las fechas quedan liberadas.',
   },
   {
     id: '6',
@@ -119,14 +119,14 @@ export function TrustAndSafetyScreen({ onClose }: { onClose?: () => void } = {})
         <View style={styles.claimSection}>
           <Text style={styles.claimTitle}>¿Ocurrió un incidente?</Text>
           <Text style={styles.claimText}>
-            Si hubo un escape, lesión u otro siniestro durante un servicio, repórtalo aquí para iniciar el proceso de seguro.
+            Si hubo un escape, lesión u otro incidente durante un servicio, repórtalo aquí para que nuestro equipo lo revise.
           </Text>
           <TouchableOpacity
             style={styles.claimBtn}
             onPress={() => onClose ? setShowClaim(true) : navigation.navigate('InsuranceClaim')}
             activeOpacity={0.8}
           >
-            <Text style={styles.claimBtnText}>🚨 Reportar Siniestro</Text>
+            <Text style={styles.claimBtnText}>🚨 Reportar Incidente</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
