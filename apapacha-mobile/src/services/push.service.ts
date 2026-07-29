@@ -86,12 +86,24 @@ export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string 
 
   const registration = await navigator.serviceWorker.ready;
   const existing = await registration.pushManager.getSubscription();
-  let subscription =
-    existing ??
-    (await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    }));
+
+  let subscription: PushSubscription;
+  if (existing) {
+    subscription = existing;
+  } else {
+    // pushManager.subscribe() puede rechazar (AbortError, NotAllowedError,
+    // fallo del servicio push, etc.). Si eso pasa, el contrato de la función
+    // es devolver { ok: false, reason } y NUNCA dejar que la promesa rechace.
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    } catch (e) {
+      console.error('[push] pushManager.subscribe (inicial):', e);
+      return { ok: false, reason: 'subscribe_failed' };
+    }
+  }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { ok: false, reason: 'no_session' };
@@ -112,10 +124,21 @@ export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string 
   // y reintentamos el upsert UNA sola vez (sin bucles de reintento).
   if (error && (error.code === '42501' || error.code === '23505')) {
     await subscription.unsubscribe().catch(() => {});
-    subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+
+    // En este punto la suscripción vieja YA se desuscribió. Si subscribe()
+    // falla aquí, el navegador queda sin ninguna suscripción activa: no hay
+    // forma de recuperarla en esta misma llamada, así que devolvemos un
+    // reason y el usuario tendrá que volver a pulsar "activar notificaciones"
+    // (nunca debe romperse el contrato dejando que la promesa rechace).
+    try {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    } catch (e) {
+      console.error('[push] pushManager.subscribe (reintento tras navegador compartido):', e);
+      return { ok: false, reason: 'subscribe_failed' };
+    }
 
     const retryRow = toSubscriptionRow(user.id, subscription.toJSON());
     if (!retryRow) return { ok: false, reason: 'invalid_subscription' };
