@@ -27,6 +27,30 @@ if (!fs.existsSync(INDEX)) {
 }
 let html = fs.readFileSync(INDEX, 'utf8');
 
+// Expo emite un viewport sin `viewport-fit=cover`. En iOS instalado (standalone)
+// eso deja `env(safe-area-inset-*)` en 0 y el contenido se mete bajo la barra de
+// estado y el indicador de inicio.
+html = html.replace(
+  /<meta name="viewport"[^>]*>/,
+  '<meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, viewport-fit=cover, shrink-to-fit=no" />'
+);
+
+if (!html.includes('id="pwa-safe-area"')) {
+  const safeArea = `
+    <style id="pwa-safe-area">
+      /* En standalone no hay chrome del navegador: respetamos las safe areas. */
+      #root {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+        padding-left: env(safe-area-inset-left, 0px);
+        padding-right: env(safe-area-inset-right, 0px);
+        box-sizing: border-box;
+      }
+    </style>
+  `;
+  html = html.replace('</head>', `${safeArea}</head>`);
+}
+
 if (!html.includes('rel="manifest"')) {
   const head = `
     <link rel="manifest" href="/manifest.json" />
