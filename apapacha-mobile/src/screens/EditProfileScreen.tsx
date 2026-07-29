@@ -5,7 +5,8 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { pickImage, type MediaSource } from '../lib/mediaPicker';
+import { MediaSourceSheet } from '../components/MediaSourceSheet';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
@@ -25,26 +26,20 @@ export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
   const [avatarUri, setAvatarUri] = useState<string | null>(profile?.avatar_url ?? null);
   const [avatarChanged, setAvatarChanged] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
   const toast = useToast();
 
-  const pickImage = async () => {
-    if (Platform.OS !== 'web') {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') {
-        toast.warning('Permiso requerido', 'Necesitamos acceso a tu galería para cambiar la foto.');
-        return;
-      }
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as ImagePicker.MediaType[],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled && result.assets[0]) {
-      setAvatarUri(result.assets[0].uri);
-      setAvatarChanged(true);
-    }
+  const handlePickAvatar = async (source: MediaSource) => {
+    const uri = await pickImage(source, { allowsEditing: true, aspect: [1, 1] });
+    if (!uri) return;
+    await subirAvatar(uri);
+  };
+
+  // Misma lógica que antes tras obtener la URI: solo actualiza el estado local,
+  // la subida real a storage ocurre al guardar (handleSave -> uploadAvatar).
+  const subirAvatar = async (uri: string) => {
+    setAvatarUri(uri);
+    setAvatarChanged(true);
   };
 
   const handleSave = async () => {
@@ -92,7 +87,7 @@ export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
           {/* Avatar */}
-          <TouchableOpacity style={styles.avatarContainer} onPress={pickImage} activeOpacity={0.8}>
+          <TouchableOpacity style={styles.avatarContainer} onPress={() => setSheetVisible(true)} activeOpacity={0.8}>
             {avatarUri ? (
               <Image source={{ uri: avatarUri }} style={styles.avatarImage} />
             ) : (
@@ -142,6 +137,13 @@ export function EditProfileScreen({ onClose }: { onClose?: () => void } = {}) {
           }
         </TouchableOpacity>
       </View>
+
+      <MediaSourceSheet
+        visible={sheetVisible}
+        kind="image"
+        onClose={() => setSheetVisible(false)}
+        onPick={handlePickAvatar}
+      />
     </SafeAreaView>
   );
 }

@@ -1,11 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TextInput,
-  TouchableOpacity, ActivityIndicator, Switch, Image, Platform,
+  TouchableOpacity, ActivityIndicator, Switch, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { pickImage, type MediaSource } from '../lib/mediaPicker';
+import { MediaSourceSheet } from '../components/MediaSourceSheet';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
@@ -58,6 +59,10 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
   const [visiterImageUri, setVisiterImageUri]       = useState<string | null>(null);
   const [visiterExistingUrl, setVisiterExistingUrl] = useState<string | null>(null);
 
+  // Hoja de selección de fuente (cámara/galería), compartida por los dos
+  // puntos de subida de fotos (espacio y visitador). Recuerda cuál la abrió.
+  const [sheetTarget, setSheetTarget] = useState<'space' | 'visiter' | null>(null);
+
   // Shared
   const [active, setActive]     = useState(true);
   const [availability, setAvailability] = useState<Availability>(defaultAvailability());
@@ -106,18 +111,28 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
     setFeatures(prev => prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]);
   };
 
-  const pickImage = async () => {
-    if (Platform.OS !== 'web') {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as ImagePicker.MediaType[],
-      allowsEditing: true, aspect: [4, 3], quality: 0.85,
+  // Extracción literal de lo que hacía cada picker tras obtener la URI:
+  // el espacio agrega la foto al arreglo, el visitador reemplaza la única foto.
+  const subirFotoEspacio = (uri: string) => {
+    setImageUris(prev => [...prev, uri]);
+  };
+
+  const subirFotoVisitador = (uri: string) => {
+    setVisiterImageUri(uri);
+  };
+
+  const handlePickServicePhoto = async (source: MediaSource) => {
+    const target = sheetTarget;
+    setSheetTarget(null);
+    if (!target) return;
+    const uri = await pickImage(source, {
+      allowsEditing: true,
+      aspect: target === 'space' ? [4, 3] : [1, 1],
+      quality: 0.85,
     });
-    if (!result.canceled && result.assets[0]) {
-      setImageUris(prev => [...prev, result.assets[0].uri]);
-    }
+    if (!uri) return;
+    if (target === 'space') subirFotoEspacio(uri);
+    else subirFotoVisitador(uri);
   };
 
   const handleSave = async () => {
@@ -202,7 +217,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
             features={features} toggleFeature={toggleFeature}
             existingUrls={existingUrls} setExistingUrls={setExistingUrls}
             imageUris={imageUris} setImageUris={setImageUris}
-            onPickImage={pickImage}
+            onPickImage={() => setSheetTarget('space')}
           /> : <VisiterForm
             name={name} setName={setName}
             profTitle={profTitle} setProfTitle={setProfTitle}
@@ -210,17 +225,7 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
             priceVisit={priceVisit} setPriceVisit={setPriceVisit}
             existingUrl={visiterExistingUrl}
             localUri={visiterImageUri}
-            onPickImage={async () => {
-              if (Platform.OS !== 'web') {
-                const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-                if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
-              }
-              const result = await ImagePicker.launchImageLibraryAsync({
-                mediaTypes: ['images'] as ImagePicker.MediaType[],
-                allowsEditing: true, aspect: [1, 1], quality: 0.85,
-              });
-              if (!result.canceled && result.assets[0]) setVisiterImageUri(result.assets[0].uri);
-            }}
+            onPickImage={() => setSheetTarget('visiter')}
             onRemoveImage={() => { setVisiterImageUri(null); setVisiterExistingUrl(null); }}
           />}
 
@@ -265,6 +270,13 @@ export function ManageServiceScreen({ type = 'space', serviceId, onClose }: Prop
           }
         </TouchableOpacity>
       </View>
+
+      <MediaSourceSheet
+        visible={sheetTarget !== null}
+        kind="image"
+        onClose={() => setSheetTarget(null)}
+        onPick={handlePickServicePhoto}
+      />
     </SafeAreaView>
   );
 }

@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  ActivityIndicator, Platform, Image,
+  ActivityIndicator, Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
-import * as ImagePicker from 'expo-image-picker';
+import { pickImage, type MediaSource } from '../lib/mediaPicker';
+import { MediaSourceSheet } from '../components/MediaSourceSheet';
 import * as Clipboard from 'expo-clipboard';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
@@ -55,6 +56,7 @@ export function TransferInstructionsScreen() {
   const [receiptUri, setReceiptUri] = useState<string | null>(null);
   const [uploading, setUploading]   = useState(false);
   const [done, setDone]             = useState(false);
+  const [sheetVisible, setSheetVisible] = useState(false);
   const toast = useToast();
 
   useEffect(() => {
@@ -68,13 +70,10 @@ export function TransferInstructionsScreen() {
 
   const shortId = bookingId.slice(0, 8).toUpperCase();
 
-  const pickReceipt = async () => {
-    if (Platform.OS !== 'web') {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ['images'] as ImagePicker.MediaType[], quality: 0.8 });
-    if (!result.canceled) setReceiptUri(result.assets[0].uri);
+  const handlePickReceipt = async (source: MediaSource) => {
+    const uri = await pickImage(source, { quality: 0.8 });
+    if (!uri) return;
+    setReceiptUri(uri);
   };
 
   const handleUpload = async () => {
@@ -158,7 +157,7 @@ export function TransferInstructionsScreen() {
         <Text style={styles.sectionTitle}>Sube tu comprobante</Text>
         <Text style={styles.sectionSub}>Una vez transferido, sube la captura o PDF del comprobante para agilizar la confirmación.</Text>
 
-        <TouchableOpacity style={styles.uploadBtn} onPress={pickReceipt} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.uploadBtn} onPress={() => setSheetVisible(true)} activeOpacity={0.8}>
           {receiptUri ? (
             <Image source={{ uri: receiptUri }} style={styles.receiptPreview} resizeMode="cover" />
           ) : (
@@ -178,6 +177,13 @@ export function TransferInstructionsScreen() {
           <Text style={styles.laterBtnText}>Transferiré después</Text>
         </TouchableOpacity>
       </ScrollView>
+
+      <MediaSourceSheet
+        visible={sheetVisible}
+        kind="image"
+        onClose={() => setSheetVisible(false)}
+        onPick={handlePickReceipt}
+      />
     </SafeAreaView>
   );
 }

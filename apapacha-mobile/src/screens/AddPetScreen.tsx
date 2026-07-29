@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert, ActivityIndicator, Platform, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, ActivityIndicator, Switch } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import * as ImagePicker from 'expo-image-picker';
 import { useNavigation } from '@react-navigation/native';
+import { pickImage, type MediaSource } from '../lib/mediaPicker';
+import { MediaSourceSheet } from '../components/MediaSourceSheet';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { useToast } from '../components/Toast';
@@ -25,6 +26,7 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
   const [medication, setMedication] = useState('');
   const [saving, setSaving] = useState(false);
   const [loadingPet, setLoadingPet] = useState(isEdit);
+  const [sheetVisible, setSheetVisible] = useState(false);
 
   useEffect(() => {
     if (!petId) return;
@@ -69,34 +71,10 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
     }
   };
 
-  const pickPhoto = async () => {
-    if (Platform.OS !== 'web') {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a tus fotos.'); return; }
-    }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as ImagePicker.MediaType[],
-      allowsEditing: true,
-      aspect: [1, 1],
-      quality: 0.8,
-    });
-    if (!result.canceled) setLocalImageUri(result.assets[0].uri);
-  };
-
-  const takePhoto = async () => {
-    const { status } = await ImagePicker.requestCameraPermissionsAsync();
-    if (status !== 'granted') { toast.warning('Permiso requerido', 'Necesitamos acceso a la cámara.'); return; }
-    const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, aspect: [1, 1], quality: 0.8 });
-    if (!result.canceled) setLocalImageUri(result.assets[0].uri);
-  };
-
-  const handlePhotoPress = () => {
-    if (Platform.OS === 'web') { pickPhoto(); return; }
-    Alert.alert('Foto', '', [
-      { text: 'Cámara', onPress: takePhoto },
-      { text: 'Galería', onPress: pickPhoto },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
+  const handlePickPhoto = async (source: MediaSource) => {
+    const uri = await pickImage(source, { allowsEditing: true, aspect: [1, 1] });
+    if (!uri) return;
+    setLocalImageUri(uri);
   };
 
   const displayUri = localImageUri ?? existingImageUrl;
@@ -120,7 +98,7 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
       </View>
 
       <ScrollView contentContainerStyle={styles.formContainer} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity style={styles.photoUpload} onPress={handlePhotoPress} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.photoUpload} onPress={() => setSheetVisible(true)} activeOpacity={0.8}>
           {displayUri ? (
             <>
               <Image source={{ uri: displayUri }} style={styles.photoPreview} />
@@ -183,6 +161,13 @@ export function AddPetScreen({ petId, onClose }: { petId?: string; onClose?: () 
           {saving ? <ActivityIndicator color={colors.surface} /> : <Text style={styles.submitBtnText}>{isEdit ? 'Guardar cambios' : 'Registrar Felino'}</Text>}
         </TouchableOpacity>
       </View>
+
+      <MediaSourceSheet
+        visible={sheetVisible}
+        kind="image"
+        onClose={() => setSheetVisible(false)}
+        onPick={handlePickPhoto}
+      />
     </SafeAreaView>
   );
 }
