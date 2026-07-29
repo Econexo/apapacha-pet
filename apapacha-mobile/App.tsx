@@ -1,3 +1,4 @@
+import { useState, useEffect, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer, useRoute, RouteProp } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -44,6 +45,8 @@ import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
 import { linking, guestLinking } from './src/linking';
 import type { RootStackParamList } from './src/types/navigation';
+import { getUnreadMessageCount } from './src/services/notifications.service';
+import { supabase } from './supabase';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator();
@@ -75,8 +78,28 @@ const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> 
 };
 
 function MainTabs() {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const isHost = profile?.role === 'host';
+
+  const [unreadMsgs, setUnreadMsgs] = useState(0);
+
+  const refreshUnread = useCallback(() => {
+    getUnreadMessageCount().then(setUnreadMsgs).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    refreshUnread();
+    // La tabla notifications ya está en la publicación supabase_realtime.
+    // Filtramos por user_id para no refrescar el contador de cada usuario
+    // con las notificaciones de todos los demás (la RLS ya impide leerlas,
+    // pero sin el filtro igual se dispara una consulta extra por cada evento).
+    const channel = supabase
+      .channel('unread-messages')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notifications', filter: `user_id=eq.${user.id}` }, refreshUnread)
+      .subscribe();
+    return () => { channel.unsubscribe(); };
+  }, [refreshUnread, user]);
 
   return (
     <Tab.Navigator
@@ -122,7 +145,11 @@ function MainTabs() {
     >
       <Tab.Screen name="Home"     component={HomeScreen}     options={{ title: 'Inicio' }} />
       <Tab.Screen name="Explore"  component={ExploreScreen}  options={{ title: 'Explorar' }} />
-      <Tab.Screen name="Inbox"    component={InboxScreen}    options={{ title: 'Mensajes' }} />
+      <Tab.Screen
+        name="Inbox"
+        component={InboxScreen}
+        options={{ title: 'Mensajes', tabBarBadge: unreadMsgs > 0 ? unreadMsgs : undefined }}
+      />
       <Tab.Screen name="Bookings" component={BookingsScreen} options={{ title: 'Reservas' }} />
       {isHost && (
         <Tab.Screen

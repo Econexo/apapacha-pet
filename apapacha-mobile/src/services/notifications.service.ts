@@ -62,3 +62,30 @@ export async function insertNotificationsForAdmins(
   const { error: insertErr } = await supabase.from('notifications').insert(rows);
   if (insertErr) console.error('[notifications] insertNotificationsForAdmins:', insertErr.message);
 }
+
+// Cuenta las notificaciones de chat sin leer (badge de la pestaña Mensajes).
+export async function getUnreadMessageCount(): Promise<number> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return 0;
+  const { count, error } = await supabase
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', user.id)
+    .eq('type', 'new_message')
+    .eq('read', false);
+  if (error) return 0;
+  return count ?? 0;
+}
+
+// Marca como leídas las notificaciones de un chat concreto (al abrirlo).
+export async function markChatNotificationsRead(bookingId: string): Promise<void> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return;
+  await supabase
+    .from('notifications')
+    .update({ read: true })
+    .eq('user_id', user.id)
+    .eq('type', 'new_message')
+    .eq('read', false)
+    .eq('data->>booking_id', bookingId);
+}

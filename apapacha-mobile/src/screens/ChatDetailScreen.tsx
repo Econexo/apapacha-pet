@@ -12,6 +12,7 @@ import { radii } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import type { Message } from '../types/database';
 import { getMessages, sendMessage, subscribeToMessages, uploadChatImage } from '../services/messages.service';
+import { markChatNotificationsRead } from '../services/notifications.service';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../../supabase';
 
@@ -62,6 +63,16 @@ export function ChatDetailScreen() {
     }).catch(e => { console.error(e); setLoading(false); });
     return () => { cancelled = true; channelRef.current?.unsubscribe(); };
   }, [bookingId]);
+
+  // Al abrir el chat, sus notificaciones dejan de estar pendientes.
+  // `messages.length` va en las deps a propósito: si el chat se queda abierto y
+  // llegan mensajes nuevos por Realtime, también hay que marcar esas notificaciones
+  // como leídas (si dejáramos solo [bookingId] quedarían pendientes para siempre).
+  // Se ejecuta una vez por mensaje nuevo, pero marcar como leído es idempotente y
+  // muy barato, así que no compensa añadir más lógica para agrupar las llamadas.
+  useEffect(() => {
+    markChatNotificationsRead(bookingId).catch(() => {});
+  }, [bookingId, messages.length]);
 
   useEffect(() => {
     if (messages.length > 0) setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
