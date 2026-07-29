@@ -173,8 +173,19 @@ instalada, el banner explica cómo agregarla a la pantalla de inicio en vez de p
 
 ### Edge Function `send-push`
 
-Mismo patrón de autorización que `send-email`: acepta o bien `x-trigger-secret` (llamadas
-desde triggers vía pg_net) o bien un `Authorization: Bearer` de admin.
+Autorización por `x-trigger-secret`, el mismo secreto compartido que usan los triggers de
+`send-email` vía pg_net.
+
+**Decisión tomada durante la implementación:** `send-email` acepta además un
+`Authorization: Bearer` de admin, pero `send-push` **no** lo implementa. Ningún flujo lo
+necesita (nada en el cliente invoca `send-push`), y añadir un segundo camino de
+autorización sin consumidor sería superficie de ataque gratuita sobre una función que puede
+enviar notificaciones a cualquier usuario. Si algún día hace falta un "enviar push de
+prueba" desde el panel admin, se añade entonces.
+
+La función se despliega con `--no-verify-jwt`, porque los triggers de la base de datos solo
+pueden enviar el header `x-trigger-secret`, no un JWT. Es el mismo despliegue que
+`send-email`.
 
 ```ts
 import webpush from 'npm:web-push@3.6.7';
@@ -305,8 +316,11 @@ funcionan, sin beneficio para el usuario.
   (`videoMaxDuration` en el picker + tamaño del blob). Si se excede, toast explicativo; no
   se intenta transcodificar.
 - **Reproducción:** dependencia nueva `expo-video` (`VideoView` + `useVideoPlayer`), que
-  soporta web y nativo. Burbuja de video con póster y controles nativos; si el player falla,
-  fallback a abrir la URL en pestaña nueva.
+  soporta web y nativo. Burbuja de video con controles nativos; si el player emite
+  `statusChange` con `status === 'error'`, la burbuja se sustituye por un botón "No se pudo
+  reproducir el video. Toca para abrirlo." que abre la URL aparte.
+  **Sin póster:** generar una miniatura exigiría extraer un fotograma del video (otra
+  dependencia y trabajo de cliente); queda fuera de alcance.
 - `InboxScreen` muestra "🎥 Video" en el preview de último mensaje (hoy ya hace lo
   equivalente con "📷 Foto").
 
