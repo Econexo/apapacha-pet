@@ -75,7 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setSession(null);
       setProfile(null);
-<<<<<<< HEAD
       // Sin esto, el linking restaura la pantalla privada anterior (p. ej.
       // /perfil) y parece que "Cerrar Sesión" no hizo nada. La URL final no
       // la fija este replaceState: la vuelve a escribir React Navigation al
@@ -83,9 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // "Login"), así que puede terminar en "/login" en vez de "/" — lo que
       // importa es que nunca queda en una pantalla privada, no el valor
       // exacto de la URL.
-=======
-      // Sin esto, el linking restaura /perfil y parece que no pasó nada.
->>>>>>> 5b99e7404d4d357f72f6a5f775d1f74055452720
       if (Platform.OS === 'web' && typeof window !== 'undefined') {
         window.history.replaceState(null, '', '/');
       }
