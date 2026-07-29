@@ -40,7 +40,7 @@ self.addEventListener('push', (event) => {
   let payload = {};
   try {
     payload = event.data ? event.data.json() : {};
-  } catch (e) {
+  } catch {
     payload = { title: 'ApapachaPet', body: event.data ? event.data.text() : '' };
   }
 
@@ -70,7 +70,7 @@ self.addEventListener('notificationclick', (event) => {
       for (const client of list) {
         if ('focus' in client) {
           client.focus();
-          if ('navigate' in client) client.navigate(target).catch(() => {});
+          if ('navigate' in client) return client.navigate(target).catch(() => {});
           return;
         }
       }
