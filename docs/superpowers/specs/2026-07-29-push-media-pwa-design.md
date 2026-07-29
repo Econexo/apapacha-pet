@@ -167,7 +167,7 @@ Se bumpea `CACHE` a `apapacha-v2` (invalida el shell viejo) y se añaden dos han
 
 La clave pública VAPID viaja en `EXPO_PUBLIC_VAPID_PUBLIC_KEY` (es pública por diseño).
 
-**UI:** componente `PushPermissionBanner` en Perfil (y Home) que aparece solo si el push es
+**UI:** componente `PushPermissionBanner` en Perfil, que aparece solo si el push es
 soportado y el permiso está en `default`. Si el navegador es iOS Safari y la app **no** está
 instalada, el banner explica cómo agregarla a la pantalla de inicio en vez de pedir permiso.
 
@@ -239,10 +239,10 @@ Migración `20260729_message_notifications.sql`.
    destinatario es el host del servicio (`spaces.host_id` o `visiters.host_id` según
    `b.service_type`); en caso contrario, es `b.owner_id`.
 2. **Agrupación anti-spam:** si ya existe una notificación `type='new_message'` no leída
-   para ese destinatario con `data->>'booking_id'` igual, **actualiza** esa fila
-   (`body`, `created_at`) en vez de insertar una nueva. Una conversación activa produce
-   como máximo una notificación pendiente. El push se dispara solo en el INSERT, así que
-   una ráfaga de mensajes no genera una ráfaga de pushes.
+   para ese destinatario con el mismo `data->>'booking_id'` **creada hace menos de 5
+   minutos**, se **actualiza** esa fila (`body`, `created_at`) en vez de insertar una nueva.
+   El push se dispara solo en el INSERT, así que una ráfaga de mensajes no genera una
+   ráfaga de pushes, pero un mensaje horas después sí vuelve a avisar.
 3. `title` = nombre del servicio; `body` = el texto del mensaje truncado a 80 caracteres, o
    "📷 Foto" / "🎥 Video" si es adjunto; `data = {"booking_id": ...}`.
 
@@ -288,8 +288,9 @@ la llamada directa a la galería en:
 - `ManageServiceScreen` (fotos de servicio, dos puntos de subida)
 - `TransferInstructionsScreen` (comprobante de pago)
 
-`ClientVerificationScreen` y `HostOnboardingScreen` ya ofrecen ambas fuentes; se migran al
-componente compartido solo para unificar el patrón.
+`ClientVerificationScreen` y `HostOnboardingScreen` ya ofrecen cámara y galería, así que
+quedan como están: migrarlas al componente compartido sería churn sobre pantallas que
+funcionan, sin beneficio para el usuario.
 
 ### Video en el chat
 
