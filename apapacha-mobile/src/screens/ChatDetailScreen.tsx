@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Image, ActivityIndicator, Linking } from 'react-native';
 import { VideoView, useVideoPlayer } from 'expo-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -222,10 +222,34 @@ export function ChatDetailScreen() {
   );
 }
 
-// Burbuja de video. expo-video funciona en web y nativo; si el player falla,
-// queda el enlace para abrirlo aparte.
+// Burbuja de video. expo-video funciona en web y nativo; si el player falla
+// (formato no soportado por el navegador, red caída), mostramos un botón que
+// abre el video en una pestaña/app aparte en vez de dejar un rectángulo vacío.
 function ChatVideo({ uri }: { uri: string }) {
   const player = useVideoPlayer(uri, (p) => { p.loop = false; });
+  const [error, setError] = useState(false);
+
+  useEffect(() => {
+    const subscription = player.addListener('statusChange', ({ status }) => {
+      if (status === 'error') setError(true);
+    });
+    return () => subscription.remove();
+  }, [player]);
+
+  const openExternally = () => {
+    if (Platform.OS === 'web') window.open(uri, '_blank');
+    else Linking.openURL(uri);
+  };
+
+  if (error) {
+    return (
+      <TouchableOpacity style={styles.chatVideoError} onPress={openExternally} activeOpacity={0.85}>
+        <Ionicons name="alert-circle-outline" size={26} color={colors.textMuted} />
+        <Text style={styles.chatVideoErrorText}>No se pudo reproducir el video. Toca para abrirlo.</Text>
+      </TouchableOpacity>
+    );
+  }
+
   return <VideoView style={styles.chatVideo} player={player} allowsFullscreen nativeControls />;
 }
 
@@ -256,6 +280,8 @@ const styles = StyleSheet.create({
   attachButton: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
   chatImage: { width: 200, height: 200, borderRadius: 16, backgroundColor: colors.surfaceAlt },
   chatVideo: { width: 240, height: 240, borderRadius: 16, backgroundColor: colors.surfaceAlt },
+  chatVideoError: { width: 240, height: 240, borderRadius: 16, backgroundColor: colors.surfaceAlt, borderWidth: 1, borderColor: colors.border, alignItems: 'center', justifyContent: 'center', gap: 8, padding: 20 },
+  chatVideoErrorText: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted, textAlign: 'center', lineHeight: 18 },
   inputBox: { flex: 1, backgroundColor: colors.background, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: colors.border, fontSize: 15, color: colors.textMain, maxHeight: 100 },
   sendButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
   sendButtonDisabled: { backgroundColor: colors.border },
