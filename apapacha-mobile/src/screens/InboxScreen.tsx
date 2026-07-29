@@ -11,6 +11,8 @@ import type { RootStackParamList } from '../types/navigation';
 import type { Booking } from '../types/database';
 import { getMyBookings } from '../services/bookings.service';
 import { supabase } from '../../supabase';
+import { useAuth } from '../context/AuthContext';
+import { GuestGate } from '../components/GuestGate';
 import { ScreenBackground } from '../components/ui/ScreenBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -25,6 +27,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 
 export function InboxScreen() {
   const navigation = useNavigation<Nav>();
+  const { session } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [nameMap, setNameMap] = useState<Record<string, string>>({});
   const [lastMsgs, setLastMsgs] = useState<Record<string, LastMessage>>({});
@@ -96,6 +99,10 @@ export function InboxScreen() {
     if (hrs < 24) return `${hrs}h`;
     return new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
   };
+
+  if (!session) {
+    return <GuestGate title="Mensajes" body="Ingresa a tu cuenta para chatear con los cuidadores de tus reservas." icon="chatbubbles-outline" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
