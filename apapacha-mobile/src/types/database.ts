@@ -101,6 +101,7 @@ export interface Message {
   sender_id: string;
   content: string;
   image_url?: string | null;
+  video_url?: string | null;
   created_at: string;
 }
 
