@@ -1,12 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radii } from '../theme/design';
 import { useToast } from './Toast';
 import {
-  isPushSupported, isStandalonePWA, isIOS, getPushPermission, subscribeToPush,
+  isPushSupported, isStandalonePWA, isIOS, getPushPermission, subscribeToPush, ensurePushSubscription,
 } from '../services/push.service';
 
 // Estados: 'oculto' (ya concedido, denegado o no soportado), 'pedir' (podemos
@@ -18,11 +19,20 @@ export function PushPermissionBanner() {
   const [estado, setEstado] = useState<Estado>('oculto');
   const [cargando, setCargando] = useState(false);
 
-  useEffect(() => {
-    if (!isPushSupported()) return setEstado('oculto');
-    if (isIOS() && !isStandalonePWA()) return setEstado('instalar');
-    setEstado(getPushPermission() === 'default' ? 'pedir' : 'oculto');
-  }, []);
+  // Usamos useFocusEffect en lugar de useEffect porque el tab navigator no
+  // desmonta las pantallas: con useEffect y deps [], el estado se quedaría
+  // congelado desde el primer montaje. Esto recalcula cada vez que se
+  // navega al tab Perfil, lo que permite detectar cambios de permisos
+  // y reconciliar la suscripción si fue borrada de la BD.
+  useFocusEffect(
+    useCallback(() => {
+      if (!isPushSupported()) return setEstado('oculto');
+      if (isIOS() && !isStandalonePWA()) return setEstado('instalar');
+      setEstado(getPushPermission() === 'default' ? 'pedir' : 'oculto');
+      // Reconcilia permiso concedido con suscripción en BD (silencioso, nunca rechaza).
+      ensurePushSubscription().catch(() => {});
+    }, [])
+  );
 
   if (estado === 'oculto') return null;
 
@@ -52,6 +62,10 @@ export function PushPermissionBanner() {
     if (reason === 'denied') {
       setEstado('oculto');
       toast.info('Notificaciones bloqueadas', 'Puedes reactivarlas desde los ajustes del navegador.');
+      return;
+    }
+    if (reason === 'no_session') {
+      toast.error('Tu sesión expiró', 'Vuelve a iniciar sesión para activar las notificaciones.');
       return;
     }
     toast.error('No se pudo activar', 'Inténtalo de nuevo en unos segundos.');

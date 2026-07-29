@@ -177,6 +177,49 @@ export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string 
   }
 }
 
+/**
+ * Reconcilia permiso concedido ↔ fila en la base de datos.
+ *
+ * El permiso del navegador puede seguir en 'granted' mientras la fila de
+ * push_subscriptions ya no existe: send-push borra las suscripciones que el
+ * push service reporta como muertas (404/410). Sin esta reconciliación el
+ * usuario se queda sin notificaciones para siempre, y el banner —que solo
+ * aparece con el permiso en 'default'— nunca se lo diría.
+ *
+ * Es silenciosa: no pide permiso ni muestra nada. Nunca rechaza.
+ */
+export async function ensurePushSubscription(): Promise<void> {
+  try {
+    if (!isPushSupported()) return;
+    if (Notification.permission !== 'granted') return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+
+    // Sin suscripción en el navegador: hay que crearla de cero.
+    if (!subscription) {
+      await subscribeToPush();
+      return;
+    }
+
+    // Con suscripción, pero puede no estar registrada para ESTE usuario.
+    // La RLS hace que el count solo vea filas propias, que es justo lo que
+    // queremos comprobar.
+    const { count, error } = await supabase
+      .from('push_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('endpoint', subscription.endpoint)
+      .eq('user_id', user.id);
+    if (error) return;
+    if (!count) await subscribeToPush();
+  } catch (e) {
+    console.error('[push] ensurePushSubscription:', e);
+  }
+}
+
 async function doUnsubscribeFromPush(): Promise<void> {
   if (!isPushSupported()) return;
   const registration = await navigator.serviceWorker.ready;
