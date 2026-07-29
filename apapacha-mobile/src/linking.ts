@@ -43,3 +43,30 @@ export const linking: LinkingOptions<RootStackParamList> = {
     },
   },
 };
+
+// Mapa de rutas para usuarios SIN sesión. Solo incluye pantallas públicas.
+//
+// Por qué existe: el stack sin sesión registra Login y MainTabs en el mismo
+// navegador. Con el mapa completo, la URL "/" resolvía a MainTabs > Home, así que
+// Login NUNCA se montaba: en la PWA instalada (start_url "/") no había forma de
+// registrarse, y tras cerrar sesión la URL /perfil volvía a montar el perfil, con
+// lo que el botón "Cerrar Sesión" parecía no hacer nada.
+//
+// Al dejar fuera del mapa las rutas privadas, React Navigation cae en el
+// initialRouteName del stack ("Login"), que es el comportamiento correcto.
+export const guestLinking: LinkingOptions<RootStackParamList> = {
+  prefixes: linking.prefixes,
+  config: {
+    screens: {
+      Login: 'login',
+      MainTabs: {
+        screens: {
+          Explore: 'explorar',
+        },
+      },
+      SpaceDetail: 'alojamiento/:id',
+      VisiterDetail: 'visita/:id',
+      TrustAndSafety: 'confianza',
+    },
+  },
+};
