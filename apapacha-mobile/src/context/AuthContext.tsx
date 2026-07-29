@@ -65,7 +65,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (e) {
+      // Si la llamada global falla (red caída, lock de Safari en la PWA de iOS),
+      // al menos limpiamos la sesión local para no dejar al usuario atrapado.
+      console.warn('[AuthContext] signOut global falló, limpiando local:', e);
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => {});
+    } finally {
+      setSession(null);
+      setProfile(null);
+      // Sin esto, el linking restaura /perfil y parece que no pasó nada.
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.history.replaceState(null, '', '/');
+      }
+    }
   }
 
   return (
