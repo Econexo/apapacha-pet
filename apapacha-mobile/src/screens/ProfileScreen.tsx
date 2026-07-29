@@ -23,6 +23,7 @@ import { AddPetScreen } from './AddPetScreen';
 import { TrustAndSafetyScreen } from './TrustAndSafetyScreen';
 import { HostOnboardingScreen } from './HostOnboardingScreen';
 import { ScreenBackground } from '../components/ui/ScreenBackground';
+import { PushPermissionBanner } from '../components/PushPermissionBanner';
 import { fonts } from '../theme/typography';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -126,6 +127,7 @@ export function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
       >
+        <PushPermissionBanner />
         <View style={styles.ownerCard}>
           {profile?.avatar_url ? (
             <Image source={{ uri: profile.avatar_url }} style={styles.avatarImage} />
