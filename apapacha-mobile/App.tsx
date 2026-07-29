@@ -164,15 +164,7 @@ function MainTabs() {
 }
 
 function RootNavigator() {
-  const { session, profile, loading } = useAuth();
-
-  if (loading) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
-        <ActivityIndicator size="large" color={colors.primary} />
-      </View>
-    );
-  }
+  const { session, profile } = useAuth();
 
   if (!session) {
     return (
@@ -258,7 +250,28 @@ export default function App() {
 // El mapa de rutas depende de la sesión: sin ella solo se mapean rutas públicas,
 // para que Login sea alcanzable (ver comentario en src/linking.ts).
 function NavigationRoot() {
-  const { session } = useAuth();
+  const { session, loading } = useAuth();
+
+  // OJO: este gate tiene que vivir aquí, ANTES del NavigationContainer, y no
+  // dentro de RootNavigator (su hijo). React Navigation resuelve la URL
+  // inicial del deep-link (getInitialState) una sola vez, en el primer render
+  // del NavigationContainer, y no la recalcula aunque el prop `linking`
+  // cambie después. Si montáramos el container mientras `session` todavía es
+  // null (loading === true), la URL inicial se resolvería siempre contra
+  // guestLinking —que no conoce ChatDetail, Bookings, HostDashboard, Admin,
+  // etc.— aunque el usuario sí tenga sesión. Eso rompe dos cosas: el
+  // click-through de las notificaciones push (el service worker abre
+  // /chat/<id> y la app aterriza en Inicio) y el refresh del navegador sobre
+  // una URL privada estando logueado (p. ej. /perfil). Si mueves este `if`
+  // de vuelta a RootNavigator, reintroduces ese bug.
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background }}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </View>
+    );
+  }
+
   return (
     <NavigationContainer
       linking={session ? linking : guestLinking}
