@@ -6,6 +6,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { RootStackParamList } from '../types/navigation';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { Button } from '../components/ui/Button';
@@ -24,6 +27,7 @@ const PAWS = [
 ];
 
 export function LoginScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -225,6 +229,17 @@ export function LoginScreen() {
             )}
           </View>
 
+          {/* Salida al modo invitado: con Login como ruta inicial, esta es la
+              única puerta de entrada a la navegación sin cuenta. */}
+          <TouchableOpacity
+            style={styles.guestLink}
+            onPress={() => navigation.navigate('MainTabs')}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="compass-outline" size={15} color="rgba(255,255,255,0.85)" />
+            <Text style={styles.guestLinkText}>Explorar sin cuenta</Text>
+          </TouchableOpacity>
+
           {/* Trust section */}
           <View style={styles.trust}>
             <View style={styles.trustItem}>
@@ -292,6 +307,9 @@ const styles = StyleSheet.create({
 
   forgotBtn: { alignItems: 'center', paddingVertical: 2 },
   forgotText: { color: colors.primary, fontSize: 13, fontWeight: '600' },
+
+  guestLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 20, paddingVertical: 10 },
+  guestLinkText: { color: 'rgba(255,255,255,0.85)', fontSize: 14, fontWeight: '700' },
 
   // Trust
   trust: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, zIndex: 1 },

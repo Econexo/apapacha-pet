@@ -42,7 +42,7 @@ import { AdminScreen } from './src/screens/AdminScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
-import { linking } from './src/linking';
+import { linking, guestLinking } from './src/linking';
 import type { RootStackParamList } from './src/types/navigation';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -149,9 +149,12 @@ function RootNavigator() {
 
   if (!session) {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
+      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
         <Stack.Screen name="Login" component={LoginScreen} />
-        <Stack.Screen name="MainTabs" component={MainTabs} />
+        <Stack.Screen name="MainTabs" component={MainTabs} options={{ animation: 'fade' }} />
+        <Stack.Screen name="SpaceDetail" component={SpaceDetailScreen} />
+        <Stack.Screen name="VisiterDetail" component={VisiterDetailScreen} />
+        <Stack.Screen name="TrustAndSafety" component={TrustAndSafetyScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack.Navigator>
     );
   }
@@ -218,16 +221,25 @@ export default function App() {
       <StatusBar style="auto" />
       <ToastProvider>
         <AuthProvider>
-          <NavigationContainer
-            linking={linking}
-            documentTitle={{
-              formatter: (options) => (options?.title ? `${options.title} · ApapachaPet` : 'ApapachaPet'),
-            }}
-          >
-            <RootNavigator />
-          </NavigationContainer>
+          <NavigationRoot />
         </AuthProvider>
       </ToastProvider>
     </SafeAreaProvider>
+  );
+}
+
+// El mapa de rutas depende de la sesión: sin ella solo se mapean rutas públicas,
+// para que Login sea alcanzable (ver comentario en src/linking.ts).
+function NavigationRoot() {
+  const { session } = useAuth();
+  return (
+    <NavigationContainer
+      linking={session ? linking : guestLinking}
+      documentTitle={{
+        formatter: (options) => (options?.title ? `${options.title} · ApapachaPet` : 'ApapachaPet'),
+      }}
+    >
+      <RootNavigator />
+    </NavigationContainer>
   );
 }

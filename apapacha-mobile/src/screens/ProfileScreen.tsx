@@ -16,6 +16,7 @@ import { getMyPets } from '../services/pets.service';
 import { getMyApplication } from '../services/host.service';
 import { getHostStats, type HostStats } from '../services/reviews.service';
 import { supabase } from '../../supabase';
+import { GuestGate } from '../components/GuestGate';
 import { OverlayModal } from '../components/OverlayModal';
 import { EditProfileScreen } from './EditProfileScreen';
 import { AddPetScreen } from './AddPetScreen';
@@ -35,7 +36,7 @@ const APPLICATION_STATUS_LABEL: Record<string, { icon: IoniconName; text: string
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { profile, signOut, refreshProfile } = useAuth();
+  const { session, profile, signOut, refreshProfile } = useAuth();
   const toast = useToast();
   const [pets, setPets] = useState<Pet[]>([]);
   const [application, setApplication] = useState<HostApplication | null>(null);
@@ -100,6 +101,10 @@ export function ProfileScreen() {
       setUploadingContract(false);
     }
   };
+
+  if (!session) {
+    return <GuestGate title="Tu perfil te espera" body="Crea tu cuenta para gestionar tus gatos, tus reservas y tu reputación en ApapachaPet." icon="person-circle-outline" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>

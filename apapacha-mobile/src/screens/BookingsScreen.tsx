@@ -15,6 +15,8 @@ import { supabase } from '../../supabase';
 import { OverlayModal } from '../components/OverlayModal';
 import { LeaveReviewScreen } from './LeaveReviewScreen';
 import { useToast } from '../components/Toast';
+import { useAuth } from '../context/AuthContext';
+import { GuestGate } from '../components/GuestGate';
 import { ScreenBackground } from '../components/ui/ScreenBackground';
 import { fonts } from '../theme/typography';
 
@@ -39,6 +41,7 @@ const STATUS_CONFIG: Record<string, { icon: IoniconName; color: string; label: s
 export function BookingsScreen() {
   const navigation = useNavigation<Nav>();
   const toast = useToast();
+  const { session } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
   const [hostMap, setHostMap] = useState<Record<string, { id: string; name: string; serviceId: string; serviceType: string; serviceName: string }>>({});
@@ -175,6 +178,10 @@ export function BookingsScreen() {
   const active  = bookings.filter(b => b.status === 'active' || b.status === 'pending');
   const past    = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
   const fmt     = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+
+  if (!session) {
+    return <GuestGate title="Tus reservas" body="Ingresa a tu cuenta para ver el estado de tus reservas y pagos." icon="calendar-outline" />;
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
