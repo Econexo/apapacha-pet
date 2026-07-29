@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, KeyboardAvoidingView, Platform, Image, ActivityIndicator } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
+import { VideoView, useVideoPlayer } from 'expo-video';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -11,7 +11,13 @@ import { fonts } from '../theme/typography';
 import { radii } from '../theme/design';
 import type { RootStackParamList } from '../types/navigation';
 import type { Message } from '../types/database';
-import { getMessages, sendMessage, subscribeToMessages, uploadChatImage } from '../services/messages.service';
+import { pickImage, pickVideo, type MediaSource } from '../lib/mediaPicker';
+import { MediaSourceSheet } from '../components/MediaSourceSheet';
+import { useToast } from '../components/Toast';
+import {
+  getMessages, sendMessage, subscribeToMessages, uploadChatImage, uploadChatVideo,
+  CHAT_VIDEO_MAX_SECONDS,
+} from '../services/messages.service';
 import { markChatNotificationsRead } from '../services/notifications.service';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../../supabase';
@@ -34,6 +40,8 @@ export function ChatDetailScreen() {
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [headerTitle, setHeaderTitle] = useState('Chat de reserva');
+  const [sheetKind, setSheetKind] = useState<'image' | 'video' | null>(null);
+  const toast = useToast();
   const scrollRef = useRef<ScrollView>(null);
   const channelRef = useRef<RealtimeChannel | null>(null);
 
@@ -86,23 +94,44 @@ export function ChatDetailScreen() {
     catch (e) { console.error('Error sending message:', e); }
   };
 
-  const handlePickImage = async () => {
-    if (uploading) return;
-    if (Platform.OS !== 'web') {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') return;
+  const handlePickMedia = async (source: MediaSource) => {
+    const kind = sheetKind;
+    setSheetKind(null);
+    if (uploading || !kind) return;
+
+    if (kind === 'image') {
+      const uri = await pickImage(source, { quality: 0.7 });
+      if (!uri) return;
+      setUploading(true);
+      try {
+        const url = await uploadChatImage(bookingId, uri);
+        await sendMessage(bookingId, '', url);
+      } catch (e) {
+        console.error('Error subiendo foto al chat:', e);
+        toast.error('No se pudo enviar la foto', 'Inténtalo de nuevo.');
+      } finally {
+        setUploading(false);
+      }
+      return;
     }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'] as ImagePicker.MediaType[],
-      quality: 0.7,
-    });
-    if (result.canceled || !result.assets[0]) return;
+
+    const video = await pickVideo(source, { maxDurationSec: CHAT_VIDEO_MAX_SECONDS });
+    if (!video) return;
+    if (video.duration && video.duration / 1000 > CHAT_VIDEO_MAX_SECONDS) {
+      toast.error('Video muy largo', `El máximo son ${CHAT_VIDEO_MAX_SECONDS} segundos.`);
+      return;
+    }
     setUploading(true);
     try {
-      const url = await uploadChatImage(bookingId, result.assets[0].uri);
-      await sendMessage(bookingId, '', url);
-    } catch (e) {
-      console.error('Error uploading chat image:', e);
+      const url = await uploadChatVideo(bookingId, video.uri);
+      await sendMessage(bookingId, '', undefined, url);
+    } catch (e: any) {
+      console.error('Error subiendo video al chat:', e);
+      if (e?.message === 'VIDEO_DEMASIADO_GRANDE') {
+        toast.error('Video muy pesado', 'El máximo son 25 MB. Graba uno más corto.');
+      } else {
+        toast.error('No se pudo enviar el video', 'Inténtalo de nuevo.');
+      }
     } finally {
       setUploading(false);
     }
@@ -136,7 +165,9 @@ export function ChatDetailScreen() {
             const isMine = msg.sender_id === user?.id;
             return (
               <View key={msg.id} style={isMine ? styles.rowSent : styles.rowReceived}>
-                {msg.image_url ? (
+                {msg.video_url ? (
+                  <ChatVideo uri={msg.video_url} />
+                ) : msg.image_url ? (
                   <TouchableOpacity activeOpacity={0.9} onPress={() => Platform.OS === 'web' ? window.open(msg.image_url!, '_blank') : undefined}>
                     <Image source={{ uri: msg.image_url }} style={styles.chatImage} resizeMode="cover" />
                   </TouchableOpacity>
@@ -152,10 +183,13 @@ export function ChatDetailScreen() {
         </ScrollView>
 
         <View style={styles.inputArea}>
-          <TouchableOpacity style={styles.attachButton} onPress={handlePickImage} disabled={uploading} activeOpacity={0.7}>
+          <TouchableOpacity style={styles.attachButton} onPress={() => setSheetKind('image')} disabled={uploading} activeOpacity={0.7}>
             {uploading
               ? <ActivityIndicator size="small" color={colors.primary} />
-              : <Ionicons name="image-outline" size={22} color={colors.primary} />}
+              : <Ionicons name="camera-outline" size={22} color={colors.primary} />}
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.attachButton} onPress={() => setSheetKind('video')} disabled={uploading} activeOpacity={0.7}>
+            <Ionicons name="videocam-outline" size={22} color={colors.primary} />
           </TouchableOpacity>
           <TextInput
             style={styles.inputBox}
@@ -176,9 +210,23 @@ export function ChatDetailScreen() {
             <Ionicons name="send" size={18} color="#fff" />
           </TouchableOpacity>
         </View>
+
+        <MediaSourceSheet
+          visible={sheetKind !== null}
+          kind={sheetKind ?? 'image'}
+          onClose={() => setSheetKind(null)}
+          onPick={handlePickMedia}
+        />
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
+}
+
+// Burbuja de video. expo-video funciona en web y nativo; si el player falla,
+// queda el enlace para abrirlo aparte.
+function ChatVideo({ uri }: { uri: string }) {
+  const player = useVideoPlayer(uri, (p) => { p.loop = false; });
+  return <VideoView style={styles.chatVideo} player={player} allowsFullscreen nativeControls />;
 }
 
 const styles = StyleSheet.create({
@@ -207,6 +255,7 @@ const styles = StyleSheet.create({
   inputArea: { flexDirection: 'row', alignItems: 'center', padding: 12, backgroundColor: colors.surface, borderTopWidth: 1, borderTopColor: colors.border },
   attachButton: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center', marginRight: 4 },
   chatImage: { width: 200, height: 200, borderRadius: 16, backgroundColor: colors.surfaceAlt },
+  chatVideo: { width: 240, height: 240, borderRadius: 16, backgroundColor: colors.surfaceAlt },
   inputBox: { flex: 1, backgroundColor: colors.background, borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12, borderWidth: 1, borderColor: colors.border, fontSize: 15, color: colors.textMain, maxHeight: 100 },
   sendButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center', marginLeft: 12 },
   sendButtonDisabled: { backgroundColor: colors.border },
