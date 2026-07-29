@@ -76,8 +76,14 @@ function toSubscriptionRow(userId: string, json: PushSubscriptionJSON): PushSubs
 /**
  * Pide permiso y registra la suscripción. DEBE llamarse desde un gesto del
  * usuario (requisito de iOS/Safari), nunca al montar una pantalla.
+ *
+ * Implementación real de subscribeToPush(). No se exporta directamente: hay
+ * varios await aquí dentro (requestPermission, serviceWorker.ready,
+ * getSubscription, getUser, los dos upsert) que en teoría pueden rechazar
+ * fuera de los try/catch ya existentes para pushManager.subscribe(). La red
+ * final contra eso vive en el wrapper exportado subscribeToPush() de abajo.
  */
-export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
+async function doSubscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
   if (!isPushSupported()) return { ok: false, reason: 'unsupported' };
   if (isIOS() && !isStandalonePWA()) return { ok: false, reason: 'needs_install' };
 
@@ -153,11 +159,41 @@ export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string 
   return { ok: true };
 }
 
-export async function unsubscribeFromPush(): Promise<void> {
+/**
+ * Envoltura exportada: pase lo que pase dentro de doSubscribeToPush() (un
+ * await inesperado que rechace, un error de red no contemplado, etc.), el
+ * llamador SIEMPRE recibe un objeto { ok, reason } y nunca una promesa
+ * rechazada. Esto importa porque la UI hace
+ * `const { ok, reason } = await subscribeToPush()` dentro de un onPress; si
+ * la promesa rechazara, ese destructuring lanzaría como unhandled rejection
+ * y el usuario se quedaría sin ningún toast ni feedback.
+ */
+export async function subscribeToPush(): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    return await doSubscribeToPush();
+  } catch (e) {
+    console.error('[push] subscribeToPush falló de forma inesperada:', e);
+    return { ok: false, reason: 'unexpected_error' };
+  }
+}
+
+async function doUnsubscribeFromPush(): Promise<void> {
   if (!isPushSupported()) return;
   const registration = await navigator.serviceWorker.ready;
   const subscription = await registration.pushManager.getSubscription();
   if (!subscription) return;
   await supabase.from('push_subscriptions').delete().eq('endpoint', subscription.endpoint);
   await subscription.unsubscribe().catch(() => {});
+}
+
+// Misma red que subscribeToPush(): la firma declarada es Promise<void>, así
+// que un rechazo aquí también rompería el contrato para quien la llame desde
+// un botón "desactivar notificaciones". Tragamos y logueamos en vez de dejar
+// que se propague.
+export async function unsubscribeFromPush(): Promise<void> {
+  try {
+    await doUnsubscribeFromPush();
+  } catch (e) {
+    console.error('[push] unsubscribeFromPush falló de forma inesperada:', e);
+  }
 }
