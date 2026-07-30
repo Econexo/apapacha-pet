@@ -61,7 +61,7 @@ if (!html.includes('rel="manifest"')) {
     <meta name="apple-mobile-web-app-title" content="ApapachaPet" />
     <meta name="application-name" content="ApapachaPet" />
     <meta name="description" content="Cuidado premium para gatos: alojamiento y visitas domiciliarias con cuidadores verificados." />
-    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/icons/apple-touch-icon.png" />
   `;
   html = html.replace('</head>', `${head}</head>`);
 }
