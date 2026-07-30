@@ -11,8 +11,9 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
 import { supabase } from '../../supabase';
 import type { RootStackParamList } from '../types/navigation';
-import type { Pet, Booking } from '../types/database';
+import type { Pet, Booking, PetReport } from '../types/database';
 import { getUnreadCount } from '../services/notifications.service';
+import { getLatestPetReport, moodIcon, moodLabel } from '../services/petReports.service';
 import { OverlayModal } from '../components/OverlayModal';
 import { AddPetScreen } from './AddPetScreen';
 import { AppText } from '../components/ui/AppText';
@@ -20,16 +21,14 @@ import { ScreenBackground } from '../components/ui/ScreenBackground';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-const MOOD_STATES = [
-  { emoji: '😸', label: 'Muy juguetón', energy: 'Alta',  stress: 'Bajo'  },
-  { emoji: '😺', label: 'Tranquilo',    energy: 'Media', stress: 'Bajo'  },
-  { emoji: '😻', label: 'Feliz',        energy: 'Alta',  stress: 'Nulo'  },
-  { emoji: '😴', label: 'Descansando',  energy: 'Baja',  stress: 'Nulo'  },
-  { emoji: '😼', label: 'Curioso',      energy: 'Media', stress: 'Bajo'  },
-];
-
-function getMoodForPet(pet: Pet) {
-  return MOOD_STATES[pet.id.charCodeAt(2) % MOOD_STATES.length];
+// Hace cuánto se envió el reporte, en lenguaje corto.
+function haceCuanto(iso: string): string {
+  const mins = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+  if (mins < 1) return 'recién';
+  if (mins < 60) return `hace ${mins} min`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `hace ${hrs} h`;
+  return `hace ${Math.floor(hrs / 24)} d`;
 }
 
 export function HomeScreen() {
@@ -38,6 +37,7 @@ export function HomeScreen() {
   const toast = useToast();
   const [pets, setPets] = useState<Pet[]>([]);
   const [nextBooking, setNextBooking] = useState<Booking | null>(null);
+  const [petReport, setPetReport] = useState<PetReport | null>(null);
   const [nextServiceName, setNextServiceName] = useState<string | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
   const [showNotifications, setShowNotifications] = useState(false);
@@ -89,13 +89,26 @@ export function HomeScreen() {
 
   const firstName = profile?.full_name?.split(' ')[0] ?? 'amigo';
   const firstPet = pets[0];
-  const isActive = nextBooking?.status === 'active';
-  const mood = firstPet ? getMoodForPet(firstPet) : null;
+  // OJO: status 'active' significa "confirmada y pagada", NO "en curso". El
+  // servicio empieza cuando el cuidador pulsa Iniciar, que es lo que pone
+  // service_phase='in_progress' (host.service.startService). Confundir ambos
+  // hacía que al cliente le apareciera "Tu cuidador está con tus gatos" sin que
+  // el cuidador hubiera empezado siquiera.
+  const confirmada = nextBooking?.status === 'active';
+  const enCurso = confirmada && nextBooking?.service_phase === 'in_progress';
+
+  // El reporte del cuidador solo existe con el servicio ya empezado.
+  useEffect(() => {
+    if (!enCurso || !nextBooking) { setPetReport(null); return; }
+    getLatestPetReport(nextBooking.id).then(setPetReport).catch(() => {});
+  }, [enCurso, nextBooking?.id]);
 
   const smartAlerts: { key: string; type: 'info' | 'success' | 'warning'; icon: string; message: string }[] = [];
   if (nextBooking) {
-    if (isActive) {
+    if (enCurso) {
       smartAlerts.push({ key: 'active', type: 'success', icon: '🟢', message: `Servicio en curso${nextServiceName ? ` en "${nextServiceName}"` : ''}. Tu cuidador está con tus gatos.` });
+    } else if (confirmada) {
+      smartAlerts.push({ key: 'confirmed', type: 'info', icon: '✅', message: `Reserva confirmada${nextServiceName ? ` en "${nextServiceName}"` : ''}. Tu cuidador aún no ha iniciado el servicio.` });
     } else {
       const daysUntil = Math.ceil((new Date(nextBooking.start_date).getTime() - Date.now()) / 86400000);
       if (daysUntil === 0) smartAlerts.push({ key: 'today', type: 'warning', icon: '⚡', message: '¡Tu reserva empieza hoy! Asegúrate de coordinar con tu cuidador.' });
@@ -172,17 +185,31 @@ export function HomeScreen() {
               <AppText variant="title" style={{ fontSize: 19 }}>{firstPet.name}</AppText>
               <Text style={styles.petBreed}>{firstPet.breed || 'Gato'} · {firstPet.age_years} año{firstPet.age_years !== 1 ? 's' : ''}</Text>
 
-              {/* Estado — visible cuando hay reserva activa */}
-              {isActive && mood ? (
+              {/* Reporte real del cuidador, solo con el servicio ya iniciado.
+                  Antes aquí se mostraba un ánimo inventado a partir del UUID. */}
+              {enCurso && petReport ? (
                 <View style={styles.moodBadge}>
-                  <Text style={styles.moodLabel}>Estado actual</Text>
+                  <Text style={styles.moodLabel}>Reporte del cuidador · {haceCuanto(petReport.created_at)}</Text>
                   <View style={styles.moodRow}>
-                    <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-                    <View>
-                      <Text style={styles.moodMain}>{mood.label}</Text>
-                      <Text style={styles.moodSub}>⚡ Energía {mood.energy} · 😌 Estrés {mood.stress}</Text>
+                    <Ionicons name={moodIcon(petReport.mood)} size={22} color={colors.primaryDark} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.moodMain}>{moodLabel(petReport.mood)}</Text>
+                      {!!petReport.note && <Text style={styles.moodSub}>{petReport.note}</Text>}
                     </View>
+                    {!!petReport.photo_url && (
+                      <TouchableOpacity
+                        onPress={() => Platform.OS === 'web' ? window.open(petReport.photo_url!, '_blank') : undefined}
+                        activeOpacity={0.85}
+                      >
+                        <Image source={{ uri: petReport.photo_url }} style={styles.moodPhoto} resizeMode="cover" />
+                      </TouchableOpacity>
+                    )}
                   </View>
+                </View>
+              ) : enCurso ? (
+                <View style={styles.moodBadge}>
+                  <Text style={styles.moodLabel}>Reporte del cuidador</Text>
+                  <Text style={styles.moodSub}>Tu cuidador aún no ha enviado un reporte.</Text>
                 </View>
               ) : firstPet.medical_alerts?.length > 0 ? (
                 <View style={styles.alertBadge}>
@@ -200,8 +227,8 @@ export function HomeScreen() {
         )}
 
         {nextBooking ? (
-          <View style={[styles.visitCard, isActive && styles.visitCardActive]}>
-            <Text style={styles.visitLabel}>{isActive ? 'Servicio en curso' : 'Próxima reserva'}</Text>
+          <View style={[styles.visitCard, enCurso && styles.visitCardActive]}>
+            <Text style={styles.visitLabel}>{enCurso ? 'Servicio en curso' : 'Próxima reserva'}</Text>
             {nextServiceName && <Text style={styles.visitServiceName}>{nextServiceName}</Text>}
             <Text style={styles.visitDates}>
               {new Date(nextBooking.start_date).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
@@ -209,8 +236,10 @@ export function HomeScreen() {
               {new Date(nextBooking.end_date).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' })}
             </Text>
             <View style={styles.visitStatusRow}>
-              <View style={[styles.statusDot, isActive ? styles.statusDotActive : styles.statusDotPending]} />
-              <Text style={styles.visitStatus}>{isActive ? '🟢 En curso' : 'Pendiente confirmación'}</Text>
+              <View style={[styles.statusDot, enCurso ? styles.statusDotActive : styles.statusDotPending]} />
+              <Text style={styles.visitStatus}>
+                {enCurso ? 'En curso' : confirmada ? 'Confirmada · por iniciar' : 'Pendiente confirmación'}
+              </Text>
             </View>
           </View>
         ) : (
