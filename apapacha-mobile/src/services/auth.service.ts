@@ -28,7 +28,10 @@ export async function signOut(): Promise<void> {
 
 export async function resetPassword(email: string): Promise<void> {
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: 'https://apapacha-mobile.vercel.app',
+    // Aterriza directo en la pantalla de contraseña. El evento PASSWORD_RECOVERY
+    // es el mecanismo principal; esta ruta es la red de seguridad por si el
+    // evento no llega a tiempo.
+    redirectTo: 'https://apapacha-mobile.vercel.app/set-password',
   });
   if (error) throw error;
 }

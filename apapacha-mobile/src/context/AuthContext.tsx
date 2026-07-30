@@ -9,8 +9,10 @@ interface AuthContextValue {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  passwordRecovery: boolean;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  clearPasswordRecovery: () => void;
 }
 
 const AuthContext = createContext<AuthContextValue>({
@@ -18,17 +20,24 @@ const AuthContext = createContext<AuthContextValue>({
   session: null,
   profile: null,
   loading: true,
+  passwordRecovery: false,
   signOut: async () => {},
   refreshProfile: async () => {},
+  clearPasswordRecovery: () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [passwordRecovery, setPasswordRecovery] = useState(false);
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      // Supabase emite PASSWORD_RECOVERY cuando la sesión viene del enlace de
+      // "restablecer contraseña". Sin esto, el enlace solo iniciaba sesión y
+      // dejaba al usuario en Inicio, sin ninguna forma de cambiar la clave.
+      if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       setSession(session);
       if (session) {
         fetchProfile(session.user.id);
@@ -75,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setSession(null);
       setProfile(null);
+      setPasswordRecovery(false);
       // Sin esto, el linking restaura la pantalla privada anterior (p. ej.
       // /perfil) y parece que "Cerrar Sesión" no hizo nada. La URL final no
       // la fija este replaceState: la vuelve a escribir React Navigation al
@@ -94,8 +104,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       profile,
       loading,
+      passwordRecovery,
       signOut,
       refreshProfile,
+      clearPasswordRecovery: () => setPasswordRecovery(false),
     }}>
       {children}
     </AuthContext.Provider>

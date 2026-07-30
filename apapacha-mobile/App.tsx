@@ -66,6 +66,14 @@ function ManageServiceWrapper() {
   return <ManageServiceScreen type={route.params?.type} serviceId={route.params?.serviceId} />;
 }
 
+function SetPasswordWrapper() {
+  const route = useRoute<RouteProp<RootStackParamList, 'SetPassword'>>();
+  const { passwordRecovery } = useAuth();
+  // Sin variante explícita: si venimos del enlace de recuperación es 'recovery';
+  // si no, es el paso opcional del onboarding.
+  return <SetPasswordScreen variant={route.params?.variant ?? (passwordRecovery ? 'recovery' : 'onboarding')} />;
+}
+
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> = {
@@ -164,7 +172,7 @@ function MainTabs() {
 }
 
 function RootNavigator() {
-  const { session, profile } = useAuth();
+  const { session, profile, passwordRecovery } = useAuth();
 
   if (!session) {
     return (
@@ -179,6 +187,9 @@ function RootNavigator() {
   }
 
   const getInitialRoute = () => {
+    // El enlace de recuperación tiene que aterrizar en SetPassword. Antes solo
+    // iniciaba sesión y dejaba al usuario en Inicio, sin forma de cambiar la clave.
+    if (passwordRecovery) return 'SetPassword';
     // Onboarding solo si explícitamente false Y el perfil parece recién creado (sin datos)
     const needsOnboarding = profile?.onboarding_done === false && !profile?.age && !profile?.address;
     if (needsOnboarding) return 'Onboarding';
@@ -195,7 +206,7 @@ function RootNavigator() {
       initialRouteName={getInitialRoute()}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="SetPassword" component={SetPasswordScreen} options={{ animation: 'slide_from_right' }} />
+      <Stack.Screen name="SetPassword" component={SetPasswordWrapper} options={{ animation: 'slide_from_right' }} />
       <Stack.Screen name="ClientVerification" component={ClientVerificationScreen} options={{ animation: 'fade' }} />
       <Stack.Screen name="MainTabs" component={MainTabs} options={{ animation: 'fade' }} />
       <Stack.Screen name="SearchModal" component={SearchFilterScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />

@@ -37,7 +37,7 @@ const APPLICATION_STATUS_LABEL: Record<string, { icon: IoniconName; text: string
 
 export function ProfileScreen() {
   const navigation = useNavigation<Nav>();
-  const { session, profile, signOut, refreshProfile } = useAuth();
+  const { session, user, profile, signOut, refreshProfile } = useAuth();
   const toast = useToast();
   const [pets, setPets] = useState<Pet[]>([]);
   const [application, setApplication] = useState<HostApplication | null>(null);
@@ -338,6 +338,20 @@ export function ProfileScreen() {
 
         <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Cuenta y Legal</Text>
         <View style={styles.settingsMenu}>
+          {/* El correo es el identificador de la cuenta: se muestra, no se edita
+              (cambiarlo exigiría re-verificación por email). La contraseña NO se
+              puede mostrar: está hasheada en el servidor, nadie puede leerla. */}
+          <View style={styles.menuItem}>
+            <Text style={styles.menuItemText}>Correo</Text>
+            <Text style={styles.menuItemValue} numberOfLines={1}>{user?.email ?? '—'}</Text>
+          </View>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation.navigate('SetPassword', { variant: 'change' })}
+          >
+            <Text style={styles.menuItemText}>Cambiar contraseña</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={() => {
             toast.info('Métodos de Pago', 'ApapachaPet opera con pagos por transferencia bancaria. Al reservar recibirás los datos de cuenta.');
           }}>
@@ -441,6 +455,7 @@ const styles = StyleSheet.create({
   menuItem: { flexDirection: 'row', justifyContent: 'space-between', padding: 16, borderBottomWidth: 1, borderBottomColor: colors.border },
   menuItemLast: { borderBottomWidth: 0 },
   menuItemText: { fontSize: 15, fontWeight: '500', color: colors.textMain },
+  menuItemValue: { fontSize: 13, color: colors.textMuted, maxWidth: '55%', textAlign: 'right' },
   menuItemArrow: { color: colors.textMuted, fontSize: 16 },
   adminBtn: { backgroundColor: colors.primaryDark, padding: 16, borderRadius: radii.lg, alignItems: 'center', marginTop: 8, marginBottom: 8, flexDirection: 'row', justifyContent: 'center', gap: 8 },
   adminBtnText: { color: colors.surface, fontWeight: '800', fontSize: 15 },

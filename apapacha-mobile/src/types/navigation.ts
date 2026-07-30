@@ -1,7 +1,7 @@
 export type RootStackParamList = {
   Login: undefined;
   Onboarding: undefined;
-  SetPassword: undefined;
+  SetPassword: { variant?: 'onboarding' | 'recovery' | 'change' } | undefined;
   ClientVerification: undefined;
   Admin: undefined;
   MainTabs: undefined;

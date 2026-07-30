@@ -59,6 +59,10 @@ export const guestLinking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       Login: 'login',
+      // Pública a propósito: al enlace de "restablecer contraseña" se llega sin
+      // sesión activa, así que si el evento PASSWORD_RECOVERY todavía no se ha
+      // procesado la URL tiene que resolver igual a esta pantalla y no a Login.
+      SetPassword: 'set-password',
       MainTabs: {
         screens: {
           Explore: 'explorar',

@@ -4,6 +4,7 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
@@ -15,14 +16,38 @@ import type { RootStackParamList } from '../types/navigation';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
-export function SetPasswordScreen() {
+export type SetPasswordVariant = 'onboarding' | 'recovery' | 'change';
+
+// Copy por variante. 'onboarding' es el paso opcional al crear la cuenta;
+// 'recovery' llega desde el enlace de "restablecer contraseña"; 'change' se
+// abre desde Perfil → Cuenta.
+const COPY: Record<SetPasswordVariant, { title: string; subtitle: string; cta: string }> = {
+  onboarding: {
+    title: 'Crea tu contraseña',
+    subtitle: 'Opcional pero recomendado — te permite ingresar sin depender del enlace por email cada vez.',
+    cta: 'Establecer contraseña',
+  },
+  recovery: {
+    title: 'Restablece tu contraseña',
+    subtitle: 'Elige una contraseña nueva para tu cuenta. La usarás la próxima vez que ingreses.',
+    cta: 'Guardar contraseña nueva',
+  },
+  change: {
+    title: 'Cambiar contraseña',
+    subtitle: 'Elige una contraseña nueva. Reemplazará a la actual en todos tus dispositivos.',
+    cta: 'Guardar contraseña nueva',
+  },
+};
+
+export function SetPasswordScreen({ variant = 'onboarding' }: { variant?: SetPasswordVariant }) {
   const navigation = useNavigation<Nav>();
-  const { refreshProfile } = useAuth();
+  const { refreshProfile, clearPasswordRecovery } = useAuth();
   const toast = useToast();
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const copy = COPY[variant];
   const isValid = password.length >= 8 && password === confirm;
 
   const handleSet = async () => {
@@ -32,7 +57,15 @@ export function SetPasswordScreen() {
       const { error } = await supabase.auth.updateUser({ password });
       if (error) throw error;
       await refreshProfile();
-      navigation.replace('MainTabs');
+      // Salir del modo recuperación antes de navegar: si no, RootNavigator
+      // volvería a mandar al usuario a esta misma pantalla.
+      clearPasswordRecovery();
+      toast.success(
+        variant === 'onboarding' ? 'Contraseña creada' : 'Contraseña actualizada',
+        'Ya puedes usarla para ingresar.',
+      );
+      if (variant === 'change') navigation.goBack();
+      else navigation.replace('MainTabs');
     } catch (e: any) {
       toast.error('Error', e.message ?? 'No se pudo establecer la contraseña');
     } finally {
@@ -58,11 +91,11 @@ export function SetPasswordScreen() {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
       <View style={styles.content}>
-        <Text style={styles.emoji}>🔐</Text>
-        <Text style={styles.title}>Crea tu contraseña</Text>
-        <Text style={styles.subtitle}>
-          Opcional pero recomendado — te permite ingresar sin depender del enlace por email cada vez.
-        </Text>
+        <View style={styles.iconWrap}>
+          <Ionicons name="lock-closed-outline" size={30} color={colors.primary} />
+        </View>
+        <Text style={styles.title}>{copy.title}</Text>
+        <Text style={styles.subtitle}>{copy.subtitle}</Text>
 
         <Text style={styles.label}>Contraseña</Text>
         <TextInput
@@ -95,13 +128,31 @@ export function SetPasswordScreen() {
         >
           {saving
             ? <ActivityIndicator color={colors.surface} />
-            : <Text style={styles.btnText}>Establecer Contraseña</Text>
+            : <Text style={styles.btnText}>{copy.cta}</Text>
           }
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
-          <Text style={styles.skipText}>Omitir por ahora</Text>
-        </TouchableOpacity>
+        {/* Salida según el contexto. En 'recovery' nunca dejamos al usuario
+            atrapado: si se arrepiente, cancelar sale del modo recuperación y
+            lo lleva a la app (el enlace ya le dejó sesión iniciada). */}
+        {variant === 'onboarding' && (
+          <TouchableOpacity style={styles.skipBtn} onPress={handleSkip}>
+            <Text style={styles.skipText}>Omitir por ahora</Text>
+          </TouchableOpacity>
+        )}
+        {variant === 'recovery' && (
+          <TouchableOpacity
+            style={styles.skipBtn}
+            onPress={() => { clearPasswordRecovery(); navigation.replace('MainTabs'); }}
+          >
+            <Text style={styles.skipText}>Cancelar</Text>
+          </TouchableOpacity>
+        )}
+        {variant === 'change' && (
+          <TouchableOpacity style={styles.skipBtn} onPress={() => navigation.goBack()}>
+            <Text style={styles.skipText}>Cancelar</Text>
+          </TouchableOpacity>
+        )}
       </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -111,7 +162,7 @@ export function SetPasswordScreen() {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: colors.surface },
   content: { flex: 1, padding: 28, justifyContent: 'center' },
-  emoji: { fontSize: 52, textAlign: 'center', marginBottom: 12 },
+  iconWrap: { alignSelf: 'center', width: 72, height: 72, borderRadius: 36, backgroundColor: colors.brandTint, alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
   title: { fontFamily: fonts.display, fontSize: 28, color: colors.textMain, textAlign: 'center', marginBottom: 8, letterSpacing: -0.4 },
   subtitle: { fontSize: 14, color: colors.textMuted, textAlign: 'center', lineHeight: 20, marginBottom: 36 },
   label: { fontSize: 14, fontWeight: '700', color: colors.textMain, marginBottom: 8 },
