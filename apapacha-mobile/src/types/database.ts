@@ -105,6 +105,19 @@ export interface Message {
   created_at: string;
 }
 
+export type PetMood = 'jugueton' | 'tranquilo' | 'feliz' | 'descansando' | 'curioso' | 'decaido';
+
+// Reporte del cuidador sobre el gato durante un servicio en curso.
+export interface PetReport {
+  id: string;
+  booking_id: string;
+  author_id: string;
+  mood: PetMood;
+  note: string | null;
+  photo_url: string | null;
+  created_at: string;
+}
+
 export interface Notification {
   id: string;
   user_id: string;
