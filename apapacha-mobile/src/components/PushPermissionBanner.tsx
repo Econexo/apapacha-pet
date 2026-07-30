@@ -9,14 +9,11 @@ import { useToast } from './Toast';
 import {
   isPushSupported, isStandalonePWA, isIOS, getPushPermission, subscribeToPush, ensurePushSubscription,
 } from '../services/push.service';
-
-// Estados: 'oculto' (ya concedido, denegado o no soportado), 'pedir' (podemos
-// pedir permiso), 'instalar' (iOS sin PWA instalada: hay que explicar el paso).
-type Estado = 'oculto' | 'pedir' | 'instalar';
+import { decidePushBannerState, PushBannerState } from './pushBannerState';
 
 export function PushPermissionBanner() {
   const toast = useToast();
-  const [estado, setEstado] = useState<Estado>('oculto');
+  const [estado, setEstado] = useState<PushBannerState>('oculto');
   const [cargando, setCargando] = useState(false);
 
   // Usamos useFocusEffect en lugar de useEffect porque el tab navigator no
@@ -26,9 +23,12 @@ export function PushPermissionBanner() {
   // y reconciliar la suscripción si fue borrada de la BD.
   useFocusEffect(
     useCallback(() => {
-      if (!isPushSupported()) return setEstado('oculto');
-      if (isIOS() && !isStandalonePWA()) return setEstado('instalar');
-      setEstado(getPushPermission() === 'default' ? 'pedir' : 'oculto');
+      setEstado(decidePushBannerState({
+        supported: isPushSupported(),
+        ios: isIOS(),
+        standalone: isStandalonePWA(),
+        permission: getPushPermission(),
+      }));
       // Reconcilia permiso concedido con suscripción en BD (silencioso, nunca rechaza).
       ensurePushSubscription().catch(() => {});
     }, [])
