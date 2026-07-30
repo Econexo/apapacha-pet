@@ -26,6 +26,7 @@ import { completeBookingAsHost, startService, respondToBooking } from '../servic
 import { cancelBooking } from '../services/bookings.service';
 import { formatVisitSchedule } from '../lib/availability';
 import { OverlayModal } from '../components/OverlayModal';
+import { PetReportSheet } from '../components/PetReportSheet';
 import { ManageServiceScreen } from './ManageServiceScreen';
 import { useToast } from '../components/Toast';
 import { useCountUp } from '../hooks/useCountUp';
@@ -55,6 +56,7 @@ export function HostDashboardScreen() {
   const [manageModal, setManageModal] = useState<{ type: 'space' | 'visiter'; serviceId?: string } | null>(null);
   const [clientMap, setClientMap] = useState<Record<string, string>>({});
   const [reviewedIds, setReviewedIds] = useState<Set<string>>(new Set());
+  const [reportBookingId, setReportBookingId] = useState<string | null>(null);
 
   const reload = async () => {
     if (!hostId) { setLoading(false); return; }
@@ -161,11 +163,19 @@ export function HostDashboardScreen() {
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {tab === 'servicios'   && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} onManageService={setManageModal} />}
           {tab === 'resumen'     && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} onManageService={setManageModal} />}
-          {tab === 'solicitudes' && <TabSolicitudes bookings={activeBookings} navigation={navigation} onReload={reload} />}
+          {tab === 'solicitudes' && <TabSolicitudes bookings={activeBookings} navigation={navigation} onReload={reload} onReport={setReportBookingId} />}
           {tab === 'historial'   && <TabHistorial completedBookings={completedBookings} clientMap={clientMap} reviewedIds={reviewedIds} navigation={navigation} />}
           {tab === 'ganancias'   && <TabGanancias earnings={earnings} />}
           {tab === 'resenas'     && <TabResenas   reviews={reviews} />}
         </ScrollView>
+      )}
+      {reportBookingId && (
+        <PetReportSheet
+          visible
+          bookingId={reportBookingId}
+          onClose={() => setReportBookingId(null)}
+          onDone={() => { setReportBookingId(null); reload(); }}
+        />
       )}
       {manageModal && (
         <OverlayModal visible={!!manageModal} onClose={() => setManageModal(null)}>
@@ -605,10 +615,11 @@ function FlowStepper({ booking, onStart, onComplete }: {
 
 /* ─── TAB: SOLICITUDES (activas / pendientes) ──────────────────────────────── */
 
-function TabSolicitudes({ bookings, navigation, onReload }: {
+function TabSolicitudes({ bookings, navigation, onReload, onReport }: {
   bookings: Booking[];
   navigation: Nav;
   onReload: () => void;
+  onReport: (bookingId: string) => void;
 }) {
   if (bookings.length === 0) {
     return (
@@ -746,6 +757,12 @@ function TabSolicitudes({ bookings, navigation, onReload }: {
             ) : (
               <>
                 <FlowStepper booking={b} onStart={confirmStart} onComplete={confirmComplete} />
+                {isInProgress && (
+                  <TouchableOpacity style={styles.reportBtn} onPress={() => onReport(b.id)} activeOpacity={0.85}>
+                    <Ionicons name="paw-outline" size={16} color={colors.primaryDark} />
+                    <Text style={styles.reportBtnText}>Reportar estado del gato</Text>
+                  </TouchableOpacity>
+                )}
                 {b.status === 'active' && (
                   <TouchableOpacity style={styles.forceCancelBtn} onPress={confirmHostCancel} activeOpacity={0.7}>
                     <Ionicons name="alert-circle-outline" size={14} color={colors.textMuted} />
@@ -1035,6 +1052,8 @@ const styles = StyleSheet.create({
   histReviewedText: { fontSize: 12, fontWeight: '700', color: colors.successText },
   respondBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 12, borderRadius: 12, borderWidth: 1.5 },
   respondBtnText: { fontSize: 14, fontWeight: '800' },
+  reportBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, marginTop: 10, paddingVertical: 11, borderRadius: radii.md, backgroundColor: colors.primaryLight },
+  reportBtnText: { fontSize: 13.5, fontWeight: '800', color: colors.primaryDark },
   forceCancelBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 5, marginTop: 10, paddingVertical: 8 },
   forceCancelText: { fontSize: 12.5, color: colors.textMuted, fontWeight: '700', textDecorationLine: 'underline' },
   awaitingPay: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: colors.infoBg, borderRadius: 10, padding: 12, marginTop: 12 },
