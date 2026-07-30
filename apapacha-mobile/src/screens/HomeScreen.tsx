@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Animated, Platform } from 'react-native';
 import { useNavigation, useFocusEffect } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
@@ -305,7 +305,7 @@ const styles = StyleSheet.create({
   moodBadge: { backgroundColor: `${colors.primary}10`, borderRadius: radii.md, padding: 10, marginTop: 6 },
   moodLabel: { ...label, color: colors.primaryDark, marginBottom: 5 },
   moodRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  moodEmoji: { fontSize: 26 },
+  moodPhoto: { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.surfaceAlt },
   moodMain: { fontSize: 14, fontWeight: '800', color: colors.textMain },
   moodSub: { fontSize: 11, color: colors.textMuted, marginTop: 1 },
   alertBadge: { backgroundColor: colors.dangerBg, borderRadius: radii.sm, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginTop: 4 },
