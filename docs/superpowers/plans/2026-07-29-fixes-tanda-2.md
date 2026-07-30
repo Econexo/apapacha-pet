@@ -700,9 +700,11 @@ y dentro del efecto/callback que ya carga `nextBooking`, cuando `isActive` sea t
       getLatestPetReport(nextBooking.id).then(setPetReport).catch(() => {});
 ```
 
-3. Reemplazar el bloque `{isActive && mood ? (...)}` por el reporte real:
+3. Reemplazar el bloque `{isActive && mood ? (...)}` por el reporte real. **Condición: `enCurso`, no `isActive`** — ver Task 7, que introduce `enCurso = status === 'active' && service_phase === 'in_progress'`. Un reporte de estado solo tiene sentido con el servicio empezado.
    - Si hay `petReport`: la tarjeta muestra el `Ionicons` de `moodIcon(petReport.mood)`, el texto `moodLabel(petReport.mood)`, la nota si existe, la hora relativa del reporte, y la foto en miniatura si hay `photo_url` (tocarla la abre: en web `window.open`).
-   - Si `isActive` y **no** hay reporte: estado vacío honesto — "Tu cuidador aún no ha enviado un reporte." No inventes nada.
+   - Si `enCurso` y **no** hay reporte: estado vacío honesto — "Tu cuidador aún no ha enviado un reporte." No inventes nada.
+
+**Orden:** haz la Task 7 antes de este step, o al menos introduce `enCurso` aquí y deja que la Task 7 termine de limpiar los demás usos.
 4. Quita del `StyleSheet` los estilos que queden sin uso (`moodEmoji` etc.) y añade los nuevos que necesites.
 
 - [ ] **Step 7: Verificar**
@@ -954,6 +956,69 @@ git commit -m "fix(pwa): iconos opacos para que iOS muestre el logo al instalar
 
 Los tres PNG tenian esquinas transparentes y iOS compone la transparencia del
 apple-touch-icon sobre negro, dejando el icono roto."
+```
+
+---
+
+## Task 7: Inicio dejó de decir "en curso" antes de que el cuidador empiece
+
+**Files:**
+- Modify: `apapacha-mobile/src/screens/HomeScreen.tsx`
+
+**Interfaces:** ninguna nueva. Introduce las variables locales `confirmada` y `enCurso`.
+
+**El problema:** `status='active'` significa *confirmada y pagada*; el servicio empieza cuando el cuidador pulsa "Iniciar", que es lo que pone `service_phase='in_progress'`. Inicio usaba `status==='active'` para rotular "Servicio en curso" y para la alerta "Tu cuidador está con tus gatos", así que el cliente veía su reserva como en curso cuando el cuidador ni había empezado. `BookingsScreen.tsx:275` ya hace la distinción correcta: úsala como referencia de vocabulario.
+
+- [ ] **Step 1: Separar los dos conceptos**
+
+En `apapacha-mobile/src/screens/HomeScreen.tsx`, sustituir la línea 92 (`const isActive = nextBooking?.status === 'active';`) por:
+
+```tsx
+  // OJO: status 'active' significa "confirmada y pagada", NO "en curso". El
+  // servicio empieza cuando el cuidador pulsa Iniciar, que es lo que pone
+  // service_phase='in_progress' (host.service.completeBooking/startService).
+  // Confundir ambos hacía que al cliente le apareciera "Tu cuidador está con
+  // tus gatos" antes de que el cuidador hubiera empezado.
+  const confirmada = nextBooking?.status === 'active';
+  const enCurso = confirmada && nextBooking?.service_phase === 'in_progress';
+```
+
+- [ ] **Step 2: Corregir cada uso**
+
+Recorre **todos** los usos de `isActive` en el archivo y decide cuál corresponde:
+
+- Alerta inteligente (línea ~97): con `enCurso`, el mensaje actual "Servicio en curso… Tu cuidador está con tus gatos." Con `confirmada && !enCurso`, un mensaje nuevo y verdadero: `'Reserva confirmada. Tu cuidador aún no ha iniciado el servicio.'` (tipo `'info'`, ícono `Ionicons` acorde al patrón del archivo). Usa claves distintas (`'active'` y `'confirmed'`) para que el descarte de alertas siga funcionando.
+- Estilo de la tarjeta (`styles.visitCardActive`, línea ~203): mantener con `enCurso` (es el realce visual de "está pasando ahora").
+- Rótulo de la tarjeta (línea ~204): `enCurso ? 'Servicio en curso' : 'Próxima reserva'`.
+- Punto de estado y texto (líneas ~212-213): tres estados en vez de dos —
+  `enCurso` → `'En curso'`;
+  `confirmada` → `'Confirmada · por iniciar'`;
+  ninguno → `'Pendiente confirmación'`.
+  Usa el `statusDot` activo solo con `enCurso`.
+- Tarjeta de reporte del gato (Task 4): `enCurso`.
+
+Quita el emoji `🟢` del texto de estado: el archivo ya tiene `statusDot` para eso y el sistema de diseño no usa emojis en la UI.
+
+- [ ] **Step 3: Verificar que no quedó ningún uso ambiguo**
+
+```bash
+cd apapacha-mobile && grep -n "isActive" src/screens/HomeScreen.tsx
+```
+
+Expected: sin salida (todos los usos migrados a `confirmada` o `enCurso`).
+
+Run: `npx tsc --noEmit && npx jest`
+Expected: exit 0.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add apapacha-mobile/src/screens/HomeScreen.tsx
+git commit -m "fix(inicio): no decir 'servicio en curso' antes de que el cuidador inicie
+
+status 'active' es confirmada y pagada; el inicio real es service_phase
+'in_progress'. Inicio mostraba 'Tu cuidador esta con tus gatos' sin que el
+cuidador hubiera empezado."
 ```
 
 ---
