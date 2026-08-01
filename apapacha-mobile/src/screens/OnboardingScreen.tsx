@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, TextInput, TouchableOpacity,
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -17,7 +17,7 @@ type Nav = NativeStackNavigationProp<RootStackParamList>;
 
 export function OnboardingScreen() {
   const navigation = useNavigation<Nav>();
-  const { refreshProfile } = useAuth();
+  const { profile, refreshProfile } = useAuth();
   const [fullName, setFullName] = useState('');
   const [lastName, setLastName] = useState('');
   const [age, setAge] = useState('');
@@ -25,6 +25,14 @@ export function OnboardingScreen() {
   const [bio, setBio] = useState('');
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+
+  // Guarda de estado: esta pantalla es un paso único, no un destino navegable.
+  // Se llegaba aquí también por URL (/onboarding está en el mapa de rutas), y
+  // entonces le pedía los datos otra vez a alguien que ya los tenía guardados.
+  const yaCompletado = !!profile && (profile.onboarding_done === true || (!!profile.age && !!profile.address));
+  useEffect(() => {
+    if (yaCompletado) navigation.replace('MainTabs');
+  }, [yaCompletado, navigation]);
 
   const isValid = fullName.trim().length >= 2 && lastName.trim().length >= 2
     && Number(age) >= 18 && Number(age) <= 100 && address.trim().length >= 5;
