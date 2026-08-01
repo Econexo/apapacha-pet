@@ -45,6 +45,8 @@ import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
 import { linking, guestLinking } from './src/linking';
 import { useIsDesktop } from './src/hooks/useIsDesktop';
+import { DesktopSidebar } from './src/components/DesktopSidebar';
+import { TAB_ICONS } from './src/components/tabIcons';
 import { AppTour, TourTargetsProvider, TourTarget, tourYaVisto, marcarTourVisto } from './src/components/AppTour';
 import type { TourTargetKey } from './src/components/tourSteps';
 import type { RootStackParamList } from './src/types/navigation';
@@ -77,16 +79,6 @@ function SetPasswordWrapper() {
   return <SetPasswordScreen variant={route.params?.variant ?? (passwordRecovery ? 'recovery' : 'onboarding')} />;
 }
 
-type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
-
-const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> = {
-  Home:          { active: 'home',           inactive: 'home-outline'           },
-  Explore:       { active: 'compass',        inactive: 'compass-outline'        },
-  Inbox:         { active: 'chatbubbles',    inactive: 'chatbubbles-outline'    },
-  Bookings:      { active: 'calendar',       inactive: 'calendar-outline'       },
-  HostDashboard: { active: 'paw',            inactive: 'paw-outline'            },
-  Profile:       { active: 'person-circle',  inactive: 'person-circle-outline'  },
-};
 
 // Pestañas que la guía de uso resalta (deben existir en tourSteps.ts).
 const TOUR_TABS = new Set(['Explore', 'Inbox', 'Bookings', 'Profile']);
@@ -131,6 +123,12 @@ function MainTabs() {
   return (
     <>
     <Tab.Navigator
+      // En escritorio la navegación la dibuja DesktopSidebar: la barra que trae
+      // React Navigation no deja controlar espaciado ni estados, y quedaba
+      // apretada. En móvil se mantiene la barra inferior nativa.
+      {...(isDesktop
+        ? { tabBar: (props: any) => <DesktopSidebar {...props} unreadMessages={unreadMsgs} /> }
+        : {})}
       screenOptions={({ route }) => ({
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
