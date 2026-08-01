@@ -44,6 +44,7 @@ import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
 import { linking, guestLinking } from './src/linking';
+import { useIsDesktop } from './src/hooks/useIsDesktop';
 import type { RootStackParamList } from './src/types/navigation';
 import { getUnreadMessageCount } from './src/services/notifications.service';
 import { supabase } from './supabase';
@@ -89,6 +90,7 @@ function MainTabs() {
   const { profile, user } = useAuth();
   const isHost = profile?.role === 'host';
 
+  const isDesktop = useIsDesktop();
   const [unreadMsgs, setUnreadMsgs] = useState(0);
 
   const refreshUnread = useCallback(() => {
@@ -115,18 +117,34 @@ function MainTabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textMuted,
-        tabBarStyle: {
-          backgroundColor: colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: colors.border,
-          height: 72,
-          paddingBottom: 10,
-          paddingTop: 6,
-        },
+        // En escritorio la navegación va a la izquierda, como un menú lateral;
+        // en móvil sigue siendo la barra inferior de siempre.
+        tabBarPosition: isDesktop ? 'left' : 'bottom',
+        tabBarVariant: isDesktop ? 'material' : 'uikit',
+        tabBarLabelPosition: isDesktop ? 'beside-icon' : 'below-icon',
+        tabBarStyle: isDesktop
+          ? {
+              backgroundColor: colors.surface,
+              borderRightWidth: 1,
+              borderRightColor: colors.border,
+              width: 240,
+              paddingTop: 16,
+              paddingHorizontal: 8,
+            }
+          : {
+              backgroundColor: colors.surface,
+              borderTopWidth: 1,
+              borderTopColor: colors.border,
+              height: 72,
+              paddingBottom: 10,
+              paddingTop: 6,
+            },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
           if (!icons) return null;
-          if (route.name === 'Explore') {
+          // El realce circular de "Explorar" es un patrón de barra inferior:
+          // en el menú lateral desentona, así que ahí va un ícono normal.
+          if (route.name === 'Explore' && !isDesktop) {
             return (
               <View style={{
                 width: 52, height: 52, borderRadius: 26,
@@ -145,9 +163,11 @@ function MainTabs() {
           }
           return <Ionicons name={focused ? icons.active : icons.inactive} size={size ?? 24} color={color} />;
         },
-        tabBarLabelStyle: { fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
+        tabBarLabelStyle: isDesktop
+          ? { fontSize: 14, fontWeight: '700', textTransform: 'none', letterSpacing: 0, marginLeft: 10 }
+          : { fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4 },
         tabBarLabel: ({ focused, children }) =>
-          route.name === 'Explore' ? null :
+          route.name === 'Explore' && !isDesktop ? null :
           <View><Text style={{ fontSize: 9, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.4, color: focused ? colors.primary : colors.textMuted }}>{children}</Text></View>,
       })}
     >
