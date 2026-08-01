@@ -58,3 +58,13 @@ describe('linking (con sesión)', () => {
     expect(routeFor('/chat/abc-123', linking.config)).toBe('ChatDetail');
   });
 });
+
+describe('Onboarding no es alcanzable por URL', () => {
+  // Regresión: /onboarding estaba en el mapa de rutas, así que bastaba con que
+  // la URL se quedara ahí para que la pantalla "Cuéntanos sobre ti" volviera a
+  // salir a alguien con el perfil ya completo, saltándose la lógica de arranque.
+  it('/onboarding no resuelve a la pantalla de Onboarding, ni con sesión', () => {
+    const state = getStateFromPath('/onboarding', linking.config);
+    expect(state?.routes?.[0]?.name).not.toBe('Onboarding');
+  });
+});
