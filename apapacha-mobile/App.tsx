@@ -334,7 +334,10 @@ function NavigationRoot() {
     <NavigationContainer
       linking={session ? linking : guestLinking}
       documentTitle={{
-        formatter: (options) => (options?.title ? `${options.title} · ApapachaPet` : 'ApapachaPet'),
+        // La marca va primero: si iOS o el navegador generan un icono de
+        // respaldo con la inicial del título, debe salir la "A" de ApapachaPet
+        // y no la inicial del nombre de la pantalla.
+        formatter: (options) => (options?.title ? `ApapachaPet · ${options.title}` : 'ApapachaPet'),
       }}
     >
       <RootNavigator />
