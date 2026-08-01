@@ -236,7 +236,9 @@ function RootNavigator() {
     // iniciaba sesión y dejaba al usuario en Inicio, sin forma de cambiar la clave.
     if (passwordRecovery) return 'SetPassword';
     // Onboarding solo si explícitamente false Y el perfil parece recién creado (sin datos)
-    const needsOnboarding = profile?.onboarding_done === false && !profile?.age && !profile?.address;
+    // Exigimos que el perfil esté cargado de verdad: si la consulta falló, es
+    // preferible entrar a la app que mandar a rellenar datos que ya existen.
+    const needsOnboarding = !!profile && profile.onboarding_done === false && !profile.age && !profile.address;
     if (needsOnboarding) return 'Onboarding';
     // NOTA: NO forzamos ClientVerification en cada login (antes molestaba a los
     // usuarios con kyc 'pending' en cada reingreso). La verificación de identidad
