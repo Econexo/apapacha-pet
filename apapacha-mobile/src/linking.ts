@@ -9,7 +9,9 @@ export const linking: LinkingOptions<RootStackParamList> = {
   config: {
     screens: {
       Login: 'login',
-      Onboarding: 'onboarding',
+      // Onboarding NO se mapea a una URL: es un paso único que decide el
+      // estado del perfil, no un destino compartible. Mapearlo hacía que la
+      // pantalla volviera a salir con solo tener la URL en /onboarding.
       SetPassword: 'set-password',
       ClientVerification: 'verificacion',
       Admin: 'admin',
