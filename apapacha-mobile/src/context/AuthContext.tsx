@@ -40,6 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'PASSWORD_RECOVERY') setPasswordRecovery(true);
       setSession(session);
       if (session) {
+        // Al entrar (no en cada refresco de token, que remontaría la
+        // navegación y perdería la pantalla actual) esperamos al perfil antes
+        // de decidir la ruta inicial: si el stack se monta con el perfil aún
+        // sin cargar, la decisión se toma con datos incompletos.
+        if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') setLoading(true);
         fetchProfile(session.user.id);
         if (event === 'SIGNED_IN' && Platform.OS === 'web' && typeof window !== 'undefined') {
           window.history.replaceState(null, '', window.location.pathname);
