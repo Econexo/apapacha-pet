@@ -24,6 +24,7 @@ import { TrustAndSafetyScreen } from './TrustAndSafetyScreen';
 import { HostOnboardingScreen } from './HostOnboardingScreen';
 import { ScreenBackground } from '../components/ui/ScreenBackground';
 import { PushPermissionBanner } from '../components/PushPermissionBanner';
+import { AppTour } from '../components/AppTour';
 import { fonts } from '../theme/typography';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -49,6 +50,7 @@ export function ProfileScreen() {
   const [showAddPet, setShowAddPet] = useState(false);
   const [addPetId, setAddPetId] = useState<string | undefined>();
   const [showTrust, setShowTrust] = useState(false);
+  const [showTour, setShowTour] = useState(false);
   const [showHostOnboarding, setShowHostOnboarding] = useState(false);
 
   const loadProfile = useCallback(async () => {
@@ -358,6 +360,10 @@ export function ProfileScreen() {
             <Text style={styles.menuItemText}>Métodos de Pago</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowTour(true)}>
+            <Text style={styles.menuItemText}>Ver guía de uso</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={() => setShowTrust(true)}>
             <Text style={styles.menuItemText}>Políticas de Seguridad y Confianza</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -376,6 +382,9 @@ export function ProfileScreen() {
       <OverlayModal visible={showAddPet} onClose={() => setShowAddPet(false)}>
         <AddPetScreen petId={addPetId} onClose={() => { setShowAddPet(false); loadProfile(); }} />
       </OverlayModal>
+
+      {/* La guía se puede volver a ver desde Cuenta. */}
+      <AppTour visible={showTour} onClose={() => setShowTour(false)} />
 
       <OverlayModal visible={showTrust} onClose={() => setShowTrust(false)}>
         <TrustAndSafetyScreen onClose={() => setShowTrust(false)} />

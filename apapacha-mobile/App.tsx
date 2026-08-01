@@ -45,6 +45,8 @@ import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
 import { linking, guestLinking } from './src/linking';
 import { useIsDesktop } from './src/hooks/useIsDesktop';
+import { AppTour, TourTargetsProvider, TourTarget, tourYaVisto, marcarTourVisto } from './src/components/AppTour';
+import type { TourTargetKey } from './src/components/tourSteps';
 import type { RootStackParamList } from './src/types/navigation';
 import { getUnreadMessageCount } from './src/services/notifications.service';
 import { supabase } from './supabase';
@@ -86,12 +88,27 @@ const TAB_ICONS: Record<string, { active: IoniconName; inactive: IoniconName }> 
   Profile:       { active: 'person-circle',  inactive: 'person-circle-outline'  },
 };
 
+// Pestañas que la guía de uso resalta (deben existir en tourSteps.ts).
+const TOUR_TABS = new Set(['Explore', 'Inbox', 'Bookings', 'Profile']);
+
 function MainTabs() {
   const { profile, user } = useAuth();
   const isHost = profile?.role === 'host';
 
   const isDesktop = useIsDesktop();
   const [unreadMsgs, setUnreadMsgs] = useState(0);
+  const [tourVisible, setTourVisible] = useState(false);
+
+  // Guía de primer uso: solo la primera vez por cuenta y dispositivo.
+  useEffect(() => {
+    if (!user) return;
+    tourYaVisto(user.id).then(visto => { if (!visto) setTourVisible(true); });
+  }, [user]);
+
+  const cerrarTour = useCallback(() => {
+    setTourVisible(false);
+    if (user) marcarTourVisto(user.id);
+  }, [user]);
 
   const refreshUnread = useCallback(() => {
     getUnreadMessageCount().then(setUnreadMsgs).catch(() => {});
@@ -112,6 +129,7 @@ function MainTabs() {
   }, [refreshUnread, user]);
 
   return (
+    <>
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
@@ -161,7 +179,12 @@ function MainTabs() {
               </View>
             );
           }
-          return <Ionicons name={focused ? icons.active : icons.inactive} size={size ?? 24} color={color} />;
+          const icono = <Ionicons name={focused ? icons.active : icons.inactive} size={size ?? 24} color={color} />;
+          // Las pestañas que la guía resalta se registran para poder medirlas.
+          const tourKey = `tab-${route.name}` as TourTargetKey;
+          return TOUR_TABS.has(route.name)
+            ? <TourTarget tourKey={tourKey}>{icono}</TourTarget>
+            : icono;
         },
         tabBarLabelStyle: isDesktop
           ? { fontSize: 14, fontWeight: '700', textTransform: 'none', letterSpacing: 0, marginLeft: 10 }
@@ -188,6 +211,8 @@ function MainTabs() {
       )}
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Perfil' }} />
     </Tab.Navigator>
+    <AppTour visible={tourVisible} onClose={cerrarTour} />
+    </>
   );
 }
 
@@ -271,7 +296,9 @@ export default function App() {
       <StatusBar style="auto" />
       <ToastProvider>
         <AuthProvider>
-          <NavigationRoot />
+          <TourTargetsProvider>
+            <NavigationRoot />
+          </TourTargetsProvider>
         </AuthProvider>
       </ToastProvider>
     </SafeAreaProvider>
