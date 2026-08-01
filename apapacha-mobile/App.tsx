@@ -135,26 +135,17 @@ function MainTabs() {
         tabBarInactiveTintColor: colors.textMuted,
         // En escritorio la navegación va a la izquierda, como un menú lateral;
         // en móvil sigue siendo la barra inferior de siempre.
+        // 'left' coloca el contenido junto al menú; el menú en sí lo dibuja
+        // DesktopSidebar, así que aquí solo queda el estilo de la barra móvil.
         tabBarPosition: isDesktop ? 'left' : 'bottom',
-        tabBarVariant: isDesktop ? 'material' : 'uikit',
-        tabBarLabelPosition: isDesktop ? 'beside-icon' : 'below-icon',
-        tabBarStyle: isDesktop
-          ? {
-              backgroundColor: colors.surface,
-              borderRightWidth: 1,
-              borderRightColor: colors.border,
-              width: 240,
-              paddingTop: 16,
-              paddingHorizontal: 8,
-            }
-          : {
-              backgroundColor: colors.surface,
-              borderTopWidth: 1,
-              borderTopColor: colors.border,
-              height: 72,
-              paddingBottom: 10,
-              paddingTop: 6,
-            },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopWidth: 1,
+          borderTopColor: colors.border,
+          height: 72,
+          paddingBottom: 10,
+          paddingTop: 6,
+        },
         tabBarIcon: ({ focused, color, size }) => {
           const icons = TAB_ICONS[route.name];
           if (!icons) return null;
