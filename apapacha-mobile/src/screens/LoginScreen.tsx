@@ -271,14 +271,16 @@ const styles = StyleSheet.create({
   scroll: { flexGrow: 1, justifyContent: 'center', paddingHorizontal: 24, paddingVertical: 32, gap: 24 },
 
   // Brand
-  brand: { alignItems: 'center', gap: 6, zIndex: 1 },
+  brand: { width: '100%', maxWidth: 460, alignSelf: 'center', alignItems: 'center', gap: 6, zIndex: 1 },
   logo: { width: 180, height: 140 },
   brandTagline: { fontSize: 14, color: 'rgba(255,255,255,0.75)', fontWeight: '600', letterSpacing: 0.8 },
   brandBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.12)', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)' },
   brandBadgeText: { fontSize: 12, color: 'rgba(255,255,255,0.85)', fontWeight: '600' },
 
   // Card
-  card: { backgroundColor: colors.surface, borderRadius: 24, padding: 24, gap: 14, zIndex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
+  // Un formulario de acceso no debe estirarse: en escritorio quedaba de casi
+  // 1900px. Se limita a un ancho de lectura cómodo y se centra.
+  card: { width: '100%', maxWidth: 460, alignSelf: 'center', backgroundColor: colors.surface, borderRadius: 24, padding: 24, gap: 14, zIndex: 1, shadowColor: '#000', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.2, shadowRadius: 24, elevation: 12 },
 
   toggle: { flexDirection: 'row', backgroundColor: colors.background, borderRadius: 12, padding: 4, gap: 4 },
   toggleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 10, borderRadius: 9 },
