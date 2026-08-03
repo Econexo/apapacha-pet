@@ -217,7 +217,14 @@ function RootNavigator() {
 
   if (!session) {
     return (
-      <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName="Login">
+      <Stack.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          // MainTabs queda fuera: dentro aplica su propio margen.
+          contentStyle: route.name === 'MainTabs' ? undefined : stackGutter,
+        })}
+        initialRouteName="Login"
+      >
         <Stack.Screen name="Login" component={LoginScreen} />
         <Stack.Screen name="MainTabs" component={MainTabs} options={{ animation: 'fade' }} />
         <Stack.Screen name="SpaceDetail" component={SpaceDetailScreen} />
