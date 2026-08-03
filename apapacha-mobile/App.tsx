@@ -45,7 +45,6 @@ import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
 import { linking, guestLinking } from './src/linking';
 import { useIsDesktop } from './src/hooks/useIsDesktop';
-import { useContentGutter } from './src/hooks/useContentGutter';
 import { DesktopSidebar } from './src/components/DesktopSidebar';
 import { TAB_ICONS } from './src/components/tabIcons';
 import { AppTour, TourTargetsProvider, TourTarget, tourYaVisto, marcarTourVisto } from './src/components/AppTour';
@@ -89,7 +88,6 @@ function MainTabs() {
   const isHost = profile?.role === 'host';
 
   const isDesktop = useIsDesktop();
-  const contentGutter = useContentGutter(true);
   const [unreadMsgs, setUnreadMsgs] = useState(0);
   const [tourVisible, setTourVisible] = useState(false);
 
@@ -140,8 +138,6 @@ function MainTabs() {
         // 'left' coloca el contenido junto al menú; el menú en sí lo dibuja
         // DesktopSidebar, así que aquí solo queda el estilo de la barra móvil.
         tabBarPosition: isDesktop ? 'left' : 'bottom',
-        // Limita el contenido a una columna legible en pantallas anchas.
-        sceneStyle: contentGutter,
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopWidth: 1,
@@ -211,9 +207,6 @@ function MainTabs() {
 
 function RootNavigator() {
   const { session, profile, passwordRecovery } = useAuth();
-  // MainTabs se excluye: dentro ya tiene su propio margen, y aquí le comería
-  // el ancho al menú lateral.
-  const stackGutter = useContentGutter(false);
 
   if (!session) {
     return (
@@ -245,11 +238,7 @@ function RootNavigator() {
 
   return (
     <Stack.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        animation: 'slide_from_right',
-        contentStyle: route.name === 'MainTabs' ? undefined : stackGutter,
-      })}
+      screenOptions={{ headerShown: false, animation: 'slide_from_right' }}
       initialRouteName={getInitialRoute()}
     >
       <Stack.Screen name="Onboarding" component={OnboardingScreen} options={{ animation: 'fade' }} />
