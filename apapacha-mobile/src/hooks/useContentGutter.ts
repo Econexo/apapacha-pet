@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useIsDesktop } from './useIsDesktop';
 
@@ -20,8 +21,14 @@ export const SIDEBAR_WIDTH = 260;
 export function useContentGutter(reservaMenu: boolean) {
   const { width } = useWindowDimensions();
   const isDesktop = useIsDesktop();
-  if (!isDesktop) return undefined;
-  const disponible = width - (reservaMenu ? SIDEBAR_WIDTH : 0);
-  const margen = Math.max(0, Math.floor((disponible - MAX_CONTENT_WIDTH) / 2));
-  return margen > 0 ? { paddingHorizontal: margen } : undefined;
+
+  // El estilo se memoriza: devolver un objeto nuevo en cada render cambia la
+  // identidad de `sceneStyle`/`contentStyle` del navegador en cada pasada, y
+  // eso realimenta el render hasta dejar la app colgada en el spinner inicial.
+  return useMemo(() => {
+    if (!isDesktop) return undefined;
+    const disponible = width - (reservaMenu ? SIDEBAR_WIDTH : 0);
+    const margen = Math.max(0, Math.floor((disponible - MAX_CONTENT_WIDTH) / 2));
+    return margen > 0 ? { paddingHorizontal: margen } : undefined;
+  }, [isDesktop, width, reservaMenu]);
 }
