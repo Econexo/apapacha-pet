@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
+import { colors } from '../theme/colors';
 import { useIsDesktop } from './useIsDesktop';
 
 /** Ancho máximo de la columna de contenido en escritorio. */
@@ -29,6 +30,8 @@ export function useContentGutter(reservaMenu: boolean) {
     if (!isDesktop) return undefined;
     const disponible = width - (reservaMenu ? SIDEBAR_WIDTH : 0);
     const margen = Math.max(0, Math.floor((disponible - MAX_CONTENT_WIDTH) / 2));
-    return margen > 0 ? { paddingHorizontal: margen } : undefined;
+    // El color de fondo es necesario: el padding deja a los lados el fondo del
+    // contenedor, que por defecto es blanco y se veía como dos franjas.
+    return margen > 0 ? { paddingHorizontal: margen, backgroundColor: colors.background } : undefined;
   }, [isDesktop, width, reservaMenu]);
 }
