@@ -220,8 +220,10 @@ function RootNavigator() {
       <Stack.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          // MainTabs queda fuera: dentro aplica su propio margen.
-          contentStyle: route.name === 'MainTabs' ? undefined : stackGutter,
+          // MainTabs y Login quedan fuera: el primero aplica su propio margen
+          // dentro, y el segundo necesita que su degradado llegue a los bordes
+          // (su tarjeta ya se limita sola a un ancho de formulario).
+          contentStyle: route.name === 'MainTabs' || route.name === 'Login' ? undefined : stackGutter,
         })}
         initialRouteName="Login"
       >
