@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { Button } from '../components/ui/Button';
@@ -30,6 +31,7 @@ const fmt = (n: number) => `$${n.toLocaleString('es-CL')}`;
 
 export function CheckoutScreen() {
   const navigation = useNavigation<Nav>();
+  const volver = useGoBack('Explore');
   const route = useRoute<Route>();
   const { id, type } = route.params;
   const toast = useToast();
@@ -151,7 +153,7 @@ export function CheckoutScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => volver()}>
           <Text style={styles.backBtnText}>←</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Confirmar Reserva</Text>

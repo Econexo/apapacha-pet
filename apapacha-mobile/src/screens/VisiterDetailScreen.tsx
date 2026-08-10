@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors } from '../theme/colors';
 import { radii, shadows } from '../theme/design';
 import { AppText } from '../components/ui/AppText';
@@ -23,6 +24,7 @@ const PLACEHOLDER = 'https://images.unsplash.com/photo-1537368910025-7028ba0a464
 
 export function VisiterDetailScreen() {
   const navigation = useNavigation<Nav>();
+  const volver = useGoBack('Explore');
   const route = useRoute<Route>();
   const { id } = route.params;
   const insets = useSafeAreaInsets();
@@ -58,7 +60,7 @@ export function VisiterDetailScreen() {
     <View style={[styles.center, { gap: 12 }]}>
       <Ionicons name="paw-outline" size={46} color={colors.textMuted} />
       <AppText variant="body" color={colors.textMuted}>Cuidador no encontrado</AppText>
-      <TouchableOpacity onPress={() => navigation.goBack()}><AppText variant="bodyStrong" color={colors.primary}>← Volver</AppText></TouchableOpacity>
+      <TouchableOpacity onPress={() => volver()}><AppText variant="bodyStrong" color={colors.primary}>← Volver</AppText></TouchableOpacity>
     </View>
   );
 
@@ -73,7 +75,7 @@ export function VisiterDetailScreen() {
   return (
     <View style={styles.container}>
       <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+        <TouchableOpacity onPress={() => volver()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={20} color={colors.primary} />
           <AppText variant="bodyStrong" color={colors.primary}>Atrás</AppText>
         </TouchableOpacity>

@@ -6,6 +6,7 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 import { Ionicons } from '@expo/vector-icons';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radii } from '../theme/design';
@@ -32,6 +33,7 @@ const fmtTime = (iso: string) => {
 
 export function ChatDetailScreen() {
   const navigation = useNavigation<Nav>();
+  const volver = useGoBack('Inbox');
   const route = useRoute<Route>();
   const { user } = useAuth();
   const { id: bookingId } = route.params;
@@ -140,7 +142,7 @@ export function ChatDetailScreen() {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.headerRow}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()} activeOpacity={0.7}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => volver()} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={colors.textMain} />
         </TouchableOpacity>
         <Text style={styles.headerName} numberOfLines={1}>{headerTitle}</Text>

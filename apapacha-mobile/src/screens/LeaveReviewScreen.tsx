@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors } from '../theme/colors';
 import { radii, shadows } from '../theme/design';
 import { fonts } from '../theme/typography';
@@ -48,8 +49,9 @@ export function LeaveReviewScreen({ bookingId, hostId, hostName: rawHostName, va
   const hostName = rawHostName || (isClient ? 'Cliente' : 'Cuidador');
   const TAGS = isClient ? CLIENT_TAGS : QUICK_TAGS;
   const navigation = useNavigation();
+  const volver = useGoBack('Bookings');
   const toast = useToast();
-  const close = () => onClose ? onClose() : navigation.goBack();
+  const close = () => onClose ? onClose() : volver();
 
   const [rating, setRating]           = useState(0);
   const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());

@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors } from '../theme/colors';
 import { useToast } from '../components/Toast';
 import { ChecklistRow } from '../components/ChecklistRow';
@@ -21,6 +22,7 @@ const CHECKLIST = [
 
 export function CheckInScreen() {
   const navigation = useNavigation<Nav>();
+  const volver = useGoBack('Bookings');
   const route = useRoute<Route>();
   const { bookingId } = route.params;
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
@@ -48,7 +50,7 @@ export function CheckInScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => volver()}>
           <Text style={styles.backBtnText}>← Cancelar</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Protocolo de Ingreso</Text>

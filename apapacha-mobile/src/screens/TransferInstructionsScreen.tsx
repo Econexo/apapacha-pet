@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { pickImage, type MediaSource } from '../lib/mediaPicker';
 import { MediaSourceSheet } from '../components/MediaSourceSheet';
 import * as Clipboard from 'expo-clipboard';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radii, shadows } from '../theme/design';
@@ -48,6 +49,7 @@ function CopyRow({ label, value }: { label: string; value: string }) {
 
 export function TransferInstructionsScreen() {
   const navigation = useNavigation<Nav>();
+  const volver = useGoBack('Bookings');
   const route = useRoute<Route>();
   const { bookingId, amount } = route.params;
 
@@ -108,7 +110,7 @@ export function TransferInstructionsScreen() {
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => volver()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={colors.textMain} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Pago por transferencia</Text>

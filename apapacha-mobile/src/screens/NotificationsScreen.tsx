@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import { Ionicons } from '@expo/vector-icons';
+import { useGoBack } from '../hooks/useGoBack';
 import { colors } from '../theme/colors';
 import { fonts } from '../theme/typography';
 import { radii, shadows } from '../theme/design';
@@ -116,6 +117,7 @@ function NotifCard({ item, index, onTap }: { item: Notification; index: number; 
 
 export function NotificationsScreen() {
   const navigation = useNavigation() as any;
+  const volver = useGoBack('Home');
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -167,7 +169,7 @@ export function NotificationsScreen() {
     <SafeAreaView style={styles.safeArea}>
       {/* Header */}
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn} activeOpacity={0.7}>
+        <TouchableOpacity onPress={() => volver()} style={styles.backBtn} activeOpacity={0.7}>
           <Ionicons name="arrow-back" size={22} color={colors.primary} />
         </TouchableOpacity>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
