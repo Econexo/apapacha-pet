@@ -88,7 +88,30 @@ if (!html.includes('serviceWorker.register')) {
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-          navigator.serviceWorker.register('/sw.js').catch(function (e) { console.warn('SW register failed', e); });
+          // ¿Ya había una versión controlando la página? En la primera visita no,
+          // y ahí el cambio de control es normal: recargar sería gratuito.
+          var teniaControlador = !!navigator.serviceWorker.controller;
+          var recargando = false;
+
+          navigator.serviceWorker.register('/sw.js').then(function (reg) {
+            // Buscar actualizaciones al volver a primer plano. Una PWA instalada
+            // no se recarga: se suspende y se reanuda, así que sin esto puede
+            // quedarse días ejecutando una versión vieja aunque ya esté publicada
+            // la nueva (pasó con el arreglo del botón de retroceso).
+            document.addEventListener('visibilitychange', function () {
+              if (!document.hidden) { try { reg.update(); } catch (e) {} }
+            });
+            setInterval(function () { try { reg.update(); } catch (e) {} }, 60 * 60 * 1000);
+          }).catch(function (e) { console.warn('SW register failed', e); });
+
+          // El service worker nuevo toma el control (usa skipWaiting +
+          // clients.claim), pero la página sigue con el JavaScript viejo hasta
+          // que se recarga. Esta es esa recarga, una sola vez.
+          navigator.serviceWorker.addEventListener('controllerchange', function () {
+            if (!teniaControlador || recargando) return;
+            recargando = true;
+            window.location.reload();
+          });
         });
       }
     </script>
