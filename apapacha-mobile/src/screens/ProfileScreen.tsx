@@ -26,6 +26,7 @@ import { ScreenBackground } from '../components/ui/ScreenBackground';
 import { PushPermissionBanner } from '../components/PushPermissionBanner';
 import { AppTour } from '../components/AppTour';
 import { InstallAppSheet } from '../components/InstallAppSheet';
+import { NotificationsSheet } from '../components/NotificationsSheet';
 import { fonts } from '../theme/typography';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
@@ -53,6 +54,7 @@ export function ProfileScreen() {
   const [showTrust, setShowTrust] = useState(false);
   const [showTour, setShowTour] = useState(false);
   const [showInstall, setShowInstall] = useState(false);
+  const [showNotifs, setShowNotifs] = useState(false);
   const [showHostOnboarding, setShowHostOnboarding] = useState(false);
 
   const loadProfile = useCallback(async () => {
@@ -362,6 +364,10 @@ export function ProfileScreen() {
             <Text style={styles.menuItemText}>Métodos de Pago</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
           </TouchableOpacity>
+          <TouchableOpacity style={styles.menuItem} onPress={() => setShowNotifs(true)}>
+            <Text style={styles.menuItemText}>Notificaciones</Text>
+            <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={() => setShowInstall(true)}>
             <Text style={styles.menuItemText}>Instalar la app</Text>
             <Ionicons name="chevron-forward" size={16} color={colors.textMuted} />
@@ -392,6 +398,7 @@ export function ProfileScreen() {
       {/* La guía se puede volver a ver desde Cuenta. */}
       <AppTour visible={showTour} onClose={() => setShowTour(false)} />
       <InstallAppSheet visible={showInstall} onClose={() => setShowInstall(false)} />
+      <NotificationsSheet visible={showNotifs} onClose={() => setShowNotifs(false)} />
 
       <OverlayModal visible={showTrust} onClose={() => setShowTrust(false)}>
         <TrustAndSafetyScreen onClose={() => setShowTrust(false)} />
