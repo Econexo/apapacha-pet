@@ -1,6 +1,6 @@
 // Service worker mínimo para instalación PWA (network-first con fallback a caché
 // del app-shell). Se registra desde index.html tras el post-build.
-const CACHE = 'apapacha-v3';
+const CACHE = 'apapacha-v4';
 // Ojo: los iconos NO se precachean. iOS pide el apple-touch-icon justo al
 // "Agregar a inicio", y una respuesta vieja del caché puede hacer que descarte
 // el icono y use un fallback propio (captura de la página, fondo oscuro).
