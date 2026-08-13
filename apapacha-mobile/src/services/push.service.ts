@@ -240,3 +240,51 @@ export async function unsubscribeFromPush(): Promise<void> {
     console.error('[push] unsubscribeFromPush falló de forma inesperada:', e);
   }
 }
+
+export interface EstadoNotificaciones {
+  soportado: boolean;
+  ios: boolean;
+  instalada: boolean;
+  permiso: NotificationPermission | 'unsupported';
+  /** El navegador tiene una suscripción viva. */
+  suscritoEnNavegador: boolean;
+  /** Esa suscripción está registrada en la base de datos para este usuario. */
+  registradoEnServidor: boolean;
+}
+
+/**
+ * Radiografía del estado de notificaciones de ESTE dispositivo.
+ *
+ * Existe porque depurar esto a distancia era imposible: si el permiso queda
+ * concedido pero el registro falla, el banner se oculta (solo aparece con el
+ * permiso sin decidir) y el usuario no puede ni reintentar ni decir qué pasó.
+ */
+export async function estadoNotificaciones(): Promise<EstadoNotificaciones> {
+  const base: EstadoNotificaciones = {
+    soportado: isPushSupported(),
+    ios: isIOS(),
+    instalada: isStandalonePWA(),
+    permiso: getPushPermission(),
+    suscritoEnNavegador: false,
+    registradoEnServidor: false,
+  };
+  try {
+    if (!base.soportado) return base;
+    const registration = await navigator.serviceWorker.ready;
+    const subscription = await registration.pushManager.getSubscription();
+    base.suscritoEnNavegador = !!subscription;
+    if (!subscription) return base;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return base;
+    const { count } = await supabase
+      .from('push_subscriptions')
+      .select('id', { count: 'exact', head: true })
+      .eq('endpoint', subscription.endpoint)
+      .eq('user_id', user.id);
+    base.registradoEnServidor = !!count;
+  } catch (e) {
+    console.error('[push] estadoNotificaciones:', e);
+  }
+  return base;
+}
