@@ -8,7 +8,7 @@ import { colors } from '../theme/colors';
 import { supabase } from '../../supabase';
 import { useNavigation } from '@react-navigation/native';
 import { getMyNotifications, markAsRead, markAllAsRead } from '../services/notifications.service';
-import { notificationTarget } from '../lib/notificationRoute';
+import { resolveNotificationTarget } from '../lib/notificationRoute';
 import type { Notification } from '../types/database';
 
 type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
@@ -76,7 +76,7 @@ export function NotificationsModal({ visible, onClose, onUnreadChange }: Props) 
       setNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
       onUnreadChange?.(notifications.filter(x => !x.read && x.id !== n.id).length);
     }
-    const target = notificationTarget(n);
+    const target = await resolveNotificationTarget(n);
     if (target) {
       onClose();
       navigation.navigate(target.screen, target.params);

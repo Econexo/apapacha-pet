@@ -24,6 +24,12 @@ type IoniconName = React.ComponentProps<typeof Ionicons>['name'];
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
 
+// La lista mezcla cabeceras y tarjetas para que cada grupo lleve su propio
+// título sin depender de la posición del elemento en el array.
+type Fila =
+  | { tipo: 'seccion'; key: string; titulo: string; sub?: string }
+  | { tipo: 'reserva'; key: string; booking: Booking };
+
 const PAYMENT_STATUS_CONFIG: Record<string, { text: string; color: string; icon: IoniconName }> = {
   pending:            { text: 'Pago pendiente',     color: '#F59E0B', icon: 'time-outline'              },
   receipt_submitted:  { text: 'Comprobante enviado', color: '#6366F1', icon: 'document-attach-outline'  },
@@ -33,7 +39,7 @@ const PAYMENT_STATUS_CONFIG: Record<string, { text: string; color: string; icon:
 
 const STATUS_CONFIG: Record<string, { icon: IoniconName; color: string; label: string }> = {
   active:    { icon: 'radio-button-on',        color: '#10B981', label: 'En curso'   },
-  pending:   { icon: 'time-outline',           color: colors.primary, label: 'Pendiente' },
+  pending:   { icon: 'paper-plane-outline',    color: colors.primary, label: 'Solicitud' },
   completed: { icon: 'checkmark-circle-outline', color: colors.accent, label: 'Completada' },
   cancelled: { icon: 'close-circle-outline',   color: colors.danger,  label: 'Cancelada'  },
 };
@@ -175,9 +181,35 @@ export function BookingsScreen() {
     }
   }
 
-  const active  = bookings.filter(b => b.status === 'active' || b.status === 'pending');
-  const past    = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
-  const fmt     = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+  // Una solicitud enviada todavía NO es una reserva: falta que el cuidador la
+  // acepte y que el pago se confirme. Mostrarlas juntas bajo "en curso y
+  // próximas" hacía parecer confirmado lo que aún no lo estaba.
+  const solicitudes = bookings.filter(b => b.status === 'pending');
+  const confirmadas = bookings.filter(b => b.status === 'active');
+  const past        = bookings.filter(b => b.status === 'completed' || b.status === 'cancelled');
+  const fmt         = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'numeric', month: 'short' });
+
+  const filas: Fila[] = [];
+  if (solicitudes.length > 0) {
+    filas.push({
+      tipo: 'seccion', key: 'sec-solicitudes',
+      titulo: `Solicitudes enviadas (${solicitudes.length})`,
+      sub: 'Esperan la respuesta del cuidador y la confirmación del pago.',
+    });
+    for (const b of solicitudes) filas.push({ tipo: 'reserva', key: b.id, booking: b });
+  }
+  if (confirmadas.length > 0) {
+    filas.push({
+      tipo: 'seccion', key: 'sec-confirmadas',
+      titulo: `Reservas confirmadas (${confirmadas.length})`,
+      sub: 'Aceptadas y pagadas. El cuidador te avisará al iniciar el servicio.',
+    });
+    for (const b of confirmadas) filas.push({ tipo: 'reserva', key: b.id, booking: b });
+  }
+  if (past.length > 0) {
+    filas.push({ tipo: 'seccion', key: 'sec-historial', titulo: 'Historial' });
+    for (const b of past) filas.push({ tipo: 'reserva', key: b.id, booking: b });
+  }
 
   if (!session) {
     return <GuestGate title="Tus reservas" body="Ingresa a tu cuenta para ver el estado de tus reservas y pagos." icon="calendar-outline" />;
@@ -190,24 +222,29 @@ export function BookingsScreen() {
         <Text style={styles.headerTitle}>Reservas</Text>
       </View>
       <FlatList
-        data={[...active, ...past]}
-        keyExtractor={item => item.id}
+        data={filas}
+        keyExtractor={fila => fila.key}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[styles.scrollContainer, bookings.length === 0 && styles.emptyContainer]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={colors.primary} />}
         ListHeaderComponent={
-          <>
-            {active.length > 0 && <Text style={styles.sectionTitle}>En curso y próximas</Text>}
-            {active.length === 0 && past.length > 0 && (
-              <View style={styles.emptyActiveCard}>
-                <Ionicons name="calendar-outline" size={20} color={colors.textMuted} style={{ marginRight: 8 }} />
-                <Text style={styles.emptyActiveText}>Sin reservas pendientes</Text>
-              </View>
-            )}
-          </>
+          solicitudes.length === 0 && confirmadas.length === 0 && past.length > 0 ? (
+            <View style={styles.emptyActiveCard}>
+              <Ionicons name="calendar-outline" size={20} color={colors.textMuted} style={{ marginRight: 8 }} />
+              <Text style={styles.emptyActiveText}>No tienes solicitudes ni reservas activas</Text>
+            </View>
+          ) : null
         }
-        renderItem={({ item, index }) => {
-          const isFirstPast = index === active.length;
+        renderItem={({ item: fila }) => {
+          if (fila.tipo === 'seccion') {
+            return (
+              <View style={styles.seccion}>
+                <Text style={styles.sectionTitle}>{fila.titulo}</Text>
+                {!!fila.sub && <Text style={styles.sectionHint}>{fila.sub}</Text>}
+              </View>
+            );
+          }
+          const item = fila.booking;
           const host = hostMap[item.id];
           const hasReview = reviewedIds.has(item.id);
           const isActive = item.status === 'active' || item.status === 'pending';
@@ -215,166 +252,161 @@ export function BookingsScreen() {
           const payStatus = PAYMENT_STATUS_CONFIG[item.payment_status ?? 'pending'];
 
           return (
-            <>
-              {isFirstPast && past.length > 0 && (
-                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Historial</Text>
-              )}
-              <View style={[styles.card, isActive ? styles.cardActive : styles.cardPast, item.status === 'cancelled' && styles.cardCancelled]}>
-                {/* Header row */}
-                <View style={styles.cardHeader}>
-                  <View style={[styles.statusBadge, { backgroundColor: `${statusCfg.color}15`, flexDirection: 'row', alignItems: 'center', gap: 5 }]}>
-                    <Ionicons name={statusCfg.icon} size={12} color={statusCfg.color} />
-                    <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
-                  </View>
-                  <Text style={styles.dates}>
-                    {item.service_type === 'visiter'
-                      ? formatVisitSchedule(item.visit_dates, item.time_block, item.start_date)
-                      : `${fmt(item.start_date)} — ${fmt(item.end_date)}`}
+          <View style={[styles.card, isActive ? styles.cardActive : styles.cardPast, item.status === 'cancelled' && styles.cardCancelled]}>
+              {/* Header row */}
+              <View style={styles.cardHeader}>
+                <View style={[styles.statusBadge, { backgroundColor: `${statusCfg.color}15`, flexDirection: 'row', alignItems: 'center', gap: 5 }]}>
+                  <Ionicons name={statusCfg.icon} size={12} color={statusCfg.color} />
+                  <Text style={[styles.statusText, { color: statusCfg.color }]}>{statusCfg.label}</Text>
+                </View>
+                <Text style={styles.dates}>
+                  {item.service_type === 'visiter'
+                    ? formatVisitSchedule(item.visit_dates, item.time_block, item.start_date)
+                    : `${fmt(item.start_date)} — ${fmt(item.end_date)}`}
+                </Text>
+              </View>
+
+              {/* Service type + name */}
+              <View style={styles.serviceRow}>
+                <Ionicons name={item.service_type === 'space' ? 'home-outline' : 'car-outline'} size={15} color={colors.textMuted} />
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.serviceTitle} numberOfLines={1}>
+                    {host?.serviceName ?? (item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria')}
+                  </Text>
+                  <Text style={styles.serviceSubLabel}>
+                    {item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria'}
+                    {host?.name ? ` · ${host.name}` : ''}
                   </Text>
                 </View>
+              </View>
 
-                {/* Service type + name */}
-                <View style={styles.serviceRow}>
-                  <Ionicons name={item.service_type === 'space' ? 'home-outline' : 'car-outline'} size={15} color={colors.textMuted} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.serviceTitle} numberOfLines={1}>
-                      {host?.serviceName ?? (item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria')}
-                    </Text>
-                    <Text style={styles.serviceSubLabel}>
-                      {item.service_type === 'space' ? 'Alojamiento' : 'Visita Domiciliaria'}
-                      {host?.name ? ` · ${host.name}` : ''}
-                    </Text>
-                  </View>
+              {/* Price */}
+              <Text style={styles.priceLabel}>${item.total_price.toLocaleString('es-CL')} CLP</Text>
+
+              {/* Reembolso en reservas canceladas */}
+              {item.status === 'cancelled' && item.refund_amount != null && (
+                <View style={styles.refundRow}>
+                  <Ionicons name="cash-outline" size={14} color={item.refund_amount > 0 ? colors.accent : colors.textMuted} />
+                  <Text style={styles.refundText}>
+                    {item.refund_amount > 0
+                      ? `Reembolso: ${fmtCLP(item.refund_amount)} (${item.refund_percent}%)`
+                      : 'Sin reembolso de la tarifa del cuidador'}
+                    {item.cancelled_by === 'host' ? ' · cancelada por el cuidador' : ''}
+                  </Text>
                 </View>
+              )}
 
-                {/* Price */}
-                <Text style={styles.priceLabel}>${item.total_price.toLocaleString('es-CL')} CLP</Text>
+              {/* Estado del servicio — tocar para contactar al cuidador por chat */}
+              {item.status === 'active' && (
+                <TouchableOpacity
+                  style={[styles.phasePill, item.service_phase === 'in_progress' ? styles.phasePillActive : styles.phasePillWaiting]}
+                  onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
+                  activeOpacity={0.85}
+                >
+                  <View style={[styles.phaseDot, item.service_phase === 'in_progress' ? styles.phaseDotActive : styles.phaseDotWaiting]} />
+                  <Text style={[styles.phaseText, item.service_phase === 'in_progress' ? styles.phaseTextActive : styles.phaseTextWaiting]}>
+                    {item.service_phase === 'in_progress' ? 'Cuidado en curso' : 'Reserva activa · por iniciar'}
+                  </Text>
+                  <View style={{ flex: 1 }} />
+                  <Ionicons name="chatbubble-ellipses-outline" size={15} color={item.service_phase === 'in_progress' ? colors.successText : colors.primary} />
+                  <Text style={[styles.phaseContact, { color: item.service_phase === 'in_progress' ? colors.successText : colors.primary }]}>Contactar</Text>
+                </TouchableOpacity>
+              )}
 
-                {/* Reembolso en reservas canceladas */}
-                {item.status === 'cancelled' && item.refund_amount != null && (
-                  <View style={styles.refundRow}>
-                    <Ionicons name="cash-outline" size={14} color={item.refund_amount > 0 ? colors.accent : colors.textMuted} />
-                    <Text style={styles.refundText}>
-                      {item.refund_amount > 0
-                        ? `Reembolso: ${fmtCLP(item.refund_amount)} (${item.refund_percent}%)`
-                        : 'Sin reembolso de la tarifa del cuidador'}
-                      {item.cancelled_by === 'host' ? ' · cancelada por el cuidador' : ''}
-                    </Text>
-                  </View>
-                )}
-
-                {/* Estado del servicio — tocar para contactar al cuidador por chat */}
-                {item.status === 'active' && (
-                  <TouchableOpacity
-                    style={[styles.phasePill, item.service_phase === 'in_progress' ? styles.phasePillActive : styles.phasePillWaiting]}
-                    onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
-                    activeOpacity={0.85}
-                  >
-                    <View style={[styles.phaseDot, item.service_phase === 'in_progress' ? styles.phaseDotActive : styles.phaseDotWaiting]} />
-                    <Text style={[styles.phaseText, item.service_phase === 'in_progress' ? styles.phaseTextActive : styles.phaseTextWaiting]}>
-                      {item.service_phase === 'in_progress' ? 'Cuidado en curso' : 'Reserva activa · por iniciar'}
-                    </Text>
-                    <View style={{ flex: 1 }} />
-                    <Ionicons name="chatbubble-ellipses-outline" size={15} color={item.service_phase === 'in_progress' ? colors.successText : colors.primary} />
-                    <Text style={[styles.phaseContact, { color: item.service_phase === 'in_progress' ? colors.successText : colors.primary }]}>Contactar</Text>
-                  </TouchableOpacity>
-                )}
-
-                {/* CTA contextual: aceptación del cuidador → pago → confirmación */}
-                {isActive && (() => {
-                  if (item.host_response === 'pending') {
-                    return (
-                      <View style={[styles.infoRow, { backgroundColor: `${colors.warning}12` }]}>
-                        <Ionicons name="hourglass-outline" size={14} color={colors.warning} />
-                        <Text style={[styles.infoRowText, { color: colors.warningText }]}>Esperando que el cuidador acepte tu solicitud</Text>
-                      </View>
-                    );
-                  }
-                  const paid = item.payment_status === 'paid' || item.status === 'active';
-                  const submitted = item.payment_status === 'receipt_submitted';
-                  if (!paid && !submitted) {
-                    return (
-                      <TouchableOpacity style={styles.payCta} activeOpacity={0.9}
-                        onPress={() => navigation.navigate('TransferInstructions', { bookingId: item.id, amount: item.total_price })}>
-                        <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
-                        <Text style={styles.payCtaText}>Subir comprobante de pago</Text>
-                      </TouchableOpacity>
-                    );
-                  }
-                  if (submitted) {
-                    return (
-                      <View style={[styles.infoRow, { backgroundColor: `${colors.info}12` }]}>
-                        <Ionicons name="time-outline" size={14} color={colors.info} />
-                        <Text style={[styles.infoRowText, { color: colors.info }]}>Comprobante en revisión por el equipo</Text>
-                      </View>
-                    );
-                  }
+              {/* CTA contextual: aceptación del cuidador → pago → confirmación */}
+              {isActive && (() => {
+                if (item.host_response === 'pending') {
                   return (
-                    <View style={[styles.infoRow, { backgroundColor: `${colors.success}12` }]}>
-                      <Ionicons name="checkmark-circle-outline" size={14} color={colors.success} />
-                      <Text style={[styles.infoRowText, { color: colors.successText }]}>Pago confirmado</Text>
+                    <View style={[styles.infoRow, { backgroundColor: `${colors.warning}12` }]}>
+                      <Ionicons name="hourglass-outline" size={14} color={colors.warning} />
+                      <Text style={[styles.infoRowText, { color: colors.warningText }]}>Esperando que el cuidador acepte tu solicitud</Text>
                     </View>
                   );
-                })()}
+                }
+                const paid = item.payment_status === 'paid' || item.status === 'active';
+                const submitted = item.payment_status === 'receipt_submitted';
+                if (!paid && !submitted) {
+                  return (
+                    <TouchableOpacity style={styles.payCta} activeOpacity={0.9}
+                      onPress={() => navigation.navigate('TransferInstructions', { bookingId: item.id, amount: item.total_price })}>
+                      <Ionicons name="cloud-upload-outline" size={16} color="#fff" />
+                      <Text style={styles.payCtaText}>Subir comprobante de pago</Text>
+                    </TouchableOpacity>
+                  );
+                }
+                if (submitted) {
+                  return (
+                    <View style={[styles.infoRow, { backgroundColor: `${colors.info}12` }]}>
+                      <Ionicons name="time-outline" size={14} color={colors.info} />
+                      <Text style={[styles.infoRowText, { color: colors.info }]}>Comprobante en revisión por el equipo</Text>
+                    </View>
+                  );
+                }
+                return (
+                  <View style={[styles.infoRow, { backgroundColor: `${colors.success}12` }]}>
+                    <Ionicons name="checkmark-circle-outline" size={14} color={colors.success} />
+                    <Text style={[styles.infoRowText, { color: colors.successText }]}>Pago confirmado</Text>
+                  </View>
+                );
+              })()}
 
-                {/* Actions */}
-                <View style={styles.actionsRow}>
-                  {isActive && (
-                    <>
+              {/* Actions */}
+              <View style={styles.actionsRow}>
+                {isActive && (
+                  <>
+                    <TouchableOpacity
+                      style={styles.actionBtn}
+                      onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
+                      activeOpacity={0.8}
+                    >
+                      <Ionicons name="chatbubble-outline" size={14} color={colors.textMain} />
+                      <Text style={styles.actionBtnText}>Chat</Text>
+                    </TouchableOpacity>
+                    {(item.status === 'pending' || item.status === 'active') && (
                       <TouchableOpacity
-                        style={styles.actionBtn}
-                        onPress={() => navigation.navigate('ChatDetail', { id: item.id })}
+                        style={[styles.actionBtn, styles.actionBtnDanger]}
+                        onPress={() => handleCancel(item)}
                         activeOpacity={0.8}
                       >
-                        <Ionicons name="chatbubble-outline" size={14} color={colors.textMain} />
-                        <Text style={styles.actionBtnText}>Chat</Text>
+                        <Ionicons name="close-outline" size={14} color={colors.danger} />
+                        <Text style={[styles.actionBtnText, { color: colors.danger }]}>Cancelar</Text>
                       </TouchableOpacity>
-                      {(item.status === 'pending' || item.status === 'active') && (
-                        <TouchableOpacity
-                          style={[styles.actionBtn, styles.actionBtnDanger]}
-                          onPress={() => handleCancel(item)}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="close-outline" size={14} color={colors.danger} />
-                          <Text style={[styles.actionBtnText, { color: colors.danger }]}>Cancelar</Text>
-                        </TouchableOpacity>
-                      )}
-                    </>
-                  )}
+                    )}
+                  </>
+                )}
 
-                  {item.status === 'completed' && (
-                    <>
-                      {!hasReview ? (
-                        <TouchableOpacity
-                          style={styles.actionBtn}
-                          onPress={() => host && setReviewModal({ bookingId: item.id, hostId: host.id, hostName: host.name })}
-                          disabled={!host}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="star-outline" size={14} color={colors.textMain} />
-                          <Text style={styles.actionBtnText}>Reseñar</Text>
-                        </TouchableOpacity>
-                      ) : (
-                        <View style={styles.reviewDone}>
-                          <Ionicons name="star" size={14} color={colors.accent} />
-                          <Text style={styles.reviewDoneText}>Reseña enviada</Text>
-                        </View>
-                      )}
-                      {host && (
-                        <TouchableOpacity
-                          style={[styles.actionBtn, styles.actionBtnRepeat]}
-                          onPress={() => navigation.navigate('Checkout', { id: host.serviceId, type: host.serviceType as 'space' | 'visiter' })}
-                          activeOpacity={0.8}
-                        >
-                          <Ionicons name="refresh-outline" size={14} color={colors.primaryDark} />
-                          <Text style={[styles.actionBtnText, { color: colors.primaryDark }]}>Repetir</Text>
-                        </TouchableOpacity>
-                      )}
-                    </>
-                  )}
-                </View>
+                {item.status === 'completed' && (
+                  <>
+                    {!hasReview ? (
+                      <TouchableOpacity
+                        style={styles.actionBtn}
+                        onPress={() => host && setReviewModal({ bookingId: item.id, hostId: host.id, hostName: host.name })}
+                        disabled={!host}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="star-outline" size={14} color={colors.textMain} />
+                        <Text style={styles.actionBtnText}>Reseñar</Text>
+                      </TouchableOpacity>
+                    ) : (
+                      <View style={styles.reviewDone}>
+                        <Ionicons name="star" size={14} color={colors.accent} />
+                        <Text style={styles.reviewDoneText}>Reseña enviada</Text>
+                      </View>
+                    )}
+                    {host && (
+                      <TouchableOpacity
+                        style={[styles.actionBtn, styles.actionBtnRepeat]}
+                        onPress={() => navigation.navigate('Checkout', { id: host.serviceId, type: host.serviceType as 'space' | 'visiter' })}
+                        activeOpacity={0.8}
+                      >
+                        <Ionicons name="refresh-outline" size={14} color={colors.primaryDark} />
+                        <Text style={[styles.actionBtnText, { color: colors.primaryDark }]}>Repetir</Text>
+                      </TouchableOpacity>
+                    )}
+                  </>
+                )}
               </View>
-            </>
+          </View>
           );
         }}
         ListEmptyComponent={
@@ -416,7 +448,9 @@ const styles = StyleSheet.create({
   headerTitle: { fontFamily: fonts.display, fontSize: 28, color: colors.textMain, letterSpacing: -0.5 },
   scrollContainer: { padding: 20, paddingBottom: 40 },
   emptyContainer: { flexGrow: 1 },
-  sectionTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.textMain, letterSpacing: -0.2, marginBottom: 12 },
+  seccion: { marginBottom: 12, marginTop: 10 },
+  sectionTitle: { fontFamily: fonts.display, fontSize: 17, color: colors.textMain, letterSpacing: -0.2 },
+  sectionHint: { fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginTop: 3 },
   card: { borderRadius: radii.lg, padding: 18, marginBottom: 14, ...shadows.md },
   cardActive: { backgroundColor: colors.surface },
   cardPast: { backgroundColor: colors.surface },

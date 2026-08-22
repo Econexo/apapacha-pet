@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors } from '../theme/colors';
 import { radii, shadows, label } from '../theme/design';
@@ -32,7 +32,7 @@ import { useToast } from '../components/Toast';
 import { useCountUp } from '../hooks/useCountUp';
 
 type Nav = NativeStackNavigationProp<RootStackParamList>;
-type Tab = 'servicios' | 'resumen' | 'solicitudes' | 'historial' | 'ganancias' | 'resenas';
+type Tab = 'servicios' | 'resumen' | 'solicitudes' | 'reservas' | 'historial' | 'ganancias' | 'resenas';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CHART_HEIGHT = 140;
@@ -42,10 +42,11 @@ const fmtDate = (d: string) => new Date(d).toLocaleDateString('es-CL', { day: 'n
 
 export function HostDashboardScreen() {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<any>();
   const { session } = useAuth();
   const hostId = session?.user.id ?? '';
 
-  const [tab, setTab]           = useState<Tab>('servicios');
+  const [tab, setTab]           = useState<Tab>(route.params?.tab ?? 'servicios');
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [stats, setStats]       = useState<HostStats | null>(null);
   const [reviews, setReviews]   = useState<Review[]>([]);
@@ -94,6 +95,13 @@ export function HostDashboardScreen() {
 
   useEffect(() => { reload(); }, [hostId]);
 
+  // Una notificación puede pedir una pestaña concreta ("tienes una solicitud
+  // nueva" abre Solicitudes, no el panel genérico).
+  useEffect(() => {
+    const pedida = route.params?.tab as Tab | undefined;
+    if (pedida) setTab(pedida);
+  }, [route.params?.tab]);
+
   // En vivo: nuevas solicitudes y cambios de estado de reservas de mis servicios.
   // RLS filtra: solo llegan eventos de reservas visibles para este cuidador.
   useEffect(() => {
@@ -113,12 +121,18 @@ export function HostDashboardScreen() {
   }, [hostId]));
 
   const completedBookings = bookings.filter(b => b.status === 'completed');
-  const activeBookings    = bookings.filter(b => b.status === 'active' || b.status === 'pending');
+  // Una solicitud NO es una reserva: mientras el estado sea 'pending' falta que
+  // yo la acepte y que el pago se confirme. Tenerlas en una sola lista hacía que
+  // una petición recién llegada se viera igual que un servicio ya confirmado.
+  const requestBookings   = bookings.filter(b => b.status === 'pending');
+  const confirmedBookings = bookings.filter(b => b.status === 'active');
+  const porResponder      = requestBookings.filter(b => (b.host_response ?? 'pending') === 'pending').length;
 
   const TABS: { key: Tab; label: string; badge?: number }[] = [
     { key: 'servicios',   label: 'Servicios' },
     { key: 'resumen',     label: 'Resumen' },
-    { key: 'solicitudes', label: 'Solicitudes', badge: activeBookings.length },
+    { key: 'solicitudes', label: 'Solicitudes', badge: porResponder },
+    { key: 'reservas',    label: 'Reservas',    badge: confirmedBookings.length },
     { key: 'historial',   label: 'Historial' },
     { key: 'ganancias',   label: 'Ganancias' },
     { key: 'resenas',     label: 'Reseñas' },
@@ -162,8 +176,9 @@ export function HostDashboardScreen() {
       ) : (
         <ScrollView contentContainerStyle={styles.scrollContainer} showsVerticalScrollIndicator={false}>
           {tab === 'servicios'   && <TabServicios mySpace={mySpace ?? null} myVisiters={myVisiters} navigation={navigation} onReload={reload} onManageService={setManageModal} />}
-          {tab === 'resumen'     && <TabResumen   stats={stats} activeCount={activeBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} onManageService={setManageModal} />}
-          {tab === 'solicitudes' && <TabSolicitudes bookings={activeBookings} navigation={navigation} onReload={reload} onReport={setReportBookingId} />}
+          {tab === 'resumen'     && <TabResumen   stats={stats} activeCount={confirmedBookings.length} completedCount={completedBookings.length} mySpace={mySpace ?? null} myVisiter={myVisiters[0] ?? null} navigation={navigation} onManageService={setManageModal} />}
+          {tab === 'solicitudes' && <TabSolicitudes modo="solicitudes" bookings={requestBookings} navigation={navigation} onReload={reload} onReport={setReportBookingId} />}
+          {tab === 'reservas'    && <TabSolicitudes modo="reservas"    bookings={confirmedBookings} navigation={navigation} onReload={reload} onReport={setReportBookingId} />}
           {tab === 'historial'   && <TabHistorial completedBookings={completedBookings} clientMap={clientMap} reviewedIds={reviewedIds} navigation={navigation} />}
           {tab === 'ganancias'   && <TabGanancias earnings={earnings} />}
           {tab === 'resenas'     && <TabResenas   reviews={reviews} />}
@@ -613,29 +628,56 @@ function FlowStepper({ booking, onStart, onComplete }: {
   );
 }
 
-/* ─── TAB: SOLICITUDES (activas / pendientes) ──────────────────────────────── */
+/* ─── TAB: SOLICITUDES / RESERVAS ──────────────────────────────────────────────
+   Misma tarjeta, dos listas distintas. "Solicitudes" son peticiones que aún no
+   son reservas (falta aceptarlas o falta el pago); "Reservas" son las
+   confirmadas, que son las que hay que iniciar y finalizar.                   */
 
-function TabSolicitudes({ bookings, navigation, onReload, onReport }: {
+type ModoLista = 'solicitudes' | 'reservas';
+
+const VACIO: Record<ModoLista, { titulo: string; texto: string; emoji: string }> = {
+  solicitudes: {
+    emoji: '📭',
+    titulo: 'Sin solicitudes pendientes',
+    texto: 'Cuando alguien pida uno de tus servicios aparecerá aquí para que la aceptes o la rechaces.',
+  },
+  reservas: {
+    emoji: '📅',
+    titulo: 'Sin reservas confirmadas',
+    texto: 'Aquí verás las reservas ya aceptadas y pagadas, listas para iniciar el servicio.',
+  },
+};
+
+function TabSolicitudes({ modo, bookings, navigation, onReload, onReport }: {
+  modo: ModoLista;
   bookings: Booking[];
   navigation: Nav;
   onReload: () => void;
   onReport: (bookingId: string) => void;
 }) {
   if (bookings.length === 0) {
+    const vacio = VACIO[modo];
     return (
       <View style={styles.emptyState}>
         <View style={styles.emptyIconBox}>
-          <Text style={styles.emptyEmoji}>📭</Text>
+          <Text style={styles.emptyEmoji}>{vacio.emoji}</Text>
         </View>
-        <Text style={styles.emptyTitle}>Sin solicitudes activas</Text>
-        <Text style={styles.emptyText}>Cuando un dueño reserve tu servicio aparecerá aquí para que puedas gestionarlo.</Text>
+        <Text style={styles.emptyTitle}>{vacio.titulo}</Text>
+        <Text style={styles.emptyText}>{vacio.texto}</Text>
       </View>
     );
   }
 
   return (
     <>
-      <Text style={styles.sectionTitle}>Solicitudes activas ({bookings.length})</Text>
+      <Text style={styles.sectionTitle}>
+        {modo === 'solicitudes' ? `Solicitudes pendientes (${bookings.length})` : `Reservas confirmadas (${bookings.length})`}
+      </Text>
+      <Text style={styles.sectionHint}>
+        {modo === 'solicitudes'
+          ? 'Todavía no son reservas: se confirman cuando las aceptas y el pago queda validado.'
+          : 'Aceptadas y pagadas. Inicia el servicio el primer día y finalízalo al terminar.'}
+      </Text>
       {bookings.map(b => {
         const totalDays    = daysBetween(b.start_date, b.end_date);
         const isMultiDay   = totalDays > 1;
@@ -643,7 +685,7 @@ function TabSolicitudes({ bookings, navigation, onReload, onReport }: {
         const daysPassed   = totalDays - daysLeft;
         const isPending    = b.status === 'pending';
         const isInProgress = b.service_phase === 'in_progress';
-        const needsResponse   = b.host_response === 'pending';
+        const needsResponse   = (b.host_response ?? 'pending') === 'pending';
         const awaitingPayment = b.host_response === 'accepted' && b.status !== 'active';
 
         const doRespond = (accept: boolean) => respondToBooking(b.id, accept).then(onReload).catch(e => console.error(e));
@@ -1034,6 +1076,7 @@ const styles = StyleSheet.create({
 
   // Section
   sectionTitle: { fontFamily: fonts.display, fontSize: 18, color: colors.textMain, marginBottom: 16, letterSpacing: -0.2 },
+  sectionHint: { fontSize: 12.5, color: colors.textMuted, lineHeight: 18, marginTop: -6, marginBottom: 14 },
 
   // Historial
   histCard: { backgroundColor: colors.surface, borderRadius: radii.lg, padding: 18, marginBottom: 12, ...shadows.md },
