@@ -65,6 +65,26 @@ export async function getMyVisiters(): Promise<Visiter[]> {
 export async function deleteMyVisiter(id: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
+
+  // `service_id` es polimórfico (apunta a spaces O visiters), así que no hay
+  // clave foránea que impida borrar un servicio con reservas vivas. Si se borra,
+  // esas reservas desaparecen del panel del cuidador —getMyHostBookings parte de
+  // los servicios que existen— pero siguen vivas para el cliente, que ya pagó y
+  // se queda sin nadie que pueda iniciarlas ni cerrarlas.
+  const { count, error: countError } = await supabase
+    .from('bookings')
+    .select('id', { count: 'exact', head: true })
+    .eq('service_type', 'visiter')
+    .eq('service_id', id)
+    .in('status', ['pending', 'active']);
+  if (countError) throw countError;
+  if ((count ?? 0) > 0) {
+    throw new Error(
+      `Esta visita tiene ${count} reserva${count === 1 ? '' : 's'} en curso o pendiente${count === 1 ? '' : 's'}. ` +
+      'Termínalas o cancélalas antes de eliminarla.'
+    );
+  }
+
   const { error } = await supabase
     .from('visiters')
     .delete()

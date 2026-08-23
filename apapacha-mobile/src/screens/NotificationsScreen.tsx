@@ -23,8 +23,8 @@ type FilterKey = 'all' | 'bookings' | 'services' | 'application';
 
 const FILTERS: { key: FilterKey; label: string; icon: IoniconName; types: string[] }[] = [
   { key: 'all',         label: 'Todas',        icon: 'notifications-outline', types: []                                                          },
-  { key: 'bookings',    label: 'Reservas',      icon: 'calendar-outline',      types: ['booking_created', 'booking_accepted', 'booking_rejected', 'receipt_submitted', 'booking_confirmed'] },
-  { key: 'services',    label: 'Servicios',     icon: 'paw-outline',           types: ['service_started', 'service_completed']                     },
+  { key: 'bookings',    label: 'Reservas',      icon: 'calendar-outline',      types: ['booking_created', 'booking_accepted', 'booking_rejected', 'receipt_submitted', 'booking_confirmed', 'booking_cancelled', 'booking_payment_reminder', 'booking_unresolved', 'booking_auto_cancelled', 'booking_tomorrow', 'booking_pending_completion'] },
+  { key: 'services',    label: 'Servicios',     icon: 'paw-outline',           types: ['service_started', 'service_completed', 'pet_report', 'new_message']         },
   { key: 'application', label: 'Aplicación',    icon: 'ribbon-outline',        types: ['application_approved', 'application_rejected']             },
 ];
 
@@ -38,6 +38,14 @@ const TYPE_META: Record<string, { icon: IoniconName; color: string; bg: string }
   application_rejected: { icon: 'close-circle-outline',       color: colors.danger,   bg: `${colors.danger}10`   },
   service_started:      { icon: 'play-circle-outline',        color: colors.primary,  bg: `${colors.primary}15`  },
   service_completed:    { icon: 'checkmark-done-outline',     color: colors.success,  bg: `${colors.success}15`  },
+  booking_cancelled:    { icon: 'close-circle-outline',       color: colors.danger,   bg: `${colors.danger}10`   },
+  booking_auto_cancelled:{ icon: 'close-circle-outline',      color: colors.danger,   bg: `${colors.danger}10`   },
+  booking_payment_reminder: { icon: 'card-outline',           color: colors.warning,  bg: `${colors.warning}15`  },
+  booking_unresolved:   { icon: 'help-circle-outline',        color: colors.warning,  bg: `${colors.warning}15`  },
+  booking_tomorrow:     { icon: 'alarm-outline',              color: colors.primary,  bg: `${colors.primary}15`  },
+  booking_pending_completion: { icon: 'hourglass-outline',    color: colors.warning,  bg: `${colors.warning}15`  },
+  pet_report:           { icon: 'paw-outline',                color: colors.primary,  bg: `${colors.primary}15`  },
+  new_message:          { icon: 'chatbubble-ellipses-outline', color: colors.primary, bg: `${colors.primary}15`  },
 };
 
 const DEFAULT_META: { icon: IoniconName; color: string; bg: string } = {

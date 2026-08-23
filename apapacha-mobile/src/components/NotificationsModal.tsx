@@ -25,6 +25,15 @@ const TYPE_ICON: Record<string, { icon: IoniconName; color: string }> = {
   service_completed:     { icon: 'checkmark-done-outline',   color: colors.success },
   service_published:     { icon: 'storefront-outline',       color: colors.success },
   user_registered:       { icon: 'person-add-outline',       color: colors.accent  },
+  application_rejected:  { icon: 'close-circle-outline',     color: colors.danger  },
+  booking_cancelled:     { icon: 'close-circle-outline',     color: colors.danger  },
+  booking_auto_cancelled:{ icon: 'close-circle-outline',     color: colors.danger  },
+  booking_payment_reminder: { icon: 'card-outline',          color: colors.warning },
+  booking_unresolved:    { icon: 'help-circle-outline',      color: colors.warning },
+  booking_tomorrow:      { icon: 'alarm-outline',            color: colors.primary },
+  booking_pending_completion: { icon: 'hourglass-outline',   color: colors.warning },
+  pet_report:            { icon: 'paw-outline',              color: colors.primary },
+  new_message:           { icon: 'chatbubble-ellipses-outline', color: colors.primary },
 };
 
 function timeAgo(dateStr: string): string {
