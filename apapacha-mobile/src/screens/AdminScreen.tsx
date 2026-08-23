@@ -149,6 +149,11 @@ export function AdminScreen() {
   const [visiters, setVisiters] = useState<AdminVisiter[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [bookings, setBookings] = useState<AdminBooking[]>([]);
+  // El listado de reservas se corta en 50 para que la pestaña cargue rápido, pero
+  // los ingresos y los gráficos se calculaban sobre ese recorte: pasadas las 50
+  // reservas el panel mostraba menos dinero del real, sin avisar. Los agregados
+  // van sobre esta consulta ligera, que no lleva límite.
+  const [resumenReservas, setResumenReservas] = useState<{ status: string; total_price: number; created_at: string }[]>([]);
   const [pendingPayments, setPendingPayments] = useState<PendingPayment[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -167,7 +172,7 @@ export function AdminScreen() {
     if (!silent) setLoading(true);
     await Promise.all([
       loadStats(), loadUsers(), loadSpaces(), loadVisiters(),
-      loadApplications(), loadBookings(), loadPendingPayments(),
+      loadApplications(), loadBookings(), loadBookingSummary(), loadPendingPayments(),
     ]);
     if (!silent) setLoading(false);
   };
@@ -276,6 +281,14 @@ export function AdminScreen() {
     setBookings((data ?? []) as unknown as AdminBooking[]);
   }
 
+  async function loadBookingSummary() {
+    const { data, error } = await supabase
+      .from('bookings')
+      .select('status, total_price, created_at');
+    if (error) { console.error('[Admin] loadBookingSummary:', error.message); return; }
+    setResumenReservas(data ?? []);
+  }
+
   async function loadPendingPayments() {
     const { data, error } = await supabase
       .from('bookings')
@@ -292,6 +305,7 @@ export function AdminScreen() {
       toast.success('Pago confirmado', 'La reserva está ahora activa.');
       loadPendingPayments();
       loadBookings();
+      loadBookingSummary();
       loadStats();
     } catch (e: any) {
       toast.error('Error', e.message);
@@ -567,6 +581,7 @@ export function AdminScreen() {
             spaces={spaces}
             visiters={visiters}
             bookings={bookings}
+            resumenReservas={resumenReservas}
             applications={applications}
             pendingPaymentsCount={pendingPayments.length}
             onTabChange={setActiveTab}
@@ -629,12 +644,13 @@ function KpiCard({ label, value, icon, color, onPress }: { label: string; value:
   );
 }
 
-function DashboardTab({ stats, users, spaces, visiters, bookings, applications, pendingPaymentsCount, onTabChange, onToggleSpace, onDeleteSpace, onToggleVisiter, onDeleteVisiter }: {
+function DashboardTab({ stats, users, spaces, visiters, bookings, resumenReservas, applications, pendingPaymentsCount, onTabChange, onToggleSpace, onDeleteSpace, onToggleVisiter, onDeleteVisiter }: {
   stats: Stats | null;
   users: AdminUser[];
   spaces: AdminSpace[];
   visiters: AdminVisiter[];
   bookings: AdminBooking[];
+  resumenReservas: { status: string; total_price: number; created_at: string }[];
   applications: Application[];
   pendingPaymentsCount: number;
   onTabChange: (tab: Tab) => void;
@@ -657,13 +673,13 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
     { label: 'Postulaciones',     value: stats.pendingApplications, icon: 'document-text-outline', color: colors.accent,  tab: 'applications' },
   ];
 
-  // ── Ingresos (según reservas cargadas: activas + completadas) ──
+  // ── Ingresos (todas las reservas activas + completadas, sin recorte) ──
   const MONTHS = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
   const now = new Date();
   const thisMonthKey = `${now.getFullYear()}-${now.getMonth()}`;
   const lastMonthD = new Date(now.getFullYear(), now.getMonth() - 1, 1);
   const lastMonthKey = `${lastMonthD.getFullYear()}-${lastMonthD.getMonth()}`;
-  const paidBookings = bookings.filter(b => b.status === 'active' || b.status === 'completed');
+  const paidBookings = resumenReservas.filter(b => b.status === 'active' || b.status === 'completed');
   const revenue = paidBookings.reduce((s, b) => s + (b.total_price || 0), 0);
   const mKey = (iso: string) => { const d = new Date(iso); return `${d.getFullYear()}-${d.getMonth()}`; };
   const monthRevenue     = paidBookings.filter(b => mKey(b.created_at) === thisMonthKey).reduce((s, b) => s + (b.total_price || 0), 0);
@@ -680,7 +696,7 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
     monthly.push({ key: `${d.getFullYear()}-${d.getMonth()}`, month: MONTHS[d.getMonth()], count: 0 });
   }
   const mIdx = new Map(monthly.map((m, i) => [m.key, i]));
-  for (const b of bookings) {
+  for (const b of resumenReservas) {
     const d = new Date(b.created_at);
     const idx = mIdx.get(`${d.getFullYear()}-${d.getMonth()}`);
     if (idx !== undefined) monthly[idx].count++;
@@ -691,8 +707,8 @@ function DashboardTab({ stats, users, spaces, visiters, bookings, applications, 
   const statusOrder = ['pending', 'active', 'completed', 'cancelled'];
   const statusLabel: Record<string, string> = { pending: 'Pendientes', active: 'Activas', completed: 'Completadas', cancelled: 'Canceladas' };
   const statusCounts: Record<string, number> = {};
-  for (const b of bookings) statusCounts[b.status] = (statusCounts[b.status] ?? 0) + 1;
-  const statusTotal = bookings.length || 1;
+  for (const b of resumenReservas) statusCounts[b.status] = (statusCounts[b.status] ?? 0) + 1;
+  const statusTotal = resumenReservas.length || 1;
 
   const fmt$ = (n: number) => `$${n.toLocaleString('es-CL')}`;
 

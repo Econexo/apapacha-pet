@@ -10,8 +10,6 @@ export type RootStackParamList = {
   VisiterDetail: { id: string };
   Checkout: { id: string; type: 'space' | 'visiter' };
   TransferInstructions: { bookingId: string; amount: number };
-  PaymentSuccess: { bookingId: string };
-  CheckIn: { bookingId: string };
   ChatDetail: { id: string };
   AddPetModal: { petId?: string } | undefined;
   HostOnboarding: undefined;

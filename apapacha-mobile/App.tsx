@@ -18,7 +18,6 @@ import { LoginScreen } from './src/screens/LoginScreen';
 import { ExploreScreen } from './src/screens/ExploreScreen';
 import { SpaceDetailScreen } from './src/screens/SpaceDetailScreen';
 import { VisiterDetailScreen } from './src/screens/VisiterDetailScreen';
-import { CheckInScreen } from './src/screens/CheckInScreen';
 import { BookingsScreen } from './src/screens/BookingsScreen';
 import { ProfileScreen } from './src/screens/ProfileScreen';
 import { HostDashboardScreen } from './src/screens/HostDashboardScreen';
@@ -31,7 +30,6 @@ import { HostOnboardingScreen } from './src/screens/HostOnboardingScreen';
 import { ClientVerificationScreen } from './src/screens/ClientVerificationScreen';
 import { TrustAndSafetyScreen } from './src/screens/TrustAndSafetyScreen';
 import { InsuranceClaimScreen } from './src/screens/InsuranceClaimScreen';
-import { PaymentSuccessScreen } from './src/screens/PaymentSuccessScreen';
 import { EditProfileScreen } from './src/screens/EditProfileScreen';
 import { LeaveReviewScreen } from './src/screens/LeaveReviewScreen';
 import { ManageServiceScreen } from './src/screens/ManageServiceScreen';
@@ -270,8 +268,6 @@ function RootNavigator() {
       <Stack.Screen name="VisiterDetail" component={VisiterDetailScreen} />
       <Stack.Screen name="Checkout" component={CheckoutScreen} />
       <Stack.Screen name="TransferInstructions" component={TransferInstructionsScreen} />
-      <Stack.Screen name="PaymentSuccess" component={PaymentSuccessScreen} options={{ animation: 'fade' }} />
-      <Stack.Screen name="CheckIn" component={CheckInScreen} />
       <Stack.Screen name="ChatDetail" component={ChatDetailScreen} />
       <Stack.Screen name="AddPetModal" component={AddPetWrapper} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       <Stack.Screen name="HostOnboarding" component={HostOnboardingScreen} options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />

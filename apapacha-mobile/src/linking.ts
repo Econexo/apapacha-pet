@@ -30,8 +30,6 @@ export const linking: LinkingOptions<RootStackParamList> = {
       VisiterDetail: 'visita/:id',
       Checkout: 'reservar/:type/:id',
       TransferInstructions: 'pago/:bookingId',
-      PaymentSuccess: 'pago-exitoso/:bookingId',
-      CheckIn: 'checkin/:bookingId',
       ChatDetail: 'chat/:id',
       AddPetModal: 'agregar-gato',
       HostOnboarding: 'ser-cuidador',

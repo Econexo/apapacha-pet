@@ -59,17 +59,6 @@ export async function createBooking(bookingData: {
   return data;
 }
 
-export async function updateBookingStatus(id: string, status: BookingStatus): Promise<void> {
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) throw new Error('Not authenticated');
-  const { error } = await supabase
-    .from('bookings')
-    .update({ status })
-    .eq('id', id)
-    .eq('owner_id', user.id);
-  if (error) throw error;
-}
-
 export async function submitPaymentReceipt(bookingId: string, localUri: string): Promise<void> {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) throw new Error('Not authenticated');
