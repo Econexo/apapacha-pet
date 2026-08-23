@@ -48,14 +48,14 @@ export function ChatDetailScreen() {
   const channelRef = useRef<RealtimeChannel | null>(null);
 
   useEffect(() => {
-    supabase.from('bookings').select('service_type, service_id').eq('id', bookingId).single()
+    supabase.from('bookings').select('service_type, service_id').eq('id', bookingId).maybeSingle()
       .then(async ({ data: booking }) => {
         if (!booking) return;
         if (booking.service_type === 'space') {
-          const { data } = await supabase.from('spaces').select('title').eq('id', booking.service_id).single();
+          const { data } = await supabase.from('spaces').select('title').eq('id', booking.service_id).maybeSingle();
           if (data) setHeaderTitle(data.title);
         } else {
-          const { data } = await supabase.from('visiters').select('name').eq('id', booking.service_id).single();
+          const { data } = await supabase.from('visiters').select('name').eq('id', booking.service_id).maybeSingle();
           if (data) setHeaderTitle(data.name);
         }
       });

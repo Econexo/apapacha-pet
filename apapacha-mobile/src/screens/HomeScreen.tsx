@@ -64,7 +64,7 @@ export function HomeScreen() {
       if (booking) {
         const table = booking.service_type === 'space' ? 'spaces' : 'visiters';
         const field = booking.service_type === 'space' ? 'title' : 'name';
-        const { data: svc } = await supabase.from(table).select(field).eq('id', booking.service_id).single();
+        const { data: svc } = await supabase.from(table).select(field).eq('id', booking.service_id).maybeSingle();
         setNextServiceName(svc ? (svc as any)[field] : null);
       } else {
         setNextServiceName(null);

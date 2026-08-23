@@ -287,8 +287,20 @@ export function ProfileScreen() {
                   ? 'Revisaremos tu postulación en 1-2 días hábiles.'
                   : application?.status === 'rejected'
                     ? 'Puedes volver a postular después de 30 días.'
-                    : 'Tu cuenta ya tiene acceso al panel de cuidador.'}
+                    // Aprobado pero el perfil todavía no dice "host": el tab
+                    // Cuidador no existe para esta sesión. Antes se le decía que
+                    // entrara por un tab que no estaba, sin salida posible.
+                    : 'Tu postulación fue aprobada. Toca "Actualizar" para activar tu panel.'}
               </Text>
+              {application?.status === 'approved' && !isHost && (
+                <TouchableOpacity
+                  onPress={() => refreshProfile()}
+                  style={{ marginTop: 8, alignSelf: 'flex-start' }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={{ fontSize: 13, fontWeight: '800', color: colors.primary }}>Actualizar →</Text>
+                </TouchableOpacity>
+              )}
             </View>
           </View>
         ) : (
