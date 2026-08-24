@@ -1,6 +1,6 @@
 // Service worker mínimo para instalación PWA (network-first con fallback a caché
 // del app-shell). Se registra desde index.html tras el post-build.
-const CACHE = 'apapacha-v4';
+const CACHE = 'apapacha-v5';
 // Ojo: los iconos NO se precachean. iOS pide el apple-touch-icon justo al
 // "Agregar a inicio", y una respuesta vieja del caché puede hacer que descarte
 // el icono y use un fallback propio (captura de la página, fondo oscuro).
@@ -26,14 +26,38 @@ self.addEventListener('fetch', (event) => {
   // Los iconos siempre desde la red: ver la nota de SHELL.
   if (url.pathname.startsWith('/icons/') || url.pathname.includes('apple-touch-icon')) return;
 
+  // El HTML nunca se sirve desde caché salvo que se caiga la red en una
+  // navegación. Un index.html viejo apunta a un bundle con otro hash; ese hash
+  // ya no existe y —por el rewrite de vercel.json— devolvía el propio HTML con
+  // status 200. El navegador intentaba ejecutar HTML como JavaScript y la app
+  // no arrancaba: pantalla en blanco, sin siquiera botón de retroceso.
+  const esNavegacion = req.mode === 'navigate';
+
   event.respondWith(
     fetch(req)
       .then((res) => {
-        const copy = res.clone();
-        caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        // Solo cacheamos respuestas buenas y del tipo esperado. Si el servidor
+        // devuelve HTML para un .js, no lo guardamos ni lo propagamos.
+        const tipo = res.headers.get('content-type') || '';
+        const esHtml = tipo.includes('text/html');
+        if (!esNavegacion && esHtml) {
+          throw new Error('respuesta HTML para un recurso estático');
+        }
+        if (res.ok) {
+          const copy = res.clone();
+          caches.open(CACHE).then((c) => c.put(req, copy)).catch(() => {});
+        }
         return res;
       })
-      .catch(() => caches.match(req).then((cached) => cached || caches.match('/')))
+      .catch(() =>
+        caches.match(req).then((cached) => {
+          if (cached) return cached;
+          // El shell solo vale como respuesta a una navegación. Devolverlo para
+          // un script era justo lo que rompía la app.
+          if (esNavegacion) return caches.match('/');
+          return Response.error();
+        })
+      )
   );
 });
 

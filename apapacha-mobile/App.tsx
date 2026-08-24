@@ -39,6 +39,7 @@ import { OnboardingScreen } from './src/screens/OnboardingScreen';
 import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
+import { ErrorBoundary } from './src/components/ErrorBoundary';
 import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
 import { linking, guestLinking } from './src/linking';
@@ -301,13 +302,17 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <StatusBar style="auto" />
-      <ToastProvider>
-        <AuthProvider>
-          <TourTargetsProvider>
-            <NavigationRoot />
-          </TourTargetsProvider>
-        </AuthProvider>
-      </ToastProvider>
+      {/* Envuelve TODA la navegación: un error al pintar cualquier pantalla
+          desmontaba el árbol entero y dejaba la app en blanco, sin retroceso. */}
+      <ErrorBoundary>
+        <ToastProvider>
+          <AuthProvider>
+            <TourTargetsProvider>
+              <NavigationRoot />
+            </TourTargetsProvider>
+          </AuthProvider>
+        </ToastProvider>
+      </ErrorBoundary>
     </SafeAreaProvider>
   );
 }

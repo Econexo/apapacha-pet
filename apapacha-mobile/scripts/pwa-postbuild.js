@@ -66,6 +66,73 @@ if (!html.includes('id="pwa-safe-area"')) {
   html = html.replace('</head>', `${safeArea}</head>`);
 }
 
+// Red de seguridad de arranque. Si la app no monta —el caso clásico es un
+// index.html cacheado que pide un bundle con hash viejo, que ya no existe—
+// no hay JavaScript de la app vivo para avisar de nada: el usuario ve una
+// pantalla en blanco donde ni el botón de retroceso responde. Este script va
+// inline en el HTML, así que sobrevive precisamente a ese fallo.
+if (!html.includes('id="boot-watchdog"')) {
+  const watchdog = `
+    <script id="boot-watchdog">
+      (function () {
+        var YA = 'apapacha_recuperado';
+        function recuperar(motivo) {
+          var intento = 0;
+          try { intento = parseInt(sessionStorage.getItem(YA) || '0', 10) || 0; } catch (e) {}
+          if (intento >= 2) return;
+          try { sessionStorage.setItem(YA, String(intento + 1)); } catch (e) {}
+
+          var limpiar = [];
+          // Primer intento: SOLO vaciar la caché, que es donde vive el HTML viejo.
+          // Dar de baja el service worker destruiría la suscripción de push del
+          // usuario, y volvería a quedarse sin avisos en el teléfono sin saber
+          // por qué. Eso se reserva para el segundo intento.
+          if (window.caches && caches.keys) {
+            limpiar.push(caches.keys()
+              .then(function (ks) { return Promise.all(ks.map(function (k) { return caches.delete(k); })); })
+              .catch(function () {}));
+          }
+          if (intento >= 1 && 'serviceWorker' in navigator) {
+            limpiar.push(navigator.serviceWorker.getRegistrations()
+              .then(function (rs) { return Promise.all(rs.map(function (r) { return r.unregister(); })); })
+              .catch(function () {}));
+          } else if ('serviceWorker' in navigator) {
+            limpiar.push(navigator.serviceWorker.getRegistrations()
+              .then(function (rs) { return Promise.all(rs.map(function (r) { return r.update(); })); })
+              .catch(function () {}));
+          }
+
+          Promise.all(limpiar).then(function () {
+            location.replace(location.pathname + '?r=' + Date.now());
+          });
+        }
+
+        // Un <script> que devuelve HTML (o 404) dispara este evento.
+        window.addEventListener('error', function (e) {
+          if (e && e.target && e.target.tagName === 'SCRIPT') recuperar('script');
+        }, true);
+
+        // Y si simplemente nunca montó nada, lo detectamos por el DOM vacío.
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            if (!root || root.childElementCount === 0) recuperar('vacio');
+          }, 9000);
+        });
+
+        // Arranque correcto: se limpia la marca para que la red siga disponible.
+        window.addEventListener('load', function () {
+          setTimeout(function () {
+            var root = document.getElementById('root');
+            if (root && root.childElementCount > 0) { try { sessionStorage.removeItem(YA); } catch (e) {} }
+          }, 12000);
+        });
+      })();
+    <\/script>
+  `;
+  html = html.replace('</head>', `${watchdog}</head>`);
+}
+
 if (!html.includes('rel="manifest"')) {
   const head = `
     <link rel="manifest" href="/manifest.json" />

@@ -12,6 +12,7 @@ import { fonts } from '../theme/typography';
 import { supabase, supabaseUrl, supabaseAnonKey } from '../../supabase';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../components/Toast';
+import { useGoBack } from '../hooks/useGoBack';
 import { confirmBookingPayment } from '../services/bookings.service';
 import { insertNotification } from '../services/notifications.service';
 import { FadeInView } from '../components/ui/FadeInView';
@@ -139,6 +140,7 @@ function PawBackground() {
 }
 
 export function AdminScreen() {
+  const volver = useGoBack('Home');
   const navigation = useNavigation() as any;
   const { profile } = useAuth();
   const toast = useToast();
@@ -531,7 +533,7 @@ export function AdminScreen() {
       {/* ── Hero Header ──────────────────────────────── */}
       <View style={styles.header}>
         <PawBackground />
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => volver()} style={styles.backBtn}>
           <Ionicons name="arrow-back" size={22} color="rgba(255,255,255,0.85)" />
         </TouchableOpacity>
         <View style={styles.headerCenter}>
