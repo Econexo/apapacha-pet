@@ -40,6 +40,7 @@ import { SetPasswordScreen } from './src/screens/SetPasswordScreen';
 import { AdminScreen } from './src/screens/AdminScreen';
 import { NotificationsScreen } from './src/screens/NotificationsScreen';
 import { ErrorBoundary } from './src/components/ErrorBoundary';
+import { ensurePushSubscription } from './src/services/push.service';
 import { colors } from './src/theme/colors';
 import { ToastProvider } from './src/components/Toast';
 import { linking, guestLinking } from './src/linking';
@@ -321,6 +322,15 @@ export default function App() {
 // para que Login sea alcanzable (ver comentario en src/linking.ts).
 function NavigationRoot() {
   const { session, loading } = useAuth();
+
+  // Reconcilia la suscripción de push al abrir la app, no solo al entrar a
+  // Perfil. Si el navegador la descartó, la sesión cambió de dispositivo o la
+  // fila del servidor se perdió, el usuario se quedaba sin avisos en el
+  // teléfono sin ninguna señal de que algo iba mal. Es silenciosa y nunca falla.
+  useEffect(() => {
+    if (!session) return;
+    ensurePushSubscription().catch(() => {});
+  }, [session?.user?.id]);
 
   // OJO: este gate tiene que vivir aquí, ANTES del NavigationContainer, y no
   // dentro de RootNavigator (su hijo). React Navigation resuelve la URL
