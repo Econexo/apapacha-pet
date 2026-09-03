@@ -44,10 +44,37 @@ export function parseISODate(s: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1);
 }
 
-export const BLOCK_LABEL: Record<string, string> = {
-  am: 'AM (06:00 a 12:00)',
-  pm: 'PM (13:00 a 21:00)',
+// ── Bloques horarios de una visita ───────────────────────────────────────────
+// La hora exacta la coordinan cliente y cuidador por chat; aquí solo se acota
+// el tramo. Fuente única: el rango se escribía también en VisitScheduler, y las
+// dos copias se desincronizaron.
+export type TimeBlock = 'am' | 'pm';
+
+export const BLOCK_HOURS: Record<TimeBlock, { from: number; to: number }> = {
+  am: { from: 8,  to: 12 },
+  pm: { from: 13, to: 20 },
 };
+
+const dosDigitos = (h: number) => `${String(h).padStart(2, '0')}:00`;
+
+export const blockRange = (k: TimeBlock) =>
+  `${dosDigitos(BLOCK_HOURS[k].from)} a ${dosDigitos(BLOCK_HOURS[k].to)}`;
+
+export const BLOCK_LABEL: Record<string, string> = {
+  am: `AM (${blockRange('am')})`,
+  pm: `PM (${blockRange('pm')})`,
+};
+
+const hourOf = (hhmm?: string) => (hhmm ? parseInt(hhmm.split(':')[0], 10) : NaN);
+
+// Un bloque se ofrece si se solapa con la jornada declarada por el cuidador.
+// Sin jornada declarada se ofrecen ambos.
+export function blockOffered(av: Availability, key: TimeBlock): boolean {
+  const desde = Number.isNaN(hourOf(av.from)) ? BLOCK_HOURS.am.from : hourOf(av.from);
+  const hasta = Number.isNaN(hourOf(av.to))   ? BLOCK_HOURS.pm.to   : hourOf(av.to);
+  const b = BLOCK_HOURS[key];
+  return desde < b.to && hasta > b.from;
+}
 
 // Resumen legible del agendamiento de una visita: fechas puntuales + tramo AM/PM.
 export function formatVisitSchedule(
