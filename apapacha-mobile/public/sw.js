@@ -90,20 +90,47 @@ self.addEventListener('push', (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+// Abrir la notificación tiene que llevar SIEMPRE a su pantalla. Antes se
+// enfocaba la ventana ya abierta y se llamaba a client.navigate(), cuyo rechazo
+// se tragaba un .catch() vacío: navigate() lanza en las ventanas que este
+// service worker no controla (matchAll iba con includeUncontrolled), así que la
+// app quedaba enfocada en la pantalla que ya estuviera —p. ej. las Reservas del
+// cliente— y la notificación del cuidador parecía llevar al sitio equivocado.
+//
+// Ahora hay tres caminos, de mejor a peor: si la ventana SÍ está controlada, se
+// le pasa el destino por postMessage y enruta por dentro sin recargar; si no,
+// se navega de verdad; y si eso falla, se abre una ventana en el destino.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   const target = (event.notification.data && event.notification.data.url) || '/';
 
   event.waitUntil(
-    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
-      for (const client of list) {
-        if ('focus' in client) {
-          client.focus();
-          if ('navigate' in client) return client.navigate(target).catch(() => {});
-          return;
+    (async () => {
+      // matchAll sin includeUncontrolled devuelve solo ventanas que este SW
+      // controla, que son exactamente aquellas a las que postMessage llega.
+      const controladas = await self.clients.matchAll({ type: 'window' });
+      const controlada = controladas.find((c) => 'postMessage' in c);
+      if (controlada) {
+        try { await controlada.focus(); } catch (e) {}
+        controlada.postMessage({ tipo: 'ir-a', url: target });
+        return;
+      }
+
+      const todas = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const abierta = todas.find((c) => 'focus' in c);
+      if (abierta) {
+        try { await abierta.focus(); } catch (e) {}
+        if ('navigate' in abierta) {
+          try {
+            await abierta.navigate(target);
+            return;
+          } catch (e) {
+            // Ventana sin controlar: navigate() no está permitido. Seguimos.
+          }
         }
       }
-      if (self.clients.openWindow) return self.clients.openWindow(target);
-    })
+
+      if (self.clients.openWindow) await self.clients.openWindow(target);
+    })()
   );
 });
