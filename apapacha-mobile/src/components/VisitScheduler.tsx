@@ -3,29 +3,24 @@ import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-nati
 import { Ionicons } from '@expo/vector-icons';
 import { colors } from '../theme/colors';
 import { radii } from '../theme/design';
-import { Availability, isDayAvailable, toISODate } from '../lib/availability';
+import {
+  Availability, isDayAvailable, toISODate,
+  blockRange, blockOffered, type TimeBlock,
+} from '../lib/availability';
 
 const MONTHS = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
 const DAY_HEAD = ['Lu','Ma','Mi','Ju','Vi','Sá','Do'];
 
 const startOfDay = (d: Date) => { const c = new Date(d); c.setHours(0,0,0,0); return c; };
-const hourOf = (hhmm?: string) => (hhmm ? parseInt(hhmm.split(':')[0], 10) : NaN);
 
-export type TimeBlock = 'am' | 'pm';
-
-// Bloques horarios en que el cuidador puede asistir. La hora exacta la coordinan
-// cliente y cuidador por chat.
+// Los tramos y su horario viven en lib/availability (fuente única); aquí solo se
+// les pone título e ícono para la lista.
 export const BLOCKS: { key: TimeBlock; title: string; range: string; icon: 'sunny-outline' | 'partly-sunny-outline' }[] = [
-  { key: 'am', title: 'AM · Mañana', range: '06:00 a 12:00', icon: 'sunny-outline' },
-  { key: 'pm', title: 'PM · Tarde',  range: '13:00 a 21:00', icon: 'partly-sunny-outline' },
+  { key: 'am', title: 'AM · Mañana', range: blockRange('am'), icon: 'sunny-outline' },
+  { key: 'pm', title: 'PM · Tarde',  range: blockRange('pm'), icon: 'partly-sunny-outline' },
 ];
 
-// Un bloque se ofrece si cae dentro de la jornada declarada por el cuidador.
-export function blockOffered(av: Availability, key: TimeBlock): boolean {
-  const from = Number.isNaN(hourOf(av.from)) ? 6 : hourOf(av.from);
-  const to   = Number.isNaN(hourOf(av.to)) ? 21 : hourOf(av.to);
-  return key === 'am' ? from <= 12 : to >= 13;
-}
+export { blockOffered, type TimeBlock };
 
 interface Props {
   availability: Availability;
