@@ -68,3 +68,35 @@ describe('Onboarding no es alcanzable por URL', () => {
     expect(state?.routes?.[0]?.name).not.toBe('Onboarding');
   });
 });
+
+// Los destinos que manda el service worker al tocar una notificación push
+// (public.notification_url en la base). Si uno de estos no resuelve, la
+// notificación deja al usuario en la pantalla que hubiera abierta: es el fallo
+// que reportó la tester con el aviso de cuidador, que abría Reservas de cliente.
+describe('destinos de las notificaciones push', () => {
+  function target(path: string) {
+    const state = getStateFromPath(path, linking.config as any);
+    const raiz = state?.routes?.[state.routes.length - 1];
+    return { raiz: raiz?.name, hijo: (raiz as any)?.state?.routes?.[0]?.name };
+  }
+
+  it('/panel abre el panel del cuidador, no las reservas del cliente', () => {
+    expect(target('/panel')).toEqual({ raiz: 'MainTabs', hijo: 'HostDashboard' });
+  });
+
+  it('/reservas abre las reservas del cliente', () => {
+    expect(target('/reservas')).toEqual({ raiz: 'MainTabs', hijo: 'Bookings' });
+  });
+
+  it('/chat/<id> abre esa conversación', () => {
+    const state = getStateFromPath('/chat/abc-123', linking.config as any);
+    const ruta = state?.routes?.[state.routes.length - 1];
+    expect(ruta?.name).toBe('ChatDetail');
+    expect((ruta?.params as any)?.id).toBe('abc-123');
+  });
+
+  it('/admin y /perfil resuelven a su pantalla', () => {
+    expect(getStateFromPath('/admin', linking.config as any)?.routes?.[0]?.name).toBe('Admin');
+    expect(target('/perfil')).toEqual({ raiz: 'MainTabs', hijo: 'Profile' });
+  });
+});
