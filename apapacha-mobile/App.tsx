@@ -1,10 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { NavigationContainer, useRoute, RouteProp } from '@react-navigation/native';
+import {
+  NavigationContainer, useRoute, RouteProp,
+  createNavigationContainerRef, getStateFromPath,
+} from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, Text, ActivityIndicator } from 'react-native';
+import { View, Text, ActivityIndicator, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useFonts } from 'expo-font';
 import { Fraunces_500Medium, Fraunces_600SemiBold } from '@expo-google-fonts/fraunces';
@@ -318,6 +321,28 @@ export default function App() {
   );
 }
 
+// Referencia a la navegación viva, para poder enrutar desde fuera de React
+// (el service worker avisa por postMessage al tocar una notificación).
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
+
+/**
+ * Lleva la app a la pantalla de una notificación sin recargar la página.
+ *
+ * El service worker manda el destino como URL ("/panel", "/chat/<id>"), que es
+ * lo que guarda la notificación. Lo traducimos con el MISMO mapa que usa el
+ * linking, así no hay dos tablas de rutas que se puedan desincronizar.
+ */
+function irADestino(url: string) {
+  if (!navigationRef.isReady()) return;
+  try {
+    const path = url.startsWith('http') ? new URL(url).pathname : url;
+    const estado = getStateFromPath(path, linking.config as any);
+    if (estado) navigationRef.resetRoot(estado as any);
+  } catch (e) {
+    console.warn('[push] no se pudo abrir el destino', url, e);
+  }
+}
+
 // El mapa de rutas depende de la sesión: sin ella solo se mapean rutas públicas,
 // para que Login sea alcanzable (ver comentario en src/linking.ts).
 function NavigationRoot() {
@@ -330,6 +355,20 @@ function NavigationRoot() {
   useEffect(() => {
     if (!session) return;
     ensurePushSubscription().catch(() => {});
+  }, [session?.user?.id]);
+
+  // Al tocar una notificación con la app ya abierta, el service worker manda el
+  // destino por aquí en vez de recargar la página entera. Solo con sesión: los
+  // destinos de una notificación son todos pantallas privadas, y sin sesión el
+  // mapa de rutas que se monta es el de invitado.
+  useEffect(() => {
+    if (!session) return;
+    if (Platform.OS !== 'web' || typeof navigator === 'undefined' || !navigator.serviceWorker) return;
+    const alMensaje = (e: MessageEvent) => {
+      if (e.data?.tipo === 'ir-a' && typeof e.data.url === 'string') irADestino(e.data.url);
+    };
+    navigator.serviceWorker.addEventListener('message', alMensaje);
+    return () => navigator.serviceWorker.removeEventListener('message', alMensaje);
   }, [session?.user?.id]);
 
   // OJO: este gate tiene que vivir aquí, ANTES del NavigationContainer, y no
@@ -354,6 +393,7 @@ function NavigationRoot() {
 
   return (
     <NavigationContainer
+      ref={navigationRef}
       linking={session ? linking : guestLinking}
       documentTitle={{
         // La marca va primero: si iOS o el navegador generan un icono de
